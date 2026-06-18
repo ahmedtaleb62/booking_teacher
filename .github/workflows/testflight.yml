@@ -121,6 +121,7 @@ jobs:
 
       # ── 10. Upload to TestFlight ──────────────────────────────────
       - name: Upload to TestFlight
+        timeout-minutes: 30
         env:
           ASC_KEY_ID:      ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID:   ${{ secrets.ASC_ISSUER_ID }}
@@ -129,15 +130,17 @@ jobs:
           CLEAN_KEY_ID=$(echo "${ASC_KEY_ID}" | tr -d '[:space:]')
           CLEAN_ISSUER_ID=$(echo "${ASC_ISSUER_ID}" | tr -d '[:space:]')
 
+          IPA_PATH=$(find $RUNNER_TEMP/export -name "*.ipa" | head -1)
+          echo "Uploading: $IPA_PATH"
+
           mkdir -p ~/.appstoreconnect/private_keys
-          echo "$ASC_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${CLEAN_KEY_ID}.p8
+          printf '%s' "$ASC_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${CLEAN_KEY_ID}.p8
 
           xcrun altool --upload-app \
             --type ios \
-            --file $(find $RUNNER_TEMP/export -name "*.ipa" | head -1) \
-            --apiKey  "$CLEAN_KEY_ID" \
-            --apiIssuer "$CLEAN_ISSUER_ID" \
-            --verbose
+            --file "$IPA_PATH" \
+            --apiKey "$CLEAN_KEY_ID" \
+            --apiIssuer "$CLEAN_ISSUER_ID"
 
       # ── 11. Cleanup ───────────────────────────────────────────────
       - name: Delete temporary keychain
