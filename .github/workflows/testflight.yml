@@ -44,9 +44,7 @@ jobs:
           restore-keys: ${{ runner.os }}-pods-
 
       - name: Install CocoaPods dependencies
-        run: |
-          cd ios
-          pod install --repo-update
+        run: cd ios && pod install --repo-update
         timeout-minutes: 20
 
       # ── 5. Firebase iOS config ───────────────────────────────────
@@ -80,21 +78,48 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo "$PROFILE_BASE64" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/release.mobileprovision
 
-      # ── 7. Inject team ID ────────────────────────────────────────
-      - name: Set Apple Team ID in ExportOptions.plist
+      # ── 7. Build iOS without signing ─────────────────────────────
+      - name: Build Flutter iOS (no codesign)
+        run: flutter build ios --release --no-codesign
+        timeout-minutes: 30
+
+      # ── 8. Archive with Xcode ────────────────────────────────────
+      - name: Archive with Xcode
+        env:
+          TEAM_ID:           ${{ secrets.APPLE_TEAM_ID }}
+          KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+        run: |
+          CLEAN_TEAM_ID=$(echo "${TEAM_ID}" | tr -d '[:space:]')
+          KEYCHAIN=$RUNNER_TEMP/build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          xcodebuild \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -archivePath $RUNNER_TEMP/Runner.xcarchive \
+            archive \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="HajezUstad AppStore" \
+            DEVELOPMENT_TEAM="${CLEAN_TEAM_ID}" \
+            -allowProvisioningUpdates
+        timeout-minutes: 20
+
+      # ── 9. Export IPA ─────────────────────────────────────────────
+      - name: Export IPA
         env:
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           CLEAN_TEAM_ID=$(echo "${TEAM_ID}" | tr -d '[:space:]')
           sed -i '' "s/TEAM_ID_PLACEHOLDER/${CLEAN_TEAM_ID}/g" ios/ExportOptions.plist
 
-      # ── 8. Build IPA ─────────────────────────────────────────────
-      - name: Build Flutter IPA
-        run: |
-          flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
-        timeout-minutes: 30
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/Runner.xcarchive \
+            -exportPath $RUNNER_TEMP/export \
+            -exportOptionsPlist ios/ExportOptions.plist
 
-      # ── 9. Upload to TestFlight ──────────────────────────────────
+      # ── 10. Upload to TestFlight ──────────────────────────────────
       - name: Upload to TestFlight
         env:
           ASC_KEY_ID:      ${{ secrets.ASC_KEY_ID }}
@@ -109,12 +134,12 @@ jobs:
 
           xcrun altool --upload-app \
             --type ios \
-            --file $(find build/ios/ipa -name "*.ipa" | head -1) \
+            --file $(find $RUNNER_TEMP/export -name "*.ipa" | head -1) \
             --apiKey  "$CLEAN_KEY_ID" \
             --apiIssuer "$CLEAN_ISSUER_ID" \
             --verbose
 
-      # ── 10. Cleanup ──────────────────────────────────────────────
+      # ── 11. Cleanup ───────────────────────────────────────────────
       - name: Delete temporary keychain
         if: always()
         run: security delete-keychain $RUNNER_TEMP/build.keychain || true
