@@ -1,3 +1,11 @@
+# Sensitive — never commit these
+google-services.json
+GoogleService-Info.plist
+*firebase-adminsdk*.json
+*.p12
+*.p8
+*.mobileprovision
+
 # Miscellaneous
 *.class
 *.log

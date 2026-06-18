@@ -1,24 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/session_states.dart';
 import '../../../core/models/session.dart';
+import '../../../core/providers/sessions_provider.dart';
+import '../../../core/services/session_service.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/session_stepper.dart';
 import '../../../shared/widgets/session_status_badge.dart';
 
-class SessionStatusScreen extends StatelessWidget {
+class SessionStatusScreen extends ConsumerWidget {
   final String sessionId;
   const SessionStatusScreen({super.key, required this.sessionId});
 
-  Session get _session => MockSessions.list.firstWhere(
-    (s) => s.id == sessionId,
-    orElse: () => MockSessions.list.first,
-  );
-
   @override
-  Widget build(BuildContext context) {
-    final s = _session;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(sessionProvider(sessionId));
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -38,22 +37,45 @@ class SessionStatusScreen extends StatelessWidget {
         ),
         title: const Text('حالة الجلسة'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(22, 8, 22, 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeroBanner(s),
-            const SizedBox(height: 16),
-            SessionStepper(currentState: s.state),
-            const SizedBox(height: 14),
-            _buildInfoCards(s),
-            const SizedBox(height: 16),
-            _buildTimeline(s),
-            const SizedBox(height: 20),
-            _buildActions(context, s),
-          ],
+      body: async.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
+              const SizedBox(height: 12),
+              const Text('تعذّر تحميل الجلسة', style: TextStyle(fontSize: 15)),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => ref.invalidate(sessionProvider(sessionId)),
+                child: const Text('إعادة المحاولة', style: TextStyle(color: AppColors.primary)),
+              ),
+            ],
+          ),
         ),
+        data: (session) {
+          if (session == null) {
+            return const Center(child: Text('الجلسة غير موجودة'));
+          }
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(22, 8, 22, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeroBanner(session),
+                const SizedBox(height: 16),
+                SessionStepper(currentState: session.state),
+                const SizedBox(height: 14),
+                _buildInfoCards(session),
+                const SizedBox(height: 16),
+                _buildTimeline(session),
+                const SizedBox(height: 20),
+                _buildActions(context, ref, session),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -72,10 +94,6 @@ class SessionStatusScreen extends StatelessWidget {
     if (isRejected || isDispute || isNoShow) {
       startColor = AppColors.error; endColor = const Color(0xFF9B2D2D);
     }
-
-    String title = s.state.label;
-    String subtitle = _getSubtitle(s);
-    IconData icon = _getIcon(s.state);
 
     return Container(
       width: double.infinity,
@@ -103,21 +121,21 @@ class SessionStatusScreen extends StatelessWidget {
                 child: Text(s.state.englishKey,
                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.3)),
               ),
-              Text('#${s.id.toUpperCase()}',
+              Text('#${s.id.substring(0, 8).toUpperCase()}',
                 style: const TextStyle(fontSize: 12, color: Colors.white70)),
             ],
           ),
           const SizedBox(height: 13),
           Row(
             children: [
-              Icon(icon, color: Colors.white, size: 22),
+              Icon(_getIcon(s.state), color: Colors.white, size: 22),
               const SizedBox(width: 8),
-              Text(title,
+              Text(s.state.label,
                 style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700, color: Colors.white)),
             ],
           ),
           const SizedBox(height: 5),
-          Text(subtitle,
+          Text(_getSubtitle(s),
             style: const TextStyle(fontSize: 13, height: 1.6, color: Colors.white70)),
         ],
       ),
@@ -125,9 +143,6 @@ class SessionStatusScreen extends StatelessWidget {
   }
 
   Widget _buildInfoCards(Session s) {
-    String responsible = _getResponsible(s.state);
-    String nextStep    = _getNextStep(s);
-
     return Row(
       children: [
         Expanded(
@@ -144,7 +159,7 @@ class SessionStatusScreen extends StatelessWidget {
                 const Text('الخطوة التالية',
                   style: TextStyle(fontSize: 10.5, color: AppColors.textHint)),
                 const SizedBox(height: 4),
-                Text(nextStep,
+                Text(_getNextStep(s),
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary, height: 1.4)),
               ],
             ),
@@ -165,7 +180,7 @@ class SessionStatusScreen extends StatelessWidget {
                 Text('المسؤول الآن',
                   style: TextStyle(fontSize: 10.5, color: AppColors.statusConfirmed.withValues(alpha: 0.8))),
                 const SizedBox(height: 4),
-                Text(responsible,
+                Text(_getResponsible(s.state),
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.statusConfirmedText, height: 1.4)),
               ],
             ),
@@ -176,6 +191,7 @@ class SessionStatusScreen extends StatelessWidget {
   }
 
   Widget _buildTimeline(Session s) {
+    if (s.events.isEmpty) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -199,10 +215,7 @@ class SessionStatusScreen extends StatelessWidget {
                   children: [
                     Container(
                       width: 11, height: 11,
-                      decoration: BoxDecoration(
-                        color: AppColors.statusConfirmed,
-                        shape: BoxShape.circle,
-                      ),
+                      decoration: const BoxDecoration(color: AppColors.statusConfirmed, shape: BoxShape.circle),
                     ),
                     if (!isLast)
                       Container(width: 2, height: 30, color: AppColors.border),
@@ -231,31 +244,16 @@ class SessionStatusScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActions(BuildContext context, Session s) {
-    if (s.state == SessionState.confirmedBooking) {
-      return Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 48, height: 48,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: const Icon(Icons.chat_bubble_outline_rounded, color: AppColors.textSecondary, size: 20),
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: AppButton(
-                  label: s.canEnterSession ? 'دخول الجلسة' : 'الدخول متاح قبل الموعد بـ 10 د',
-                  color: s.canEnterSession ? AppColors.statusActive : null,
-                  onTap: s.canEnterSession ? () => context.push('/live/${s.id}') : null,
-                ),
-              ),
-            ],
-          ),
-        ],
+  Widget _buildActions(BuildContext context, WidgetRef ref, Session s) {
+    if (s.state == SessionState.confirmedBooking || s.state == SessionState.activeSession) {
+      return AppButton(
+        label: s.canEnterSession || s.state == SessionState.activeSession
+            ? 'دخول الجلسة'
+            : 'الدخول متاح قبل الموعد بـ 10 د',
+        color: AppColors.statusActive,
+        onTap: (s.canEnterSession || s.state == SessionState.activeSession)
+            ? () => context.push('/live/${s.id}')
+            : null,
       );
     }
 
@@ -264,7 +262,7 @@ class SessionStatusScreen extends StatelessWidget {
         label: 'إلغاء الطلب',
         isOutlined: true,
         isDanger: true,
-        onTap: () => _showCancelDialog(context),
+        onTap: () => _showCancelDialog(context, ref),
       );
     }
 
@@ -300,7 +298,7 @@ class SessionStatusScreen extends StatelessWidget {
     return const SizedBox.shrink();
   }
 
-  void _showCancelDialog(BuildContext context) {
+  void _showCancelDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -309,7 +307,19 @@ class SessionStatusScreen extends StatelessWidget {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('تراجع')),
           TextButton(
-            onPressed: () { Navigator.pop(context); context.go('/sessions'); },
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await SessionService.cancelSession(sessionId);
+                ref.invalidate(studentSessionsProvider);
+                if (context.mounted) context.go('/sessions');
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('خطأ: $e')));
+                }
+              }
+            },
             child: const Text('إلغاء الطلب', style: TextStyle(color: AppColors.error)),
           ),
         ],
@@ -324,18 +334,13 @@ class SessionStatusScreen extends StatelessWidget {
       builder: (_) => StatefulBuilder(
         builder: (_, set) => AlertDialog(
           title: const Text('تقييم الأستاذ'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (i) => GestureDetector(
-                  onTap: () => set(() => rating = i + 1),
-                  child: Icon(Icons.star_rounded, size: 36,
-                    color: i < rating ? const Color(0xFFF59E0B) : AppColors.border),
-                )),
-              ),
-            ],
+          content: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (i) => GestureDetector(
+              onTap: () => set(() => rating = i + 1),
+              child: Icon(Icons.star_rounded, size: 36,
+                color: i < rating ? const Color(0xFFF59E0B) : AppColors.border),
+            )),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
@@ -346,54 +351,55 @@ class SessionStatusScreen extends StatelessWidget {
     );
   }
 
-  String _getSubtitle(Session s) {
-    switch (s.state) {
-      case SessionState.requested:         return 'بانتظار مراجعة الأستاذ ورده على طلبك.';
-      case SessionState.teacherApproved:   return 'وافق الأستاذ! أكمل الدفع لتثبيت حجزك.';
-      case SessionState.teacherRejected:   return 'رفض الأستاذ الطلب. يمكنك البحث عن أستاذ آخر.';
-      case SessionState.awaitingPayment:   return 'الدفع مطلوب لتأكيد الحجز.';
-      case SessionState.paymentSubmitted:  return 'الإدارة تراجع إثبات الدفع.';
-      case SessionState.paymentConfirmed:  return 'تم تأكيد الدفع من الإدارة.';
-      case SessionState.confirmedBooking:  return 'الحجز مؤكّد ✓ جلستك جاهزة وتبدأ تلقائياً في موعدها.';
-      case SessionState.activeSession:     return 'الجلسة جارية الآن — ادخل للانضمام.';
-      case SessionState.completed:         return 'اكتملت الجلسة بنجاح. يمكنك تقييم الأستاذ.';
-      case SessionState.teacherNoShow:     return 'لم يحضر الأستاذ. سنتواصل معك لإعادة الجدولة.';
-      case SessionState.studentNoShow:     return 'لم تحضر للجلسة في الوقت المحدد.';
-      case SessionState.dispute:           return 'تم فتح نزاع. الإدارة تراجع الحالة.';
-      case SessionState.cancelled:         return 'تم إلغاء الجلسة.';
-    }
-  }
+  // ── Helpers ─────────────────────────────────────────────────────
 
   IconData _getIcon(SessionState state) {
     switch (state) {
-      case SessionState.requested:         return Icons.access_time_rounded;
-      case SessionState.teacherApproved:   return Icons.check_circle_rounded;
-      case SessionState.teacherRejected:   return Icons.cancel_rounded;
-      case SessionState.awaitingPayment:   return Icons.payment_rounded;
-      case SessionState.paymentSubmitted:  return Icons.shield_outlined;
-      case SessionState.paymentConfirmed:  return Icons.verified_rounded;
-      case SessionState.confirmedBooking:  return Icons.event_available_rounded;
-      case SessionState.activeSession:     return Icons.videocam_rounded;
-      case SessionState.completed:         return Icons.star_rounded;
-      case SessionState.teacherNoShow:     return Icons.person_off_rounded;
-      case SessionState.studentNoShow:     return Icons.person_off_rounded;
-      case SessionState.dispute:           return Icons.warning_rounded;
-      case SessionState.cancelled:         return Icons.cancel_rounded;
+      case SessionState.requested:        return Icons.access_time_rounded;
+      case SessionState.teacherApproved:  return Icons.check_circle_rounded;
+      case SessionState.teacherRejected:  return Icons.cancel_rounded;
+      case SessionState.awaitingPayment:  return Icons.payment_rounded;
+      case SessionState.paymentSubmitted: return Icons.shield_outlined;
+      case SessionState.paymentConfirmed: return Icons.verified_rounded;
+      case SessionState.confirmedBooking: return Icons.event_available_rounded;
+      case SessionState.activeSession:    return Icons.videocam_rounded;
+      case SessionState.completed:        return Icons.star_rounded;
+      case SessionState.teacherNoShow:
+      case SessionState.studentNoShow:    return Icons.person_off_rounded;
+      case SessionState.dispute:          return Icons.warning_rounded;
+      case SessionState.cancelled:        return Icons.cancel_rounded;
+    }
+  }
+
+  String _getSubtitle(Session s) {
+    switch (s.state) {
+      case SessionState.requested:        return 'بانتظار مراجعة الأستاذ ورده على طلبك.';
+      case SessionState.teacherApproved:  return 'وافق الأستاذ! أكمل الدفع لتثبيت حجزك.';
+      case SessionState.teacherRejected:  return 'رفض الأستاذ الطلب. يمكنك البحث عن أستاذ آخر.';
+      case SessionState.awaitingPayment:  return 'الدفع مطلوب لتأكيد الحجز.';
+      case SessionState.paymentSubmitted: return 'الإدارة تراجع إثبات الدفع.';
+      case SessionState.paymentConfirmed: return 'تم تأكيد الدفع من الإدارة.';
+      case SessionState.confirmedBooking: return 'الحجز مؤكّد ✓ جلستك جاهزة.';
+      case SessionState.activeSession:    return 'الجلسة جارية الآن — ادخل للانضمام.';
+      case SessionState.completed:        return 'اكتملت الجلسة بنجاح. يمكنك تقييم الأستاذ.';
+      case SessionState.teacherNoShow:    return 'لم يحضر الأستاذ. سنتواصل معك لإعادة الجدولة.';
+      case SessionState.studentNoShow:    return 'لم تحضر للجلسة في الوقت المحدد.';
+      case SessionState.dispute:          return 'تم فتح نزاع. الإدارة تراجع الحالة.';
+      case SessionState.cancelled:        return 'تم إلغاء الجلسة.';
     }
   }
 
   String _getResponsible(SessionState state) {
     switch (state) {
-      case SessionState.requested:         return 'الأستاذ — مراجعة الطلب';
+      case SessionState.requested:        return 'الأستاذ — مراجعة الطلب';
       case SessionState.teacherApproved:
-      case SessionState.awaitingPayment:   return 'الطالب — إكمال الدفع';
-      case SessionState.paymentSubmitted:  return 'الإدارة — تأكيد الدفع';
-      case SessionState.paymentConfirmed:
-      case SessionState.confirmedBooking:  return 'لا أحد — بانتظار الموعد';
-      case SessionState.activeSession:     return 'الأستاذ والطالب';
-      case SessionState.completed:         return 'مكتملة';
-      case SessionState.dispute:           return 'الإدارة — حل النزاع';
-      default:                             return '—';
+      case SessionState.awaitingPayment:  return 'الطالب — إكمال الدفع';
+      case SessionState.paymentSubmitted: return 'الإدارة — تأكيد الدفع';
+      case SessionState.confirmedBooking: return 'لا أحد — بانتظار الموعد';
+      case SessionState.activeSession:    return 'الأستاذ والطالب';
+      case SessionState.completed:        return 'مكتملة';
+      case SessionState.dispute:          return 'الإدارة — حل النزاع';
+      default:                            return '—';
     }
   }
 
@@ -410,15 +416,14 @@ class SessionStatusScreen extends StatelessWidget {
   }
 
   String _formatTime(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
+    final diff = DateTime.now().difference(dt);
     if (diff.inMinutes < 60) return 'منذ ${diff.inMinutes} دقيقة';
     if (diff.inHours < 24)   return 'اليوم ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
     return '${dt.day}/${dt.month}';
   }
 
   String _formatDate(DateTime dt) {
-    final days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     final h = dt.hour > 12 ? dt.hour - 12 : dt.hour;
     final period = dt.hour >= 12 ? 'م' : 'ص';
     return '${days[dt.weekday % 7]} $h:${dt.minute.toString().padLeft(2, '0')} $period';
