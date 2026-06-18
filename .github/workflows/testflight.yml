@@ -65,10 +65,10 @@ jobs:
 
       # ── 5. Inject team ID into ExportOptions ────────────────────
       - name: Set Apple Team ID in ExportOptions.plist
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          sed -i '' \
-            "s/TEAM_ID_PLACEHOLDER/${{ secrets.APPLE_TEAM_ID }}/g" \
-            ios/ExportOptions.plist
+          sed -i '' "s/TEAM_ID_PLACEHOLDER/${TEAM_ID}/g" ios/ExportOptions.plist
 
       # ── 6. Build IPA ─────────────────────────────────────────────
       - name: Build Flutter IPA
