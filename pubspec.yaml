@@ -59,7 +59,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  disable-swift-package-manager: true
+  config:
+    enable-swift-package-manager: false
   assets:
     - assets/images/
     - assets/icons/
