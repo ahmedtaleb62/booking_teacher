@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "510460102100",
+    "project_id": "fluttercourse-87a9d",
+    "storage_bucket": "fluttercourse-87a9d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:510460102100:android:3c98a30338d3428d8a4241",
+        "android_client_info": {
+          "package_name": "com.example.ecom"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBzA5HY006rP5jj5b7WQRL-yQk7IORg5XA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:510460102100:android:8b67f45321a9de058a4241",
+        "android_client_info": {
+          "package_name": "com.example.teacher_booking"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBzA5HY006rP5jj5b7WQRL-yQk7IORg5XA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
