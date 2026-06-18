@@ -7,9 +7,6 @@ workflows:
     environment:
       xcode: latest
       flutter: 3.44.2
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.example.teacherBooking
 
     triggering:
       events:
@@ -24,6 +21,15 @@ workflows:
           echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode \
             > "$CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist"
 
+      - name: Set up code signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files com.example.teacherBooking \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+
       - name: Flutter pub get
         script: flutter pub get
 
@@ -35,7 +41,6 @@ workflows:
 
       - name: Build IPA
         script: |
-          xcode-project use-profiles
           xcode-project build-ipa \
             --workspace ios/Runner.xcworkspace \
             --scheme Runner \
