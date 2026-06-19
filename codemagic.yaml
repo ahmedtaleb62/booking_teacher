@@ -39,6 +39,13 @@ workflows:
       - name: Flutter build iOS
         script: flutter build ios --release --no-codesign
 
+      - name: Debug signing
+        script: |
+          echo "=== Certificates in keychain ==="
+          security find-identity -v -p codesigning || true
+          echo "=== Provisioning profiles ==="
+          ls ~/Library/MobileDevice/Provisioning\ Profiles/ || echo "NO PROFILES FOUND"
+
       - name: Build IPA
         script: |
           xcode-project build-ipa \
