@@ -31,18 +31,20 @@ workflows:
           security unlock-keychain -p "codemagic" "$KEYCHAIN"
 
           echo "$IOS_P12_BASE64" | tr -d '[:space:]' | base64 --decode > "$CERT"
-          security import "$CERT" -P "" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security import "$CERT" -P "codemagic" -A -t cert -f pkcs12 -k "$KEYCHAIN"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "codemagic" "$KEYCHAIN"
           security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
           security default-keychain -s "$KEYCHAIN"
 
-          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          echo "$IOS_PROVISIONING_PROFILE_BASE64" | tr -d '[:space:]' | base64 --decode \
-            > "$HOME/Library/MobileDevice/Provisioning Profiles/release.mobileprovision"
+          # Download provisioning profile directly from Apple API
+          app-store-connect fetch-signing-files com.example.teacherBooking \
+            --type IOS_APP_STORE \
+            --create
+          xcode-project use-profiles
 
-          echo "=== Verify signing setup ==="
+          echo "=== Verify ==="
           security find-identity -v -p codesigning
-          ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/"
+          ls "$HOME/Library/MobileDevice/Provisioning Profiles/" 2>/dev/null || echo "No profiles dir"
 
       - name: Flutter pub get
         script: flutter pub get
