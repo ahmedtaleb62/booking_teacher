@@ -23,12 +23,22 @@ workflows:
 
       - name: Set up code signing
         script: |
-          keychain initialize
-          app-store-connect fetch-signing-files com.example.teacherBooking \
-            --type IOS_APP_STORE \
-            --create
-          keychain add-certificates
-          xcode-project use-profiles
+          KEYCHAIN=$CM_BUILD_DIR/build.keychain
+          CERT=$CM_BUILD_DIR/cert.p12
+
+          security create-keychain -p "codemagic" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "codemagic" "$KEYCHAIN"
+
+          echo "$IOS_P12_BASE64" | base64 --decode > "$CERT"
+          security import "$CERT" -P "$IOS_P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "codemagic" "$KEYCHAIN"
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
+          security default-keychain -s "$KEYCHAIN"
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode \
+            > "$HOME/Library/MobileDevice/Provisioning Profiles/release.mobileprovision"
 
       - name: Flutter pub get
         script: flutter pub get
@@ -39,24 +49,28 @@ workflows:
       - name: Flutter build iOS
         script: flutter build ios --release --no-codesign
 
-      - name: Debug signing
-        script: |
-          echo "=== Certificates in keychain ==="
-          security find-identity -v -p codesigning || true
-          echo "=== Provisioning profiles ==="
-          ls ~/Library/MobileDevice/Provisioning\ Profiles/ || echo "NO PROFILES FOUND"
-
       - name: Build IPA
         script: |
-          xcode-project build-ipa \
-            --workspace ios/Runner.xcworkspace \
-            --scheme Runner \
-            --config Release \
-            --archive-flags="CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY='Apple Distribution' PROVISIONING_PROFILE_SPECIFIER='HajezUstad AppStore' DEVELOPMENT_TEAM=PCRTCYJKP2"
+          sed -i '' "s/TEAM_ID_PLACEHOLDER/PCRTCYJKP2/g" ios/ExportOptions.plist
+
+          xcodebuild \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -archivePath "$CM_BUILD_DIR/build/Runner.xcarchive" \
+            archive \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="HajezUstad AppStore" \
+            DEVELOPMENT_TEAM=PCRTCYJKP2
+
+          xcodebuild -exportArchive \
+            -archivePath "$CM_BUILD_DIR/build/Runner.xcarchive" \
+            -exportPath "$CM_BUILD_DIR/build/ios/ipa" \
+            -exportOptionsPlist ios/ExportOptions.plist
 
     artifacts:
-      - build/ios/ipa/*.ipa
-      - /tmp/xcodebuild_logs/*.log
+      - $CM_BUILD_DIR/build/ios/ipa/*.ipa
 
     publishing:
       app_store_connect:
