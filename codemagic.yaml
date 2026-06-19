@@ -31,7 +31,7 @@ workflows:
           security unlock-keychain -p "codemagic" "$KEYCHAIN"
 
           echo "$IOS_P12_BASE64" | base64 --decode > "$CERT"
-          security import "$CERT" -P "$IOS_P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security import "$CERT" -P "" -A -t cert -f pkcs12 -k "$KEYCHAIN"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "codemagic" "$KEYCHAIN"
           security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
           security default-keychain -s "$KEYCHAIN"
