@@ -68,26 +68,33 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen>
             ],
           ),
         ),
-        data: (sessions) {
-          final active = sessions.where((s) =>
-              [SessionState.confirmedBooking, SessionState.activeSession].contains(s.state)).toList();
-          final pending = sessions.where((s) =>
-              [SessionState.requested, SessionState.teacherApproved,
-               SessionState.awaitingPayment, SessionState.paymentSubmitted].contains(s.state)).toList();
-          final ended = sessions.where((s) =>
-              [SessionState.completed, SessionState.teacherRejected, SessionState.cancelled,
-               SessionState.teacherNoShow, SessionState.studentNoShow, SessionState.dispute].contains(s.state)).toList();
-
-          return TabBarView(
-            controller: _tabs,
-            children: [
-              _SessionsList(sessions: active),
-              _SessionsList(sessions: pending),
-              _SessionsList(sessions: ended),
-            ],
-          );
-        },
+        data: (sessions) => RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () => ref.refresh(studentSessionsProvider.future),
+          child: _buildTabs(context, sessions),
+        ),
       ),
+    );
+  }
+
+  Widget _buildTabs(BuildContext context, List<Session> sessions) {
+    final active = sessions.where((s) =>
+        [SessionState.confirmedBooking, SessionState.activeSession].contains(s.state)).toList();
+    final pending = sessions.where((s) =>
+        [SessionState.requested, SessionState.teacherApproved,
+         SessionState.awaitingPayment, SessionState.paymentSubmitted,
+         SessionState.paymentRejected, SessionState.paymentConfirmed].contains(s.state)).toList();
+    final ended = sessions.where((s) =>
+        [SessionState.completed, SessionState.teacherRejected, SessionState.cancelled,
+         SessionState.teacherNoShow, SessionState.studentNoShow, SessionState.dispute].contains(s.state)).toList();
+
+    return TabBarView(
+      controller: _tabs,
+      children: [
+        _SessionsList(sessions: active),
+        _SessionsList(sessions: pending),
+        _SessionsList(sessions: ended),
+      ],
     );
   }
 }
@@ -133,8 +140,8 @@ class _SessionCard extends StatelessWidget {
   const _SessionCard({required this.session});
 
   String _formatDate(DateTime dt) {
-    final days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-    final h = dt.hour > 12 ? dt.hour - 12 : dt.hour;
+    const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    final h = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
     final period = dt.hour >= 12 ? 'م' : 'ص';
     return '${days[dt.weekday % 7]} $h:${dt.minute.toString().padLeft(2, '0')} $period';
   }
@@ -147,7 +154,8 @@ class _SessionCard extends StatelessWidget {
         if (s.state == SessionState.activeSession) {
           context.push('/live/${s.id}');
         } else if (s.state == SessionState.awaitingPayment ||
-                   s.state == SessionState.teacherApproved) {
+                   s.state == SessionState.teacherApproved ||
+                   s.state == SessionState.paymentRejected) {
           context.push('/payment/${s.id}');
         } else {
           context.push('/session/${s.id}');
@@ -243,6 +251,26 @@ class _SessionCard extends StatelessWidget {
                     SizedBox(width: 6),
                     Text('أكمل الدفع الآن',
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.statusApproved)),
+                  ],
+                ),
+              ),
+            ],
+            if (s.state == SessionState.paymentRejected) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.statusRejectedBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.upload_file_rounded, color: AppColors.error, size: 16),
+                    SizedBox(width: 6),
+                    Text('رُفض الإثبات — أعد الرفع',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.error)),
                   ],
                 ),
               ),

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sawelni notification icon — white silhouette, alpha-only (Android 5+) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Speech bubble with graduation cap diamond cut out (evenOdd) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="
+            M22,16 H98 a14,14 0 0,1 14,14 V76 a14,14 0 0,1 -14,14 H48 L30,106 V90 H22 a14,14 0 0,1 -14,-14 V30 a14,14 0 0,1 14,-14 Z
+            M60,38 L87,49 L60,60 L33,49 Z"/>
+
+    <!-- Graduation cap brim arc -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M45,57 V67 a15,6.5 0 0,0 30,0 V57"/>
+
+    <!-- Tassel pole -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M87,49 V70"/>
+
+    <!-- Tassel dot -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M87,73 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"/>
+
+</vector>

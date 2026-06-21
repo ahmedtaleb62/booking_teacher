@@ -35,13 +35,28 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passCtrl.text,
       );
       if (!mounted) return;
-      final profile = await SupabaseService.client
-          .from('profiles')
-          .select('role')
-          .eq('id', res.user!.id)
-          .maybeSingle();
+
+      final user = res.user;
+      if (user == null) {
+        setState(() => _error = 'تحقق من بريدك الإلكتروني لتأكيد الحساب');
+        return;
+      }
+
+      // Try to get role — if it fails for any reason, default to student home
+      String? role;
+      try {
+        final profile = await SupabaseService.client
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .maybeSingle();
+        role = profile?['role'] as String?;
+      } catch (_) {
+        // Profile query failed — use metadata fallback
+        role = user.userMetadata?['role'] as String?;
+      }
+
       if (!mounted) return;
-      final role = profile?['role'] as String?;
       if (role == 'teacher') {
         context.go('/teacher/home');
       } else {
@@ -49,8 +64,8 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } on AuthException catch (e) {
       setState(() => _error = _friendlyAuthError(e.message));
-    } catch (_) {
-      setState(() => _error = 'حدث خطأ غير متوقع، حاول مرة أخرى');
+    } catch (e) {
+      setState(() => _error = _friendlyAuthError(e.toString()));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

@@ -13,57 +13,177 @@ class TeacherProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final teacherAsync = ref.watch(teacherProvider(teacherId));
+    final teacher = teacherAsync.valueOrNull;
 
-    return teacherAsync.when(
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+    // Always show a top-level Scaffold so the back button and CTA area
+    // are never absent during loading, preventing the "button hidden" flash.
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: teacherAsync.when(
+        loading: () => _buildLoadingBody(context),
+        error: (_, __) => _buildErrorBody(context, ref),
+        data: (t) {
+          if (t == null) return _buildNotFoundBody(context);
+          return _TeacherProfileBody(teacher: t);
+        },
       ),
-      error: (e, _) => Scaffold(
-        appBar: AppBar(leading: BackButton(onPressed: () => context.pop())),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
-              const SizedBox(height: 12),
-              const Text('تعذّر تحميل بيانات الأستاذ'),
-              TextButton(
-                onPressed: () => ref.invalidate(teacherProvider(teacherId)),
-                child: const Text('إعادة المحاولة'),
+      bottomNavigationBar: teacher != null
+          ? _TeacherProfileBody.buildCTA(context, teacher)
+          : null,
+    );
+  }
+
+  Widget _buildLoadingBody(BuildContext context) {
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          expandedHeight: 200,
+          backgroundColor: AppColors.primaryDark,
+          leading: Padding(
+            padding: const EdgeInsets.all(8),
+            child: GestureDetector(
+              onTap: () => context.pop(),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(Icons.arrow_forward_rounded, color: Colors.white),
               ),
-            ],
+            ),
+          ),
+          flexibleSpace: const FlexibleSpaceBar(
+            background: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.primary, AppColors.primaryDark],
+                ),
+              ),
+            ),
           ),
         ),
-      ),
-      data: (teacher) {
-        if (teacher == null) {
-          return Scaffold(
-            appBar: AppBar(leading: BackButton(onPressed: () => context.pop())),
-            body: const Center(child: Text('الأستاذ غير موجود')),
-          );
-        }
-        return _TeacherProfileView(teacher: teacher);
-      },
+        const SliverFillRemaining(
+          child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildErrorBody(BuildContext context, WidgetRef ref) {
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          backgroundColor: AppColors.primaryDark,
+          leading: Padding(
+            padding: const EdgeInsets.all(8),
+            child: GestureDetector(
+              onTap: () => context.pop(),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+              ),
+            ),
+          ),
+        ),
+        SliverFillRemaining(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
+                const SizedBox(height: 12),
+                const Text('تعذّر تحميل بيانات الأستاذ'),
+                TextButton(
+                  onPressed: () => ref.invalidate(teacherProvider(teacherId)),
+                  child: const Text('إعادة المحاولة'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNotFoundBody(BuildContext context) {
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          backgroundColor: AppColors.primaryDark,
+          leading: Padding(
+            padding: const EdgeInsets.all(8),
+            child: GestureDetector(
+              onTap: () => context.pop(),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+              ),
+            ),
+          ),
+        ),
+        const SliverFillRemaining(
+          child: Center(child: Text('الأستاذ غير موجود')),
+        ),
+      ],
     );
   }
 }
 
-class _TeacherProfileView extends StatelessWidget {
+class _TeacherProfileBody extends StatelessWidget {
   final Teacher teacher;
-  const _TeacherProfileView({required this.teacher});
+  const _TeacherProfileBody({required this.teacher});
+
+  // Called from TeacherProfileScreen to put CTA in the top-level Scaffold
+  static Widget buildCTA(BuildContext context, Teacher t) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      padding: EdgeInsets.fromLTRB(22, 14, 22, MediaQuery.of(context).padding.bottom + 14),
+      child: Row(
+        children: [
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text('${t.pricePerHour.toInt()}',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              const Text('أوقية/ساعة',
+                style: TextStyle(fontSize: 10, color: AppColors.textHint)),
+            ],
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: AppButton(
+              label: 'طلب جلسة',
+              onTap: () => context.push('/request-session/${t.id}'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = teacher;
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          _buildHeader(context, t),
-          SliverToBoxAdapter(child: _buildBody(context, t)),
-        ],
-      ),
-      bottomNavigationBar: _buildCTA(context, t),
+    return CustomScrollView(
+      slivers: [
+        _buildHeader(context, t),
+        SliverToBoxAdapter(child: _buildBody(context, t)),
+      ],
     );
   }
 
@@ -221,7 +341,7 @@ class _TeacherProfileView extends StatelessWidget {
                     final hour = slot.dateTime.hour;
                     final minute = slot.dateTime.minute;
                     final period = hour >= 12 ? 'م' : 'ص';
-                    final h = hour > 12 ? hour - 12 : hour;
+                    final h = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
                     final timeStr = '$h:${minute.toString().padLeft(2, '0')} $period';
                     return Expanded(
                       child: Padding(
@@ -254,36 +374,6 @@ class _TeacherProfileView extends StatelessWidget {
     );
   }
 
-  Widget _buildCTA(BuildContext context, Teacher t) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      padding: const EdgeInsets.fromLTRB(22, 14, 22, 30),
-      child: Row(
-        children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text('${t.pricePerHour.toInt()}',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-              const Text('أوقية/ساعة',
-                style: TextStyle(fontSize: 10, color: AppColors.textHint)),
-            ],
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: AppButton(
-              label: 'طلب جلسة',
-              onTap: () => context.push('/request-session/${t.id}'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _TeacherAvatar extends StatelessWidget {

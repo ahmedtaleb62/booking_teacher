@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/app_notification.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/notifications_provider.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/supabase_service.dart';
@@ -65,11 +66,29 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     if (n.isRead) return;
     await NotificationService.markAsRead(n.id);
     ref.invalidate(notificationsProvider);
+    ref.invalidate(unreadCountProvider);
+  }
+
+  void _onNotificationTap(AppNotification n) {
+    _markAsRead(n, 0);
+    if (n.sessionId == null) return;
+    final role = ref.read(userRoleProvider);
+    if (role == 'teacher') {
+      // طلبات جديدة تفتح صفحة تفاصيل الطلب، باقي الحالات تفتح حالة الجلسة
+      if (n.type == 'SESSION_REQUESTED') {
+        context.push('/teacher/request/${n.sessionId}');
+      } else {
+        context.push('/teacher/session/${n.sessionId}');
+      }
+    } else {
+      context.push('/session/${n.sessionId}');
+    }
   }
 
   Future<void> _markAllRead() async {
     await NotificationService.markAllRead();
     ref.invalidate(notificationsProvider);
+    ref.invalidate(unreadCountProvider);
   }
 
   @override
@@ -159,10 +178,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 return _NotifTile(
                   notification: n,
                   timeStr: _timeAgo(n.createdAt),
-                  onTap: () {
-                    _markAsRead(n, i);
-                    if (n.sessionId != null) context.push('/session/${n.sessionId}');
-                  },
+                  onTap: () => _onNotificationTap(n),
                 );
               },
             ),

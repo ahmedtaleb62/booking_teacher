@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/session_states.dart';
 import '../../../core/providers/sessions_provider.dart';
+import '../../../core/services/session_service.dart';
 
 class LiveSessionScreen extends ConsumerStatefulWidget {
   final String sessionId;
@@ -18,7 +21,8 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _liveCtrl;
   final _elapsed = ValueNotifier<int>(0);
-  late Timer _timer;
+  late Timer _elapsedTimer;
+  Timer? _pollTimer;
   WebViewController? _webCtrl;
   bool _webReady = false;
 
@@ -28,21 +32,34 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen>
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _liveCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))
       ..repeat(reverse: true);
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _elapsed.value++);
+    _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) => _elapsed.value++);
+    // Poll every 5s until teacher starts the session (room_url appears).
+    // Direct fetch avoids invalidating the StreamProvider (which would cause a loading flash).
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (_webCtrl != null || !mounted) { _pollTimer?.cancel(); return; }
+      SessionService.getSession(widget.sessionId).then((s) {
+        if (!mounted || _webCtrl != null) return;
+        final url = s.roomUrl;
+        if (url != null) _initWebView(url);
+      });
+    });
   }
 
   @override
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _liveCtrl.dispose();
-    _timer.cancel();
+    _elapsedTimer.cancel();
+    _pollTimer?.cancel();
     _elapsed.dispose();
     super.dispose();
   }
 
   void _initWebView(String url) {
-    if (_webCtrl != null) return;
-    _webCtrl = WebViewController()
+    if (_webCtrl != null || kIsWeb) return;
+    _webCtrl = WebViewController(
+      onPermissionRequest: (request) => request.grant(),
+    )
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(NavigationDelegate(
         onPageFinished: (_) => setState(() => _webReady = true),
@@ -88,6 +105,15 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen>
           );
         }
 
+        // Session ended externally — navigate away
+        if (session.state == SessionState.completed ||
+            session.state == SessionState.studentNoShow ||
+            session.state == SessionState.dispute) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) context.go('/sessions');
+          });
+        }
+
         final roomUrl = session.roomUrl;
         if (roomUrl != null) _initWebView(roomUrl);
 
@@ -113,26 +139,57 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen>
                       width: double.infinity,
                       height: double.infinity,
                       color: const Color(0xFF161E27),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 90, height: 90,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(session.teacherInitial,
-                              style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w700, color: Colors.white)),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(session.teacherName,
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-                          const SizedBox(height: 8),
-                          const Text('في انتظار الأستاذ لبدء الجلسة…',
-                            style: TextStyle(fontSize: 13, color: Colors.white54)),
-                        ],
+                      child: ValueListenableBuilder<int>(
+                        valueListenable: _elapsed,
+                        builder: (_, secs, __) {
+                          final canReport = secs >= 900; // 15 min
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 90, height: 90,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(session.teacherInitial,
+                                  style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w700, color: Colors.white)),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(session.teacherName,
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+                              const SizedBox(height: 8),
+                              Text(
+                                canReport
+                                    ? 'تجاوزت 15 دقيقة — الأستاذ لم يبدأ'
+                                    : 'في انتظار الأستاذ لبدء الجلسة…',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: canReport ? const Color(0xFFFCA5A5) : Colors.white54,
+                                ),
+                              ),
+                              if (canReport) ...[
+                                const SizedBox(height: 28),
+                                GestureDetector(
+                                  onTap: () => _reportNoShow(context, session.id),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 13),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFDC2626),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: const Text('الإبلاغ عن غياب الأستاذ',
+                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                const Text('سيُلغى الحجز وتُسترَد دفعتك',
+                                  style: TextStyle(fontSize: 11, color: Colors.white38)),
+                              ],
+                            ],
+                          );
+                        },
                       ),
                     ),
 
@@ -200,6 +257,32 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen>
         );
       },
     );
+  }
+
+  Future<void> _reportNoShow(BuildContext context, String sessionId) async {
+    final router    = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('الإبلاغ عن غياب الأستاذ'),
+        content: const Text('سيُسجَّل غياب الأستاذ ويمكنك إعادة الجدولة بنفس الدفعة. هل تريد المتابعة؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('تراجع')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('تأكيد الغياب', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    try {
+      await SessionService.reportTeacherNoShow(sessionId);
+      if (mounted) router.go('/sessions');
+    } catch (e) {
+      if (mounted) messenger.showSnackBar(SnackBar(content: Text('خطأ: $e')));
+    }
   }
 
   void _showLeaveDialog(BuildContext context) {

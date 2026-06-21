@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,13 +11,40 @@ import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/session_stepper.dart';
 import '../../../shared/widgets/session_status_badge.dart';
 
-class SessionStatusScreen extends ConsumerWidget {
+class SessionStatusScreen extends ConsumerStatefulWidget {
   final String sessionId;
   const SessionStatusScreen({super.key, required this.sessionId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(sessionProvider(sessionId));
+  ConsumerState<SessionStatusScreen> createState() => _SessionStatusScreenState();
+}
+
+class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
+  Timer? _countdownTimer;
+  Duration _remaining = Duration.zero;
+  DateTime? _trackedDeadline;
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startCountdownIfNeeded(DateTime deadline) {
+    if (_trackedDeadline == deadline) return;
+    _trackedDeadline = deadline;
+    _countdownTimer?.cancel();
+    _remaining = deadline.difference(DateTime.now());
+    if (_remaining.isNegative) _remaining = Duration.zero;
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final r = deadline.difference(DateTime.now());
+      if (mounted) setState(() => _remaining = r.isNegative ? Duration.zero : r);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final async = ref.watch(sessionProvider(widget.sessionId));
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -48,7 +76,7 @@ class SessionStatusScreen extends ConsumerWidget {
               const Text('تعذّر تحميل الجلسة', style: TextStyle(fontSize: 15)),
               const SizedBox(height: 8),
               TextButton(
-                onPressed: () => ref.invalidate(sessionProvider(sessionId)),
+                onPressed: () => ref.invalidate(sessionProvider(widget.sessionId)),
                 child: const Text('إعادة المحاولة', style: TextStyle(color: AppColors.primary)),
               ),
             ],
@@ -58,6 +86,13 @@ class SessionStatusScreen extends ConsumerWidget {
           if (session == null) {
             return const Center(child: Text('الجلسة غير موجودة'));
           }
+
+          final needsCountdown = session.paymentDeadline != null &&
+              (session.state == SessionState.paymentRejected ||
+               session.state == SessionState.teacherApproved ||
+               session.state == SessionState.awaitingPayment);
+          if (needsCountdown) _startCountdownIfNeeded(session.paymentDeadline!);
+
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(22, 8, 22, 32),
             child: Column(
@@ -65,13 +100,23 @@ class SessionStatusScreen extends ConsumerWidget {
               children: [
                 _buildHeroBanner(session),
                 const SizedBox(height: 16),
+                if (session.state == SessionState.paymentRejected) ...[
+                  _buildPaymentRejectedBanner(context, session),
+                  const SizedBox(height: 16),
+                ],
+                if ((session.state == SessionState.teacherApproved ||
+                        session.state == SessionState.awaitingPayment) &&
+                    session.paymentDeadline != null) ...[
+                  _buildPaymentDeadlineBanner(session.paymentDeadline!),
+                  const SizedBox(height: 16),
+                ],
                 SessionStepper(currentState: session.state),
                 const SizedBox(height: 14),
                 _buildInfoCards(session),
                 const SizedBox(height: 16),
                 _buildTimeline(session),
                 const SizedBox(height: 20),
-                _buildActions(context, ref, session),
+                _buildActions(context, session),
               ],
             ),
           );
@@ -80,20 +125,205 @@ class SessionStatusScreen extends ConsumerWidget {
     );
   }
 
+  // ── Payment rejected banner ──────────────────────────────────────
+
+  Widget _buildPaymentRejectedBanner(BuildContext context, Session s) {
+    final reason = s.payment?.rejectReason ?? '';
+    final isFake = reason.toLowerCase().contains('fake') ||
+        reason.contains('مزيف') ||
+        reason.contains('fake_proof');
+
+    final mins = _remaining.inMinutes;
+    final secs = _remaining.inSeconds % 60;
+    final expired = _remaining == Duration.zero;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFCA5A5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title
+          Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 20),
+              const SizedBox(width: 8),
+              const Text('رُفض إثبات الدفع',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFFDC2626))),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Reason box
+          if (reason.isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFCA5A5)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isFake ? Icons.report_gmailerrorred_rounded : Icons.money_off_rounded,
+                    size: 17, color: const Color(0xFFDC2626),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isFake
+                          ? 'إثبات الدفع مزيف — يرجى رفع إثبات حقيقي'
+                          : reason,
+                      style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600,
+                        color: Color(0xFF7F1D1D), height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Instruction
+          const SizedBox(height: 10),
+          Text(
+            isFake
+                ? 'يرجى رفع صورة إثبات دفع صحيحة خلال المهلة المحددة.'
+                : 'يرجى تسوية المبلغ كاملاً وإعادة رفع الإثبات خلال المهلة.',
+            style: const TextStyle(fontSize: 12.5, color: Color(0xFF9B1C1C), height: 1.5),
+          ),
+
+          // Countdown
+          if (s.paymentDeadline != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: expired ? const Color(0xFFF3F4F6) : const Color(0xFFFFEDD5),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    expired ? Icons.timer_off_rounded : Icons.timer_outlined,
+                    size: 15,
+                    color: expired ? AppColors.textHint : const Color(0xFFEA580C),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    expired
+                        ? 'انتهت المهلة — سيُلغى الطلب تلقائياً'
+                        : 'المهلة المتبقية: ${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: expired ? AppColors.textHint : const Color(0xFFEA580C),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // CTA button
+          if (!expired) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => context.push('/payment/${s.id}'),
+                icon: const Icon(Icons.upload_file_rounded, size: 18),
+                label: const Text('إعادة رفع إثبات الدفع'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFDC2626),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ── Payment deadline banner (shown while awaiting payment) ──────
+
+  Widget _buildPaymentDeadlineBanner(DateTime deadline) {
+    final mins    = _remaining.inMinutes;
+    final secs    = _remaining.inSeconds % 60;
+    final expired = _remaining == Duration.zero;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      decoration: BoxDecoration(
+        color: expired ? const Color(0xFFF3F4F6) : const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: expired ? const Color(0xFFD1D5DB) : const Color(0xFFFBBF24)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            expired ? Icons.timer_off_rounded : Icons.timer_outlined,
+            color: expired ? const Color(0xFF9CA3AF) : const Color(0xFFD97706),
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  expired ? 'انتهت مهلة الدفع' : 'مهلة إكمال الدفع',
+                  style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w700,
+                    color: expired ? const Color(0xFF6B7280) : const Color(0xFF92400E),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  expired
+                      ? 'سيُلغى الطلب تلقائياً — تواصل مع الدعم إن احتجت مساعدة'
+                      : 'الوقت المتبقي: ${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: expired ? const Color(0xFF9CA3AF) : const Color(0xFFB45309),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Hero banner ─────────────────────────────────────────────────
+
   Widget _buildHeroBanner(Session s) {
-    final isConfirmed = s.state == SessionState.confirmedBooking;
-    final isActive    = s.state == SessionState.activeSession;
-    final isRejected  = s.state == SessionState.teacherRejected;
-    final isDispute   = s.state == SessionState.dispute;
-    final isNoShow    = s.state == SessionState.teacherNoShow || s.state == SessionState.studentNoShow;
+    final isConfirmed  = s.state == SessionState.confirmedBooking;
+    final isActive     = s.state == SessionState.activeSession;
+    final isNegative   = s.state == SessionState.teacherRejected ||
+        s.state == SessionState.dispute ||
+        s.state == SessionState.teacherNoShow ||
+        s.state == SessionState.studentNoShow ||
+        s.state == SessionState.paymentRejected;
 
     Color startColor = s.state.color;
     Color endColor   = s.state.color.withValues(alpha: 0.7);
     if (isConfirmed) { startColor = AppColors.statusConfirmed; endColor = const Color(0xFF15805F); }
     if (isActive)    { startColor = AppColors.statusActive;    endColor = const Color(0xFF15803D); }
-    if (isRejected || isDispute || isNoShow) {
-      startColor = AppColors.error; endColor = const Color(0xFF9B2D2D);
-    }
+    if (isNegative)  { startColor = AppColors.error;           endColor = const Color(0xFF9B2D2D); }
 
     return Container(
       width: double.infinity,
@@ -142,6 +372,8 @@ class SessionStatusScreen extends ConsumerWidget {
     );
   }
 
+  // ── Info cards ──────────────────────────────────────────────────
+
   Widget _buildInfoCards(Session s) {
     return Row(
       children: [
@@ -189,6 +421,8 @@ class SessionStatusScreen extends ConsumerWidget {
       ],
     );
   }
+
+  // ── Timeline ────────────────────────────────────────────────────
 
   Widget _buildTimeline(Session s) {
     if (s.events.isEmpty) return const SizedBox.shrink();
@@ -244,7 +478,9 @@ class SessionStatusScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildActions(BuildContext context, WidgetRef ref, Session s) {
+  // ── Actions ─────────────────────────────────────────────────────
+
+  Widget _buildActions(BuildContext context, Session s) {
     if (s.state == SessionState.confirmedBooking || s.state == SessionState.activeSession) {
       return AppButton(
         label: s.canEnterSession || s.state == SessionState.activeSession
@@ -262,7 +498,7 @@ class SessionStatusScreen extends ConsumerWidget {
         label: 'إلغاء الطلب',
         isOutlined: true,
         isDanger: true,
-        onTap: () => _showCancelDialog(context, ref),
+        onTap: () => _showCancelDialog(context),
       );
     }
 
@@ -273,11 +509,23 @@ class SessionStatusScreen extends ConsumerWidget {
       );
     }
 
+    if (s.state == SessionState.paymentRejected) {
+      // "Upload again" CTA is already inside the rejection banner.
+      // Add a secondary cancel option so the student isn't trapped.
+      if (_remaining == Duration.zero) return const SizedBox.shrink();
+      return AppButton(
+        label: 'إلغاء الجلسة نهائياً',
+        isOutlined: true,
+        isDanger: true,
+        onTap: () => _showCancelDialog(context),
+      );
+    }
+
     if (s.state == SessionState.completed) {
       return AppButton(
         label: 'تقييم الأستاذ',
         color: AppColors.statusConfirmed,
-        onTap: () => _showRatingDialog(context),
+        onTap: () => _showRatingDialog(context, s),
       );
     }
 
@@ -287,9 +535,14 @@ class SessionStatusScreen extends ConsumerWidget {
           SessionStatusBadge(state: s.state, large: true),
           const SizedBox(height: 12),
           const Text(
-            'تم رصد غياب الأستاذ. سيتم إعادة جدولة الجلسة تلقائياً أو استرداد دفعتك.',
+            'تم رصد غياب الأستاذ. يمكنك إعادة الجدولة بنفس الدفعة.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, height: 1.6, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 14),
+          AppButton(
+            label: 'إعادة جدولة الجلسة',
+            onTap: () => context.push('/reschedule/${s.id}'),
           ),
         ],
       );
@@ -298,7 +551,9 @@ class SessionStatusScreen extends ConsumerWidget {
     return const SizedBox.shrink();
   }
 
-  void _showCancelDialog(BuildContext context, WidgetRef ref) {
+  // ── Dialogs ─────────────────────────────────────────────────────
+
+  void _showCancelDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -310,7 +565,7 @@ class SessionStatusScreen extends ConsumerWidget {
             onPressed: () async {
               Navigator.pop(context);
               try {
-                await SessionService.cancelSession(sessionId);
+                await SessionService.cancelSession(widget.sessionId);
                 ref.invalidate(studentSessionsProvider);
                 if (context.mounted) context.go('/sessions');
               } catch (e) {
@@ -327,28 +582,77 @@ class SessionStatusScreen extends ConsumerWidget {
     );
   }
 
-  void _showRatingDialog(BuildContext context) {
+  void _showRatingDialog(BuildContext context, Session s) {
     int rating = 5;
+    final commentCtrl = TextEditingController();
+    bool sending = false;
+
     showDialog(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (_, set) => AlertDialog(
-          title: const Text('تقييم الأستاذ'),
-          content: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(5, (i) => GestureDetector(
-              onTap: () => set(() => rating = i + 1),
-              child: Icon(Icons.star_rounded, size: 36,
-                color: i < rating ? const Color(0xFFF59E0B) : AppColors.border),
-            )),
+        builder: (ctx, set) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('تقييم الأستاذ', style: TextStyle(fontWeight: FontWeight.w700)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (i) => GestureDetector(
+                  onTap: () => set(() => rating = i + 1),
+                  child: Icon(Icons.star_rounded, size: 36,
+                    color: i < rating ? const Color(0xFFF59E0B) : AppColors.border),
+                )),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: commentCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'تعليق اختياري…',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.all(10),
+                ),
+              ),
+            ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('إرسال')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+            ElevatedButton(
+              onPressed: sending ? null : () async {
+                set(() => sending = true);
+                try {
+                  await SessionService.submitReview(
+                    sessionId: s.id,
+                    teacherId: s.teacherId,
+                    rating: rating,
+                    comment: commentCtrl.text.trim().isEmpty ? null : commentCtrl.text.trim(),
+                  );
+                  ref.invalidate(studentSessionsProvider);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('شكراً على تقييمك!'),
+                        backgroundColor: Color(0xFF1B9E77)));
+                  }
+                } catch (e) {
+                  set(() => sending = false);
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(content: Text('خطأ: $e')));
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+              child: sending
+                  ? const SizedBox(width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('إرسال'),
+            ),
           ],
         ),
       ),
-    );
+    ).whenComplete(commentCtrl.dispose);
   }
 
   // ── Helpers ─────────────────────────────────────────────────────
@@ -360,6 +664,7 @@ class SessionStatusScreen extends ConsumerWidget {
       case SessionState.teacherRejected:  return Icons.cancel_rounded;
       case SessionState.awaitingPayment:  return Icons.payment_rounded;
       case SessionState.paymentSubmitted: return Icons.shield_outlined;
+      case SessionState.paymentRejected:  return Icons.error_outline_rounded;
       case SessionState.paymentConfirmed: return Icons.verified_rounded;
       case SessionState.confirmedBooking: return Icons.event_available_rounded;
       case SessionState.activeSession:    return Icons.videocam_rounded;
@@ -378,6 +683,7 @@ class SessionStatusScreen extends ConsumerWidget {
       case SessionState.teacherRejected:  return 'رفض الأستاذ الطلب. يمكنك البحث عن أستاذ آخر.';
       case SessionState.awaitingPayment:  return 'الدفع مطلوب لتأكيد الحجز.';
       case SessionState.paymentSubmitted: return 'الإدارة تراجع إثبات الدفع.';
+      case SessionState.paymentRejected:  return 'راجع سبب الرفض أدناه وأعد رفع الإثبات.';
       case SessionState.paymentConfirmed: return 'تم تأكيد الدفع من الإدارة.';
       case SessionState.confirmedBooking: return 'الحجز مؤكّد ✓ جلستك جاهزة.';
       case SessionState.activeSession:    return 'الجلسة جارية الآن — ادخل للانضمام.';
@@ -395,6 +701,7 @@ class SessionStatusScreen extends ConsumerWidget {
       case SessionState.teacherApproved:
       case SessionState.awaitingPayment:  return 'الطالب — إكمال الدفع';
       case SessionState.paymentSubmitted: return 'الإدارة — تأكيد الدفع';
+      case SessionState.paymentRejected:  return 'الطالب — إعادة الإثبات';
       case SessionState.confirmedBooking: return 'لا أحد — بانتظار الموعد';
       case SessionState.activeSession:    return 'الأستاذ والطالب';
       case SessionState.completed:        return 'مكتملة';
@@ -408,6 +715,7 @@ class SessionStatusScreen extends ConsumerWidget {
       case SessionState.requested:        return 'انتظر رد الأستاذ';
       case SessionState.teacherApproved:  return 'أكمل الدفع الآن';
       case SessionState.paymentSubmitted: return 'انتظر تأكيد الإدارة';
+      case SessionState.paymentRejected:  return 'أعد رفع إثبات الدفع';
       case SessionState.confirmedBooking: return 'تبدأ الجلسة ${_formatDate(s.scheduledAt)}';
       case SessionState.activeSession:    return 'ادخل الجلسة الآن';
       case SessionState.completed:        return 'قيّم الأستاذ';
@@ -424,7 +732,7 @@ class SessionStatusScreen extends ConsumerWidget {
 
   String _formatDate(DateTime dt) {
     const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-    final h = dt.hour > 12 ? dt.hour - 12 : dt.hour;
+    final h = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
     final period = dt.hour >= 12 ? 'م' : 'ص';
     return '${days[dt.weekday % 7]} $h:${dt.minute.toString().padLeft(2, '0')} $period';
   }

@@ -1,28 +1,63 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/levels.dart';
+import '../../../core/constants/subjects.dart';
+import '../../../core/providers/teachers_provider.dart';
 import '../../../shared/widgets/app_button.dart';
 
-class FilterSheet extends StatefulWidget {
+class FilterSheet extends ConsumerStatefulWidget {
   const FilterSheet({super.key});
   @override
-  State<FilterSheet> createState() => _FilterSheetState();
+  ConsumerState<FilterSheet> createState() => _FilterSheetState();
 }
 
-class _FilterSheetState extends State<FilterSheet> {
-  String? _selectedSubject;
-  double _minPrice = 200;
-  double _maxPrice = 700;
-  double _minRating = 4.0;
-  bool _onlineOnly = true;
+class _FilterSheetState extends ConsumerState<FilterSheet> {
+  String? _subject;
+  String? _level;
+  double  _minPrice = 0;
+  double  _maxPrice = 2000;
+  bool    _onlineOnly = false;
 
-  static const _subjects = ['رياضيات', 'فيزياء', 'كيمياء', 'عربية', 'إنجليزية', 'علوم', 'تاريخ', 'جغرافيا'];
-  static const _ratings  = [4.0, 4.5, 4.8, 5.0];
+  static const _subjects = kSubjects;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialise from current provider state
+    _subject    = ref.read(teacherSubjectFilterProvider);
+    _level      = ref.read(teacherLevelFilterProvider);
+    _minPrice   = ref.read(teacherMinPriceProvider);
+    _maxPrice   = ref.read(teacherMaxPriceProvider);
+    _onlineOnly = ref.read(teacherOnlineOnlyProvider);
+  }
+
+  void _reset() => setState(() {
+    _subject    = null;
+    _level      = null;
+    _minPrice   = 0;
+    _maxPrice   = 2000;
+    _onlineOnly = false;
+  });
+
+  void _apply() {
+    ref.read(teacherSubjectFilterProvider.notifier).state = _subject;
+    ref.read(teacherLevelFilterProvider.notifier).state   = _level;
+    ref.read(teacherMinPriceProvider.notifier).state      = _minPrice;
+    ref.read(teacherMaxPriceProvider.notifier).state      = _maxPrice;
+    ref.read(teacherOnlineOnlyProvider.notifier).state    = _onlineOnly;
+    Navigator.pop(context);
+  }
+
+  bool get _hasFilters =>
+      _subject != null || _level != null || _minPrice > 0 ||
+      _maxPrice < 2000 || _onlineOnly;
 
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-      initialChildSize: 0.88,
-      maxChildSize: 0.95,
+      initialChildSize: 0.92,
+      maxChildSize: 0.96,
       minChildSize: 0.5,
       builder: (_, ctrl) => Container(
         decoration: const BoxDecoration(
@@ -42,25 +77,26 @@ class _FilterSheetState extends State<FilterSheet> {
                 ),
               ),
             ),
-            // Title
+            // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('تصفية النتائج',
-                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                  GestureDetector(
-                    onTap: () => setState(() {
-                      _selectedSubject = null;
-                      _minPrice = 200;
-                      _maxPrice = 700;
-                      _minRating = 4.0;
-                      _onlineOnly = false;
-                    }),
-                    child: const Text('إعادة تعيين',
-                      style: TextStyle(fontSize: 13, color: AppColors.textHint, fontWeight: FontWeight.w600)),
-                  ),
+                      style: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                  const Spacer(),
+                  if (_hasFilters)
+                    GestureDetector(
+                      onTap: _reset,
+                      child: const Text('إعادة تعيين',
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.error,
+                              fontWeight: FontWeight.w600)),
+                    ),
                 ],
               ),
             ),
@@ -69,48 +105,73 @@ class _FilterSheetState extends State<FilterSheet> {
                 controller: ctrl,
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
                 children: [
-                  // Subject filter
-                  _sectionTitle('المادة'),
+
+                  // ── Subject ───────────────────────────────────────
+                  _sectionTitle('المادة الدراسية'),
                   const SizedBox(height: 11),
                   Wrap(
                     spacing: 9, runSpacing: 9,
                     children: _subjects.map((s) {
-                      final sel = _selectedSubject == s;
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedSubject = sel ? null : s),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
-                          decoration: BoxDecoration(
-                            color: sel ? AppColors.primary : AppColors.surface,
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: sel ? AppColors.primary : AppColors.borderStrong),
-                          ),
-                          child: Text(s,
-                            style: TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w600,
-                              color: sel ? Colors.white : AppColors.textPrimary,
-                            )),
-                        ),
+                      final sel = _subject == s;
+                      return _chip(
+                        label: s,
+                        selected: sel,
+                        onTap: () => setState(
+                            () => _subject = sel ? null : s),
                       );
                     }).toList(),
                   ),
                   const SizedBox(height: 24),
 
-                  // Price range
+                  // ── Level (grouped) ───────────────────────────────
+                  _sectionTitle('المستوى الدراسي'),
+                  const SizedBox(height: 12),
+                  ...AppLevels.groups.map((group) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(group.title,
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textHint,
+                              letterSpacing: 0.3)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8, runSpacing: 8,
+                        children: group.levels.map((lvl) {
+                          final sel = _level == lvl;
+                          return _chip(
+                            label: lvl,
+                            selected: sel,
+                            onTap: () => setState(
+                                () => _level = sel ? null : lvl),
+                            small: true,
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  )),
+                  const SizedBox(height: 8),
+
+                  // ── Price range ───────────────────────────────────
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _sectionTitle('نطاق السعر (أوقية/ساعة)'),
                       Text(
-                        '${_minPrice.toInt()} – ${_maxPrice.toInt()}',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary),
+                        '${_minPrice.toInt()} – ${_maxPrice >= 2000 ? "∞" : _maxPrice.toInt()}',
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   RangeSlider(
                     values: RangeValues(_minPrice, _maxPrice),
-                    min: 100, max: 1000, divisions: 18,
+                    min: 0, max: 2000, divisions: 40,
                     activeColor: AppColors.primary,
                     inactiveColor: AppColors.borderStrong,
                     onChanged: (v) => setState(() {
@@ -120,48 +181,10 @@ class _FilterSheetState extends State<FilterSheet> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Rating filter
-                  _sectionTitle('الحد الأدنى للتقييم'),
-                  const SizedBox(height: 11),
-                  Row(
-                    children: _ratings.map((r) {
-                      final sel = _minRating == r;
-                      return Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 8),
-                          child: GestureDetector(
-                            onTap: () => setState(() => _minRating = r),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 11),
-                              decoration: BoxDecoration(
-                                color: sel ? AppColors.primary : AppColors.surface,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: sel ? AppColors.primary : AppColors.borderStrong),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.star_rounded, size: 14,
-                                    color: sel ? Colors.white : const Color(0xFFF59E0B)),
-                                  const SizedBox(width: 3),
-                                  Text(r == r.truncateToDouble() ? '${r.toInt()}+' : '$r+',
-                                    style: TextStyle(
-                                      fontSize: 13, fontWeight: FontWeight.w700,
-                                      color: sel ? Colors.white : AppColors.textPrimary,
-                                    )),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Online only toggle
+                  // ── Online only ───────────────────────────────────
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(14),
@@ -171,14 +194,19 @@ class _FilterSheetState extends State<FilterSheet> {
                       children: [
                         const Expanded(
                           child: Text('المتاحون الآن فقط',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary)),
                         ),
                         Switch(
                           value: _onlineOnly,
-                          onChanged: (v) => setState(() => _onlineOnly = v),
+                          onChanged: (v) =>
+                              setState(() => _onlineOnly = v),
                           activeThumbColor: AppColors.primary,
                           activeTrackColor: AppColors.accentLight,
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
                         ),
                       ],
                     ),
@@ -187,7 +215,7 @@ class _FilterSheetState extends State<FilterSheet> {
 
                   AppButton(
                     label: 'عرض النتائج',
-                    onTap: () => Navigator.pop(context),
+                    onTap: _apply,
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -199,8 +227,37 @@ class _FilterSheetState extends State<FilterSheet> {
     );
   }
 
-  Widget _sectionTitle(String t) => Text(
-    t,
-    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-  );
+  Widget _chip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    bool small = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: EdgeInsets.symmetric(
+            horizontal: small ? 12 : 15,
+            vertical: small ? 7 : 9),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+              color: selected ? AppColors.primary : AppColors.borderStrong),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                fontSize: small ? 12 : 13,
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : AppColors.textPrimary)),
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String t) => Text(t,
+      style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimary));
 }

@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'dart:io' show Platform;
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'supabase_service.dart';
 
@@ -17,6 +18,8 @@ class FcmService {
   static const _channelName = 'إشعارات حجز استاذ';
 
   static Future<void> init() async {
+    if (kIsWeb) return;
+
     // Local notifications — foreground only (FCM handles background automatically)
     await _localNotifs.initialize(
       const InitializationSettings(
@@ -90,8 +93,12 @@ class FcmService {
 
   /// Extract the deep-link route from FCM data payload
   static String? routeFromMessage(RemoteMessage message) {
+    final type      = message.data['type']       as String?;
     final sessionId = message.data['session_id'] as String?;
-    final type = message.data['type'] as String?;
+
+    if (type != null && type.startsWith('SUB_')) {
+      return '/my-courses';
+    }
     if (sessionId == null) return null;
     if (type == 'SESSION_REQUESTED' || type == 'TEACHER_REQUEST') {
       return '/teacher/request/$sessionId';
@@ -102,10 +109,11 @@ class FcmService {
   // ── Private helpers ─────────────────────────────────────────
 
   static Future<void> _upsertToken(String uid, String token) async {
+    final platform = kIsWeb ? 'web' : (Platform.isAndroid ? 'android' : 'ios');
     await SupabaseService.client.from('device_tokens').upsert({
       'user_id':    uid,
       'token':      token,
-      'platform':   Platform.isAndroid ? 'android' : 'ios',
+      'platform':   platform,
       'updated_at': DateTime.now().toIso8601String(),
     }, onConflict: 'user_id,token');
   }

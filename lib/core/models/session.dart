@@ -6,15 +6,18 @@ class Session {
   final String teacherId;
   final String teacherName;
   final String teacherInitial;
+  final String studentName;
   final String subject;
   final SessionState state;
   final DateTime scheduledAt;
   final int durationMinutes;
   final double amount;
+  final String? studentLevel;
   final String? studentNote;
   final String? parentSessionId;
   final String? roomUrl;
   final DateTime? startedAt;
+  final DateTime? paymentDeadline;
   final Payment? payment;
   final List<SessionEvent> events;
   final DateTime createdAt;
@@ -26,15 +29,18 @@ class Session {
     required this.teacherId,
     required this.teacherName,
     required this.teacherInitial,
+    this.studentName = '',
     required this.subject,
     required this.state,
     required this.scheduledAt,
     required this.durationMinutes,
     required this.amount,
+    this.studentLevel,
     this.studentNote,
     this.parentSessionId,
     this.roomUrl,
     this.startedAt,
+    this.paymentDeadline,
     this.payment,
     required this.events,
     required this.createdAt,
@@ -49,7 +55,7 @@ class Session {
 
   bool get isLive => state == SessionState.activeSession;
 
-  Session copyWith({SessionState? state, String? roomUrl, Payment? payment, List<SessionEvent>? events}) {
+  Session copyWith({SessionState? state, String? roomUrl, DateTime? paymentDeadline, Payment? payment, List<SessionEvent>? events}) {
     return Session(
       id: id,
       studentId: studentId,
@@ -61,10 +67,12 @@ class Session {
       scheduledAt: scheduledAt,
       durationMinutes: durationMinutes,
       amount: amount,
+      studentLevel: studentLevel,
       studentNote: studentNote,
       parentSessionId: parentSessionId,
       roomUrl: roomUrl ?? this.roomUrl,
       startedAt: startedAt,
+      paymentDeadline: paymentDeadline ?? this.paymentDeadline,
       payment: payment ?? this.payment,
       events: events ?? this.events,
       createdAt: createdAt,
@@ -81,15 +89,18 @@ class Session {
       teacherInitial: (json['teacher_name'] as String? ?? '?').isNotEmpty
           ? (json['teacher_name'] as String)[0]
           : '?',
+      studentName: json['student_name'] as String? ?? '',
       subject: json['subject'] as String? ?? '',
       state: SessionStateX.fromString(json['state'] as String? ?? 'REQUESTED'),
       scheduledAt: DateTime.parse(json['scheduled_at'] as String),
       durationMinutes: json['duration_minutes'] as int? ?? 60,
       amount: (json['amount'] as num?)?.toDouble() ?? 0,
+      studentLevel: json['student_level'] as String?,
       studentNote: json['student_note'] as String?,
       parentSessionId: json['parent_session_id'] as String?,
       roomUrl: json['room_url'] as String?,
       startedAt: json['started_at'] != null ? DateTime.parse(json['started_at'] as String) : null,
+      paymentDeadline: json['payment_deadline'] != null ? DateTime.parse(json['payment_deadline'] as String) : null,
       payment: json['payment'] != null
           ? Payment.fromJson(json['payment'] as Map<String, dynamic>)
           : null,
@@ -110,6 +121,7 @@ class Payment {
   final String? proofImageUrl;
   final String reference;
   final PaymentStatus status;
+  final String? rejectReason;
   final DateTime createdAt;
 
   const Payment({
@@ -120,6 +132,7 @@ class Payment {
     this.proofImageUrl,
     required this.reference,
     required this.status,
+    this.rejectReason,
     required this.createdAt,
   });
 
@@ -135,6 +148,7 @@ class Payment {
         (s) => s.name == json['status'],
         orElse: () => PaymentStatus.pending,
       ),
+      rejectReason: json['reject_reason'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -159,21 +173,51 @@ class SessionEvent {
     required this.createdAt,
   });
 
+  // Student perspective
   String get label {
     switch (eventType) {
       case 'REQUESTED':        return 'أرسلت الطلب';
-      case 'TEACHER_APPROVED': return 'وافق الأستاذ';
-      case 'TEACHER_REJECTED': return 'رفض الأستاذ';
-      case 'PAYMENT_SUBMITTED':return 'رُفع إثبات الدفع';
-      case 'PAYMENT_CONFIRMED':return 'أكّدت الإدارة الدفع';
-      case 'SESSION_STARTED':  return 'بدأت الجلسة';
-      case 'SESSION_COMPLETED':return 'انتهت الجلسة';
-      case 'TEACHER_NO_SHOW':  return 'غياب الأستاذ';
-      case 'STUDENT_NO_SHOW':  return 'غياب الطالب';
-      case 'DISPUTE_OPENED':   return 'فُتح نزاع';
-      case 'CANCELLED':        return 'تم الإلغاء';
-      case 'RESCHEDULED':      return 'إعادة جدولة';
-      default:                 return eventType;
+      case 'TEACHER_APPROVED': return 'وافق الأستاذ على طلبك';
+      case 'TEACHER_REJECTED': return 'رفض الأستاذ الطلب';
+      case 'AWAITING_PAYMENT': return 'في انتظار الدفع';
+      case 'PAYMENT_SUBMITTED': return 'رفعت إثبات الدفع';
+      case 'PAYMENT_REJECTED':  return 'رُفض إثبات الدفع';
+      case 'PAYMENT_CONFIRMED': return 'أكّدت الإدارة الدفع';
+      case 'CONFIRMED_BOOKING':return 'تأكّد الحجز';
+      case 'SESSION_STARTED':   return 'بدأت الجلسة';
+      case 'SESSION_COMPLETED': return 'انتهت الجلسة';
+      case 'ACTIVE_SESSION':    return 'الجلسة مباشرة';
+      case 'COMPLETED':         return 'اكتملت الجلسة';
+      case 'TEACHER_NO_SHOW':   return 'لم يحضر الأستاذ';
+      case 'STUDENT_NO_SHOW':   return 'سُجّل غيابك';
+      case 'DISPUTE_OPENED':    return 'فُتح نزاع';
+      case 'CANCELLED':         return 'تم إلغاء الجلسة';
+      case 'RESCHEDULED':       return 'أُعيدت الجدولة';
+      default:                  return eventType;
+    }
+  }
+
+  // Teacher perspective
+  String get teacherLabel {
+    switch (eventType) {
+      case 'REQUESTED':        return 'استقبلت طلب جلسة جديداً';
+      case 'TEACHER_APPROVED': return 'وافقت على الطلب';
+      case 'TEACHER_REJECTED': return 'رفضت الطلب';
+      case 'AWAITING_PAYMENT': return 'في انتظار دفع الطالب';
+      case 'PAYMENT_SUBMITTED': return 'رفع الطالب إثبات الدفع';
+      case 'PAYMENT_REJECTED':  return 'رُفض إثبات دفع الطالب';
+      case 'PAYMENT_CONFIRMED': return 'أكّدت الإدارة الدفع';
+      case 'CONFIRMED_BOOKING':return 'تأكّد الحجز — الجلسة محجوزة';
+      case 'SESSION_STARTED':   return 'بدأت الجلسة';
+      case 'SESSION_COMPLETED': return 'انتهت الجلسة بنجاح';
+      case 'ACTIVE_SESSION':    return 'الجلسة مباشرة';
+      case 'COMPLETED':         return 'اكتملت الجلسة';
+      case 'TEACHER_NO_SHOW':   return 'سُجّل غيابك عن الجلسة';
+      case 'STUDENT_NO_SHOW':   return 'سجّلت غياب الطالب';
+      case 'DISPUTE_OPENED':    return 'فُتح نزاع على الجلسة';
+      case 'CANCELLED':         return 'ألغى الطالب الجلسة';
+      case 'RESCHEDULED':       return 'أُعيدت الجدولة';
+      default:                  return eventType;
     }
   }
 

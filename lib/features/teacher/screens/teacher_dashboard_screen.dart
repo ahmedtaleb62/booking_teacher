@@ -1,53 +1,144 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/sessions_provider.dart';
+import '../../../core/services/supabase_service.dart';
 
-class TeacherDashboardScreen extends StatefulWidget {
+class TeacherDashboardScreen extends ConsumerStatefulWidget {
   const TeacherDashboardScreen({super.key});
-
   @override
-  State<TeacherDashboardScreen> createState() => _TeacherDashboardScreenState();
+  ConsumerState<TeacherDashboardScreen> createState() => _TeacherDashboardScreenState();
 }
 
-class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
-  bool _isAvailable = true;
+class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen> {
+  bool _togglingAvailability = false;
 
-  final List<_PendingRequest> _requests = const [
-    _PendingRequest(id: 'req1', initial: 'س', name: 'سيدنا أحمد',      subject: 'رياضيات', when: 'الإثنين 4:00 م', initBg: Color(0xFFE7F1F2), initFg: Color(0xFF1B6B7A)),
-    _PendingRequest(id: 'req2', initial: 'خ', name: 'خديجة بنت اعل',  subject: 'إحصاء',  when: 'الثلاثاء 6:30 م', initBg: Color(0xFFFEF3E2), initFg: Color(0xFFC77A1A)),
-    _PendingRequest(id: 'req3', initial: 'م', name: 'محمد محمود',      subject: 'جبر',    when: 'الأربعاء 5:00 م', initBg: Color(0xFFF0EDFF), initFg: Color(0xFF7B61FF)),
-  ];
+  Future<void> _toggleAvailability(bool current) async {
+    setState(() => _togglingAvailability = true);
+    try {
+      await SupabaseService.client
+          .from('profiles')
+          .update({'is_active': !current})
+          .eq('id', SupabaseService.userId!);
+      ref.invalidate(teacherDashboardProvider);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذّر تغيير الحالة')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _togglingAvailability = false);
+    }
+  }
+
+  String _fmtDate(String isoStr) {
+    final dt = DateTime.tryParse(isoStr);
+    if (dt == null) return '';
+    const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    final h = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+    final period = dt.hour >= 12 ? 'م' : 'ص';
+    return '${days[dt.weekday % 7]} $h:${dt.minute.toString().padLeft(2, '0')} $period';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final async = ref.watch(teacherDashboardProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _Header(isAvailable: _isAvailable, onToggle: (v) => setState(() => _isAvailable = v))),
-          SliverToBoxAdapter(child: _StatsRow()),
-          const SliverToBoxAdapter(child: SizedBox(height: 20)),
-          SliverToBoxAdapter(child: _SectionHeader(title: 'طلبات جديدة', badge: '${_requests.length} بانتظارك', badgeFg: const Color(0xFFC77A1A), badgeBg: const Color(0xFFFEF3E2))),
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (ctx, i) => _RequestCard(request: _requests[i]),
-              childCount: _requests.length,
-            ),
+      body: async.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('تعذّر تحميل البيانات'),
+              TextButton(
+                onPressed: () => ref.invalidate(teacherDashboardProvider),
+                child: const Text('إعادة المحاولة'),
+              ),
+            ],
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 20)),
-          const SliverToBoxAdapter(child: _SectionHeader(title: 'الجلسات القادمة')),
-          SliverToBoxAdapter(child: _UpcomingCard()),
-          const SliverToBoxAdapter(child: SizedBox(height: 100)),
-        ],
+        ),
+        data: (stats) => RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () async => ref.invalidate(teacherDashboardProvider),
+          child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: _Header(
+                name: stats.teacherName,
+                initial: stats.teacherInitial,
+                isAvailable: stats.isAvailable,
+                toggling: _togglingAvailability,
+                weekEarnings: stats.weekEarnings,
+                completedSessions: stats.completedSessions,
+                onToggle: () => _toggleAvailability(stats.isAvailable),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: _StatsRow(
+                pendingCount: stats.pendingCount,
+                todayCount: stats.todayCount,
+                attendanceRate: stats.attendanceRate,
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 20)),
+            if (stats.pendingRequests.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: _SectionHeader(
+                  title: 'طلبات جديدة',
+                  badge: '${stats.pendingCount} بانتظارك',
+                  badgeFg: const Color(0xFFC77A1A),
+                  badgeBg: const Color(0xFFFEF3E2),
+                ),
+              ),
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (ctx, i) => _RequestCard(session: stats.pendingRequests[i], fmtDate: _fmtDate),
+                  childCount: stats.pendingRequests.length,
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 20)),
+            ],
+            if (stats.upcomingSessions.isNotEmpty) ...[
+              const SliverToBoxAdapter(child: _SectionHeader(title: 'الجلسات القادمة')),
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (ctx, i) => _UpcomingCard(session: stats.upcomingSessions[i], fmtDate: _fmtDate),
+                  childCount: stats.upcomingSessions.length,
+                ),
+              ),
+            ] else ...[
+              const SliverToBoxAdapter(child: _SectionHeader(title: 'الجلسات القادمة')),
+              const SliverToBoxAdapter(child: _EmptyUpcoming()),
+            ],
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+          ],
+        ),
+        ),
       ),
     );
   }
 }
 
+// ── Header ───────────────────────────────────────────────────
 class _Header extends StatelessWidget {
+  final String name;
+  final String initial;
   final bool isAvailable;
-  final ValueChanged<bool> onToggle;
-  const _Header({required this.isAvailable, required this.onToggle});
+  final bool toggling;
+  final double weekEarnings;
+  final int completedSessions;
+  final VoidCallback onToggle;
+
+  const _Header({
+    required this.name, required this.initial, required this.isAvailable,
+    required this.toggling, required this.weekEarnings,
+    required this.completedSessions, required this.onToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +161,8 @@ class _Header extends StatelessWidget {
                   width: 46, height: 46,
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(13)),
                   alignment: Alignment.center,
-                  child: const Text('م', style: TextStyle(color: Color(0xFF1B6B7A), fontWeight: FontWeight.w700, fontSize: 19)),
+                  child: Text(initial,
+                    style: const TextStyle(color: Color(0xFF1B6B7A), fontWeight: FontWeight.w700, fontSize: 19)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -78,30 +170,37 @@ class _Header extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('أهلاً،', style: TextStyle(fontSize: 12, color: Color(0xFFCFE6EA))),
-                      const Text('د. محمد الأمين', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+                      Text(
+                        name.isNotEmpty ? name : 'أستاذ',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+                      ),
                     ],
                   ),
                 ),
                 GestureDetector(
-                  onTap: () => onToggle(!isAvailable),
+                  onTap: toggling ? null : onToggle,
                   child: Column(
                     children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        width: 46, height: 27,
-                        decoration: BoxDecoration(
-                          color: isAvailable ? const Color(0xFF7BE0C0) : Colors.white24,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Align(
-                          alignment: isAvailable ? Alignment.centerLeft : Alignment.centerRight,
-                          child: Container(
-                            margin: const EdgeInsets.all(3),
-                            width: 21, height: 21,
-                            decoration: const BoxDecoration(color: Color(0xFF11313A), shape: BoxShape.circle),
-                          ),
-                        ),
-                      ),
+                      toggling
+                          ? const SizedBox(width: 46, height: 27,
+                              child: Center(child: SizedBox(width: 16, height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))))
+                          : AnimatedContainer(
+                              duration: const Duration(milliseconds: 250),
+                              width: 46, height: 27,
+                              decoration: BoxDecoration(
+                                color: isAvailable ? const Color(0xFF7BE0C0) : Colors.white24,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Align(
+                                alignment: isAvailable ? Alignment.centerLeft : Alignment.centerRight,
+                                child: Container(
+                                  margin: const EdgeInsets.all(3),
+                                  width: 21, height: 21,
+                                  decoration: const BoxDecoration(color: Color(0xFF11313A), shape: BoxShape.circle),
+                                ),
+                              ),
+                            ),
                       const SizedBox(height: 4),
                       Text(
                         isAvailable ? 'متاح للحجز' : 'غير متاح',
@@ -113,7 +212,6 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
-          // Earnings card
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 22).copyWith(bottom: 20),
             padding: const EdgeInsets.all(15),
@@ -130,7 +228,11 @@ class _Header extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text('6,375', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white)),
+                    Text(
+                      weekEarnings.toInt().toString().replaceAllMapped(
+                        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},'),
+                      style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white),
+                    ),
                     const SizedBox(width: 6),
                     const Padding(
                       padding: EdgeInsets.only(bottom: 5),
@@ -139,8 +241,10 @@ class _Header extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                const Text('15 جلسة مكتملة · بعد عمولة 15%',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF9DB2B8))),
+                Text(
+                  '$completedSessions جلسة مكتملة · بعد عمولة 15%',
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF9DB2B8)),
+                ),
               ],
             ),
           ),
@@ -150,18 +254,24 @@ class _Header extends StatelessWidget {
   }
 }
 
+// ── Stats row ────────────────────────────────────────────────
 class _StatsRow extends StatelessWidget {
+  final int pendingCount;
+  final int todayCount;
+  final double attendanceRate;
+  const _StatsRow({required this.pendingCount, required this.todayCount, required this.attendanceRate});
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 18, 22, 0),
       child: Row(
         children: [
-          _StatCard(value: '3',   label: 'طلب جديد',  color: const Color(0xFFF2994A)),
+          _StatCard(value: '$pendingCount', label: 'طلب جديد', color: const Color(0xFFF2994A)),
           const SizedBox(width: 10),
-          _StatCard(value: '2',   label: 'جلسات اليوم', color: AppColors.textPrimary),
+          _StatCard(value: '$todayCount', label: 'جلسات اليوم', color: AppColors.textPrimary),
           const SizedBox(width: 10),
-          _StatCard(value: '98%', label: 'الحضور',     color: AppColors.success),
+          _StatCard(value: '${attendanceRate.toInt()}%', label: 'الحضور', color: AppColors.success),
         ],
       ),
     );
@@ -196,6 +306,7 @@ class _StatCard extends StatelessWidget {
   }
 }
 
+// ── Section header ───────────────────────────────────────────
 class _SectionHeader extends StatelessWidget {
   final String title;
   final String? badge;
@@ -227,12 +338,22 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
+// ── Request card ─────────────────────────────────────────────
 class _RequestCard extends StatelessWidget {
-  final _PendingRequest request;
-  const _RequestCard({required this.request});
+  final Map<String, dynamic> session;
+  final String Function(String) fmtDate;
+  const _RequestCard({required this.session, required this.fmtDate});
 
   @override
   Widget build(BuildContext context) {
+    final id = session['id'] as String;
+    final studentMap = session['student'] as Map? ?? {};
+    final studentName = (studentMap['full_name'] as String?) ?? 'طالب';
+    final subject = (session['subject'] as String?) ?? '';
+    final scheduledAt = (session['scheduled_at'] as String?) ?? '';
+    final duration = (session['duration_minutes'] as int?) ?? 60;
+    final initial = studentName.isNotEmpty ? studentName[0] : 'ط';
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 22, vertical: 5),
       padding: const EdgeInsets.all(13),
@@ -247,30 +368,25 @@ class _RequestCard extends StatelessWidget {
             children: [
               Container(
                 width: 42, height: 42,
-                decoration: BoxDecoration(
-                  color: request.initBg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                decoration: BoxDecoration(color: AppColors.accentLight, borderRadius: BorderRadius.circular(12)),
                 alignment: Alignment.center,
-                child: Text(request.initial, style: TextStyle(color: request.initFg, fontWeight: FontWeight.w700, fontSize: 17)),
+                child: Text(initial, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 17)),
               ),
               const SizedBox(width: 11),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(request.name, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                    Text('${request.subject} · ${request.when}', style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
+                    Text(studentName, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    Text('$subject · ${fmtDate(scheduledAt)} · $duration د',
+                      style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
                   ],
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3E2),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text('REQUESTED', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: Color(0xFFC77A1A))),
+                decoration: BoxDecoration(color: const Color(0xFFFEF3E2), borderRadius: BorderRadius.circular(6)),
+                child: const Text('جديد', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: Color(0xFFC77A1A))),
               ),
             ],
           ),
@@ -278,22 +394,9 @@ class _RequestCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    side: const BorderSide(color: Color(0xFFE6E9ED)),
-                    foregroundColor: AppColors.textSecondary,
-                  ),
-                  child: const Text('رفض', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
                 flex: 2,
                 child: ElevatedButton(
-                  onPressed: () => context.push('/teacher/request/${request.id}'),
+                  onPressed: () => context.push('/teacher/request/$id'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 9),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -311,11 +414,31 @@ class _RequestCard extends StatelessWidget {
   }
 }
 
+// ── Upcoming card ────────────────────────────────────────────
 class _UpcomingCard extends StatelessWidget {
+  final Map<String, dynamic> session;
+  final String Function(String) fmtDate;
+  const _UpcomingCard({required this.session, required this.fmtDate});
+
   @override
   Widget build(BuildContext context) {
+    final id = session['id'] as String;
+    final studentMap = session['student'] as Map? ?? {};
+    final studentName = (studentMap['full_name'] as String?) ?? 'طالب';
+    final subject = (session['subject'] as String?) ?? '';
+    final scheduledAt = (session['scheduled_at'] as String?) ?? '';
+    final duration = (session['duration_minutes'] as int?) ?? 60;
+
+    final dt = DateTime.tryParse(scheduledAt);
+    final diffMin = dt != null ? dt.difference(DateTime.now()).inMinutes : 0;
+    final timeLabel = diffMin < 60
+        ? 'بعد $diffMin دقيقة'
+        : diffMin < 1440
+            ? 'بعد ${diffMin ~/ 60} ساعة'
+            : fmtDate(scheduledAt);
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 22),
+      margin: const EdgeInsets.symmetric(horizontal: 22, vertical: 5),
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -326,14 +449,17 @@ class _UpcomingCard extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.accentLight,
-              borderRadius: BorderRadius.circular(11),
-            ),
+            decoration: BoxDecoration(color: AppColors.accentLight, borderRadius: BorderRadius.circular(11)),
             child: Column(
-              children: const [
-                Text('4:00', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                Text('مساءً', style: TextStyle(fontSize: 9, color: AppColors.primary)),
+              children: [
+                Text(
+                  dt != null
+                      ? '${dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour)}:${dt.minute.toString().padLeft(2, '0')}'
+                      : '--',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary),
+                ),
+                Text(dt != null && dt.hour >= 12 ? 'مساءً' : 'صباحاً',
+                  style: const TextStyle(fontSize: 9, color: AppColors.primary)),
               ],
             ),
           ),
@@ -341,19 +467,21 @@ class _UpcomingCard extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text('سيدنا أحمد · رياضيات', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                Text('60 دقيقة · بعد 25 دقيقة', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              children: [
+                Text('$studentName · $subject',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                Text('$duration دقيقة · $timeLabel',
+                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE3F6EF),
-              borderRadius: BorderRadius.circular(6),
+          GestureDetector(
+            onTap: () => context.push('/teacher/session/$id'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(color: const Color(0xFFE3F6EF), borderRadius: BorderRadius.circular(6)),
+              child: const Text('مؤكّد', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF15805F))),
             ),
-            child: const Text('مؤكّد', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF15805F))),
           ),
         ],
       ),
@@ -361,21 +489,23 @@ class _UpcomingCard extends StatelessWidget {
   }
 }
 
-class _PendingRequest {
-  final String id;
-  final String initial;
-  final String name;
-  final String subject;
-  final String when;
-  final Color initBg;
-  final Color initFg;
-  const _PendingRequest({
-    required this.id,
-    required this.initial,
-    required this.name,
-    required this.subject,
-    required this.when,
-    required this.initBg,
-    required this.initFg,
-  });
+class _EmptyUpcoming extends StatelessWidget {
+  const _EmptyUpcoming();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 22),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Center(
+        child: Text('لا توجد جلسات قادمة',
+          style: TextStyle(fontSize: 13, color: AppColors.textHint)),
+      ),
+    );
+  }
 }

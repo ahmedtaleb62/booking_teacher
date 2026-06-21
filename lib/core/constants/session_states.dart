@@ -7,6 +7,7 @@ enum SessionState {
   teacherRejected,
   awaitingPayment,
   paymentSubmitted,
+  paymentRejected,
   paymentConfirmed,
   confirmedBooking,
   activeSession,
@@ -25,6 +26,7 @@ extension SessionStateX on SessionState {
       case SessionState.teacherRejected:   return 'رُفض الطلب';
       case SessionState.awaitingPayment:   return 'بانتظار الدفع';
       case SessionState.paymentSubmitted:  return 'قيد التحقق';
+      case SessionState.paymentRejected:   return 'رُفض الإثبات';
       case SessionState.paymentConfirmed:  return 'تأكيد الدفع';
       case SessionState.confirmedBooking:  return 'حجز مؤكّد';
       case SessionState.activeSession:     return 'جلسة مباشرة';
@@ -43,6 +45,7 @@ extension SessionStateX on SessionState {
       case SessionState.teacherRejected:   return 'TEACHER_REJECTED';
       case SessionState.awaitingPayment:   return 'AWAITING_PAYMENT';
       case SessionState.paymentSubmitted:  return 'PAYMENT_SUBMITTED';
+      case SessionState.paymentRejected:   return 'PAYMENT_REJECTED';
       case SessionState.paymentConfirmed:  return 'PAYMENT_CONFIRMED';
       case SessionState.confirmedBooking:  return 'CONFIRMED_BOOKING';
       case SessionState.activeSession:     return 'ACTIVE_SESSION';
@@ -61,6 +64,7 @@ extension SessionStateX on SessionState {
       case SessionState.teacherRejected:   return AppColors.statusRejected;
       case SessionState.awaitingPayment:   return AppColors.statusApproved;
       case SessionState.paymentSubmitted:  return AppColors.statusPaymentSubmitted;
+      case SessionState.paymentRejected:   return AppColors.statusRejected;
       case SessionState.paymentConfirmed:  return AppColors.statusConfirmed;
       case SessionState.confirmedBooking:  return AppColors.statusConfirmed;
       case SessionState.activeSession:     return AppColors.statusActive;
@@ -79,6 +83,7 @@ extension SessionStateX on SessionState {
       case SessionState.teacherRejected:   return AppColors.statusRejectedBg;
       case SessionState.awaitingPayment:   return AppColors.statusApprovedBg;
       case SessionState.paymentSubmitted:  return AppColors.statusPaymentSubmittedBg;
+      case SessionState.paymentRejected:   return AppColors.statusRejectedBg;
       case SessionState.paymentConfirmed:  return AppColors.statusConfirmedBg;
       case SessionState.confirmedBooking:  return AppColors.statusConfirmedBg;
       case SessionState.activeSession:     return AppColors.statusActiveBg;
@@ -93,7 +98,8 @@ extension SessionStateX on SessionState {
   bool get canStudentCancel {
     return this == SessionState.requested ||
         this == SessionState.teacherApproved ||
-        this == SessionState.awaitingPayment;
+        this == SessionState.awaitingPayment ||
+        this == SessionState.paymentRejected; // student can cancel instead of retrying
   }
 
   bool get isTerminal {

@@ -1,53 +1,65 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/notifications_provider.dart';
+import '../../../core/providers/sessions_provider.dart';
 
-class TeacherShell extends StatelessWidget {
+class TeacherShell extends ConsumerWidget {
   final Widget child;
   const TeacherShell({super.key, required this.child});
 
   int _selectedIndex(BuildContext context) {
     final loc = GoRouterState.of(context).uri.toString();
-    if (loc.startsWith('/teacher/requests')) return 1;
-    if (loc.startsWith('/teacher/sessions'))  return 2;
-    if (loc.startsWith('/teacher/earnings'))  return 3;
-    if (loc.startsWith('/teacher/profile'))   return 4;
+    if (loc.startsWith('/teacher/requests'))      return 1;
+    if (loc.startsWith('/teacher/sessions'))       return 2;
+    if (loc.startsWith('/teacher/notifications'))  return 3;
+    if (loc.startsWith('/teacher/earnings'))       return 4;
+    if (loc.startsWith('/teacher/profile'))        return 4;
     return 0;
   }
 
   void _onTap(BuildContext context, int index) {
     switch (index) {
-      case 0: context.go('/teacher/home');      break;
-      case 1: context.go('/teacher/requests');  break;
-      case 2: context.go('/teacher/sessions');  break;
-      case 3: context.go('/teacher/earnings');  break;
-      case 4: context.go('/teacher/profile');   break;
+      case 0: context.go('/teacher/home');           break;
+      case 1: context.go('/teacher/requests');       break;
+      case 2: context.go('/teacher/sessions');       break;
+      case 3: context.go('/teacher/notifications');  break;
+      case 4: context.go('/teacher/profile');        break;
     }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pendingAsync = ref.watch(teacherPendingRequestsProvider);
+    final unreadAsync  = ref.watch(unreadCountProvider);
+
+    final pendingCount = pendingAsync.valueOrNull?.length ?? 0;
+    final unreadCount  = unreadAsync.valueOrNull ?? 0;
+
     return Scaffold(
       body: child,
-      bottomNavigationBar: TeacherBottomNav(
+      bottomNavigationBar: _TeacherBottomNav(
         currentIndex: _selectedIndex(context),
         onTap: (i) => _onTap(context, i),
-        requestsBadge: 3,
+        requestsBadge: pendingCount,
+        notificationsBadge: unreadCount,
       ),
     );
   }
 }
 
-class TeacherBottomNav extends StatelessWidget {
+class _TeacherBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final int requestsBadge;
+  final int notificationsBadge;
 
-  const TeacherBottomNav({
-    super.key,
+  const _TeacherBottomNav({
     required this.currentIndex,
     required this.onTap,
     this.requestsBadge = 0,
+    this.notificationsBadge = 0,
   });
 
   @override
@@ -63,11 +75,11 @@ class TeacherBottomNav extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
-              _TNavItem(icon: Icons.home_rounded,           label: 'الرئيسية', selected: currentIndex == 0, onTap: () => onTap(0)),
-              _TNavItem(icon: Icons.task_alt_rounded,       label: 'الطلبات',  selected: currentIndex == 1, badge: requestsBadge, onTap: () => onTap(1)),
-              _TNavItem(icon: Icons.calendar_month_rounded, label: 'الجلسات',  selected: currentIndex == 2, onTap: () => onTap(2)),
-              _TNavItem(icon: Icons.account_balance_wallet_rounded, label: 'الأرباح', selected: currentIndex == 3, onTap: () => onTap(3)),
-              _TNavItem(icon: Icons.person_rounded,         label: 'حسابي',   selected: currentIndex == 4, onTap: () => onTap(4)),
+              _TNavItem(icon: Icons.home_rounded,           label: 'الرئيسية',  selected: currentIndex == 0, onTap: () => onTap(0)),
+              _TNavItem(icon: Icons.task_alt_rounded,       label: 'الطلبات',   selected: currentIndex == 1, badge: requestsBadge, onTap: () => onTap(1)),
+              _TNavItem(icon: Icons.calendar_month_rounded, label: 'الجلسات',   selected: currentIndex == 2, onTap: () => onTap(2)),
+              _TNavItem(icon: Icons.notifications_outlined, label: 'الإشعارات', selected: currentIndex == 3, badge: notificationsBadge, onTap: () => onTap(3)),
+              _TNavItem(icon: Icons.person_rounded,         label: 'حسابي',    selected: currentIndex == 4, onTap: () => onTap(4)),
             ],
           ),
         ),

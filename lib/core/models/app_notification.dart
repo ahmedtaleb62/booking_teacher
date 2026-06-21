@@ -31,6 +31,9 @@ class AppNotification {
       case 'SESSION_COMPLETED':   return '⭐';
       case 'DISPUTE_OPENED':      return '🚨';
       case 'RESCHEDULED':         return '🔄';
+      case 'SUB_PENDING':         return '⏳';
+      case 'SUB_ACTIVE':          return '🎓';
+      case 'SUB_REJECTED':        return '❌';
       default:                    return '🔔';
     }
   }

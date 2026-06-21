@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,8 +40,10 @@ class _TeacherLiveSessionScreenState extends ConsumerState<TeacherLiveSessionScr
   }
 
   void _initWebView(String url) {
-    if (_webCtrl != null) return;
-    _webCtrl = WebViewController()
+    if (_webCtrl != null || kIsWeb) return;
+    _webCtrl = WebViewController(
+      onPermissionRequest: (request) => request.grant(),
+    )
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(NavigationDelegate(
         onPageFinished: (_) => setState(() => _webReady = true),
@@ -139,12 +142,16 @@ class _TeacherLiveSessionScreenState extends ConsumerState<TeacherLiveSessionScr
                               width: 110, height: 110,
                               decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
                               alignment: Alignment.center,
-                              child: const Text('ط',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 44)),
+                              child: Text(
+                                session.studentName.isNotEmpty ? session.studentName[0] : 'ط',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 44)),
                             ),
                             const SizedBox(height: 16),
-                            Text(session.subject,
+                            Text(session.studentName.isNotEmpty ? session.studentName : 'طالب',
                               style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 2),
+                            Text(session.subject,
+                              style: const TextStyle(color: Colors.white54, fontSize: 13)),
                             const SizedBox(height: 6),
                             Text('${session.durationMinutes} دقيقة · ${session.amount.toInt()} أوقية',
                               style: const TextStyle(color: Colors.white54, fontSize: 13)),

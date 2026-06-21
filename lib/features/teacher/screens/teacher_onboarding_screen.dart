@@ -20,11 +20,11 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
   String? _error;
 
   static const _subjectOptions = [
-    'رياضيات', 'فيزياء', 'كيمياء', 'أحياء',
-    'لغة عربية', 'لغة فرنسية', 'لغة إنجليزية',
-    'تاريخ', 'جغرافيا', 'فلسفة', 'إعلاميات',
-    'اقتصاد', 'محاسبة', 'قرآن كريم',
+    'العربية', 'الفرنسية', 'الإنجليزية', 'الرياضيات',
+    'التاريخ و الجغرافيا', 'الفلسفة', 'العلوم الطبيعية',
+    'التربية الإسلامية', 'التربية المدنية',
   ];
+  static const _maxSubjects = 2;
 
   @override
   void dispose() {
@@ -39,6 +39,10 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
       setState(() => _error = 'اختر مادة واحدة على الأقل');
       return;
     }
+    if (_selectedSubjects.length > _maxSubjects) {
+      setState(() => _error = 'لا يمكن اختيار أكثر من $_maxSubjects مواد');
+      return;
+    }
     setState(() { _loading = true; _error = null; });
     try {
       final uid = SupabaseService.userId!;
@@ -49,7 +53,6 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
         'price_per_hour': double.parse(_priceCtrl.text.trim()),
         'years_experience': _yearsExp,
         'is_approved': false,
-        'is_active': false,
       });
       if (mounted) context.go('/teacher/home');
     } catch (e) {
@@ -166,22 +169,37 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
                 // Subjects
                 _label('المواد التي تدرّسها'),
                 const SizedBox(height: 4),
-                const Text('اختر مادة واحدة أو أكثر',
-                  style: TextStyle(fontSize: 12, color: AppColors.textHint)),
+                Text(
+                  'اختر مادة أو مادتين كحد أقصى (${_selectedSubjects.length}/$_maxSubjects)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _selectedSubjects.length >= _maxSubjects
+                        ? AppColors.primary
+                        : AppColors.textHint,
+                    fontWeight: _selectedSubjects.length >= _maxSubjects
+                        ? FontWeight.w700
+                        : FontWeight.normal,
+                  ),
+                ),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 8, runSpacing: 8,
                   children: _subjectOptions.map((s) {
                     final sel = _selectedSubjects.contains(s);
+                    final maxReached = _selectedSubjects.length >= _maxSubjects && !sel;
                     return GestureDetector(
                       onTap: () => setState(() {
                         if (sel) { _selectedSubjects.remove(s); }
-                        else { _selectedSubjects.add(s); }
+                        else if (!maxReached) { _selectedSubjects.add(s); }
                       }),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          color: sel ? AppColors.primary : AppColors.surface,
+                          color: sel
+                              ? AppColors.primary
+                              : maxReached
+                                  ? AppColors.surfaceAlt
+                                  : AppColors.surface,
                           borderRadius: BorderRadius.circular(999),
                           border: Border.all(
                             color: sel ? AppColors.primary : AppColors.border,
@@ -191,7 +209,11 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
                         child: Text(s,
                           style: TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w600,
-                            color: sel ? Colors.white : AppColors.textPrimary,
+                            color: sel
+                                ? Colors.white
+                                : maxReached
+                                    ? AppColors.textHint
+                                    : AppColors.textPrimary,
                           )),
                       ),
                     );
@@ -224,6 +246,16 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
                   label: 'إرسال الطلب للمراجعة',
                   isLoading: _loading,
                   onTap: _save,
+                ),
+                const SizedBox(height: 14),
+                Center(
+                  child: TextButton(
+                    onPressed: _loading ? null : () => context.go('/teacher/home'),
+                    child: const Text(
+                      'تخطي — سأكمل لاحقاً',
+                      style: TextStyle(fontSize: 13, color: AppColors.textHint),
+                    ),
+                  ),
                 ),
               ],
             ),

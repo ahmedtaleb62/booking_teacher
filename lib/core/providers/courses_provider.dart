@@ -1,0 +1,106 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/course.dart';
+import '../services/course_service.dart';
+import 'auth_provider.dart';
+
+// ── Filter state ──────────────────────────────────────────────────
+final courseSubjectFilterProvider = StateProvider<String?>((ref) => null);
+
+// ── Lists ─────────────────────────────────────────────────────────
+
+final coursesProvider = FutureProvider.autoDispose<List<Course>>((ref) async {
+  ref.watch(currentSessionProvider);
+  final subject = ref.watch(courseSubjectFilterProvider);
+  return CourseService.getCourses(subject: subject);
+});
+
+final packagesProvider = FutureProvider.autoDispose<List<CoursePackage>>((ref) async {
+  ref.watch(currentSessionProvider);
+  return CourseService.getPackages();
+});
+
+// ── My subscriptions ─────────────────────────────────────────────
+
+final mySubscriptionsProvider =
+    FutureProvider.autoDispose<List<Subscription>>((ref) async {
+  ref.watch(currentSessionProvider);
+  return CourseService.getMySubscriptions();
+});
+
+final subscriptionProvider =
+    FutureProvider.autoDispose.family<Subscription?, String>((ref, id) async {
+  final subs = await ref.watch(mySubscriptionsProvider.future);
+  try {
+    return subs.firstWhere((s) => s.id == id);
+  } catch (_) {
+    return null;
+  }
+});
+
+// ── Details ───────────────────────────────────────────────────────
+// These watch mySubscriptionsProvider so they re-fetch automatically when
+// the user's subscription status changes (e.g. admin approves payment).
+
+final courseDetailsProvider =
+    FutureProvider.autoDispose.family<Course, String>((ref, id) async {
+  ref.watch(mySubscriptionsProvider); // re-fetch lessons when sub status changes
+  return CourseService.getCourseDetails(id);
+});
+
+final packageDetailsProvider =
+    FutureProvider.autoDispose.family<CoursePackage, String>((ref, id) async {
+  ref.watch(mySubscriptionsProvider);
+  return CourseService.getPackageDetails(id);
+});
+
+// ── Has active sub ────────────────────────────────────────────────
+
+final hasCourseSubscriptionProvider =
+    FutureProvider.autoDispose.family<bool, String>((ref, courseId) async {
+  final subs = await ref.watch(mySubscriptionsProvider.future);
+  return subs.any((s) =>
+      s.courseId == courseId && s.status == SubscriptionStatus.active);
+});
+
+final hasPackageSubscriptionProvider =
+    FutureProvider.autoDispose.family<bool, String>((ref, packageId) async {
+  final subs = await ref.watch(mySubscriptionsProvider.future);
+  return subs.any((s) =>
+      s.packageId == packageId && s.status == SubscriptionStatus.active);
+});
+
+// Returns the active Subscription for a course — used to pass subscriptionId to lesson player
+final courseActiveSubscriptionProvider =
+    FutureProvider.autoDispose.family<Subscription?, String>((ref, courseId) async {
+  final subs = await ref.watch(mySubscriptionsProvider.future);
+  try {
+    return subs.firstWhere((s) =>
+        s.courseId == courseId && s.status == SubscriptionStatus.active);
+  } catch (_) {
+    return null;
+  }
+});
+
+// ── Subscription status (active | pending | rejected | expired | null) ──
+
+final courseSubStatusProvider =
+    FutureProvider.autoDispose.family<String?, String>((ref, courseId) async {
+  final subs = await ref.watch(mySubscriptionsProvider.future);
+  final courseSubs = subs.where((s) => s.courseId == courseId).toList();
+  if (courseSubs.isEmpty) return null;
+  if (courseSubs.any((s) => s.status == SubscriptionStatus.active)) return 'active';
+  if (courseSubs.any((s) => s.status == SubscriptionStatus.pending)) return 'pending';
+  if (courseSubs.any((s) => s.status == SubscriptionStatus.expired)) return 'expired';
+  return 'rejected';
+});
+
+final packageSubStatusProvider =
+    FutureProvider.autoDispose.family<String?, String>((ref, packageId) async {
+  final subs = await ref.watch(mySubscriptionsProvider.future);
+  final pkgSubs = subs.where((s) => s.packageId == packageId).toList();
+  if (pkgSubs.isEmpty) return null;
+  if (pkgSubs.any((s) => s.status == SubscriptionStatus.active)) return 'active';
+  if (pkgSubs.any((s) => s.status == SubscriptionStatus.pending)) return 'pending';
+  if (pkgSubs.any((s) => s.status == SubscriptionStatus.expired)) return 'expired';
+  return 'rejected';
+});

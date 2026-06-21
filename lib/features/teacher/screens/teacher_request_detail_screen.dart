@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/session_states.dart';
 import '../../../core/providers/sessions_provider.dart';
-import '../../../core/services/supabase_service.dart';
+import '../../../core/services/session_service.dart';
 
 class TeacherRequestDetailScreen extends ConsumerStatefulWidget {
   final String requestId;
@@ -20,37 +20,37 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
   Future<void> _approve() async {
     setState(() => _approving = true);
     try {
-      await SupabaseService.client.rpc('teacher_approve_session',
-          params: {'p_session_id': widget.requestId});
+      await SessionService.approveSession(widget.requestId);
       if (mounted) {
-        ref.invalidate(studentSessionsProvider);
-        ref.invalidate(teacherSessionsProvider);
+        ref.invalidate(teacherDashboardProvider);
+        ref.invalidate(teacherPendingRequestsProvider);
+        ref.invalidate(teacherInProgressSessionsProvider);
         context.pop();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء القبول، حاول مرة أخرى')));
+          SnackBar(content: Text('حدث خطأ: $e')));
       }
     } finally {
       if (mounted) setState(() => _approving = false);
     }
   }
 
-  Future<void> _reject() async {
+  Future<void> _reject([String? reason]) async {
     setState(() => _rejecting = true);
     try {
-      await SupabaseService.client.rpc('teacher_reject_session',
-          params: {'p_session_id': widget.requestId});
+      await SessionService.rejectSession(widget.requestId, reason: reason);
       if (mounted) {
-        ref.invalidate(studentSessionsProvider);
-        ref.invalidate(teacherSessionsProvider);
+        ref.invalidate(teacherDashboardProvider);
+        ref.invalidate(teacherPendingRequestsProvider);
+        ref.invalidate(teacherRejectedSessionsProvider);
         context.pop();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء الرفض، حاول مرة أخرى')));
+          SnackBar(content: Text('حدث خطأ: $e')));
       }
     } finally {
       if (mounted) setState(() => _rejecting = false);
@@ -59,7 +59,7 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
 
   String _formatDate(DateTime dt) {
     final days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-    final h = dt.hour > 12 ? dt.hour - 12 : dt.hour;
+    final h = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
     final period = dt.hour >= 12 ? 'م' : 'ص';
     return '${days[dt.weekday % 7]} $h:${dt.minute.toString().padLeft(2, '0')} $period';
   }
@@ -206,7 +206,7 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                               ),
                               alignment: Alignment.center,
                               child: Text(
-                                session.teacherName.isNotEmpty ? session.teacherName[0] : 'ط',
+                                session.studentName.isNotEmpty ? session.studentName[0] : 'ط',
                                 style: const TextStyle(color: AppColors.primary,
                                   fontWeight: FontWeight.w700, fontSize: 19),
                               ),
@@ -215,7 +215,7 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(session.teacherName.isNotEmpty ? session.teacherName : 'طالب',
+                                Text(session.studentName.isNotEmpty ? session.studentName : 'طالب',
                                   style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700,
                                     color: AppColors.textPrimary)),
                                 const Text('طالب',
@@ -239,6 +239,10 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                           children: [
                             _DetailRow(label: 'المادة', value: session.subject),
                             const SizedBox(height: 11),
+                            if (session.studentLevel != null && session.studentLevel!.isNotEmpty) ...[
+                              _DetailRow(label: 'المستوى الدراسي', value: session.studentLevel!),
+                              const SizedBox(height: 11),
+                            ],
                             _DetailRow(label: 'الموعد المطلوب', value: _formatDate(session.scheduledAt)),
                             const SizedBox(height: 11),
                             _DetailRow(label: 'المدة', value: '${session.durationMinutes} دقيقة'),
@@ -358,19 +362,44 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
   }
 
   void _showRejectDialog(BuildContext context) {
+    final reasonCtrl = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('رفض الطلب', style: TextStyle(fontWeight: FontWeight.w700)),
-        content: const Text('هل تريد رفض هذا الطلب؟ سيتم إشعار الطالب.',
-          style: TextStyle(color: AppColors.textSecondary)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('سيتم إشعار الطالب بالرفض.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              maxLines: 2,
+              style: const TextStyle(fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'سبب الرفض (اختياري)',
+                hintStyle: const TextStyle(fontSize: 13, color: AppColors.textHint),
+                filled: true,
+                fillColor: AppColors.surfaceAlt,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.all(11),
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           ElevatedButton(
             onPressed: () {
+              final reason = reasonCtrl.text.trim();
               Navigator.pop(ctx);
-              _reject();
+              _reject(reason.isNotEmpty ? reason : null);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error, foregroundColor: Colors.white),
@@ -378,7 +407,7 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
           ),
         ],
       ),
-    );
+    ).whenComplete(reasonCtrl.dispose);
   }
 }
 

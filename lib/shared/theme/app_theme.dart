@@ -1,55 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
 
-class AppTheme {
-  static TextTheme get _textTheme {
-    return GoogleFonts.ibmPlexSansArabicTextTheme().copyWith(
-      displayLarge: GoogleFonts.ibmPlexSansArabic(
-        fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.textPrimary, letterSpacing: -0.5,
-      ),
-      displayMedium: GoogleFonts.ibmPlexSansArabic(
-        fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
-      ),
-      headlineLarge: GoogleFonts.ibmPlexSansArabic(
-        fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
-      ),
-      headlineMedium: GoogleFonts.ibmPlexSansArabic(
-        fontSize: 19, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
-      ),
-      headlineSmall: GoogleFonts.ibmPlexSansArabic(
-        fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
-      ),
-      titleLarge: GoogleFonts.ibmPlexSansArabic(
-        fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary,
-      ),
-      titleMedium: GoogleFonts.ibmPlexSansArabic(
-        fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary,
-      ),
-      titleSmall: GoogleFonts.ibmPlexSansArabic(
-        fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary,
-      ),
-      bodyLarge: GoogleFonts.ibmPlexSansArabic(
-        fontSize: 15, fontWeight: FontWeight.w400, color: AppColors.textPrimary,
-      ),
-      bodyMedium: GoogleFonts.ibmPlexSansArabic(
-        fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.textSecondary,
-      ),
-      bodySmall: GoogleFonts.ibmPlexSansArabic(
-        fontSize: 12, fontWeight: FontWeight.w400, color: AppColors.textSecondary,
-      ),
-      labelLarge: GoogleFonts.ibmPlexSansArabic(
-        fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white,
-      ),
-      labelMedium: GoogleFonts.ibmPlexSansArabic(
-        fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary,
-      ),
-      labelSmall: GoogleFonts.ibmPlexSansArabic(
-        fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textHint,
-      ),
+// Use bundled font — no network dependency
+const _fontFamily = 'IBMPlexSansArabic';
+
+TextStyle _t({
+  double? size,
+  FontWeight? weight,
+  Color? color,
+  double? letterSpacing,
+}) =>
+    TextStyle(
+      fontFamily: _fontFamily,
+      fontSize: size,
+      fontWeight: weight,
+      color: color,
+      letterSpacing: letterSpacing,
     );
-  }
+
+class AppTheme {
+  static TextTheme get _textTheme => TextTheme(
+        displayLarge:  _t(size: 32, weight: FontWeight.w700, color: AppColors.textPrimary, letterSpacing: -0.5),
+        displayMedium: _t(size: 24, weight: FontWeight.w700, color: AppColors.textPrimary),
+        headlineLarge: _t(size: 22, weight: FontWeight.w700, color: AppColors.textPrimary),
+        headlineMedium:_t(size: 19, weight: FontWeight.w700, color: AppColors.textPrimary),
+        headlineSmall: _t(size: 16, weight: FontWeight.w700, color: AppColors.textPrimary),
+        titleLarge:    _t(size: 15, weight: FontWeight.w600, color: AppColors.textPrimary),
+        titleMedium:   _t(size: 14, weight: FontWeight.w600, color: AppColors.textPrimary),
+        titleSmall:    _t(size: 13, weight: FontWeight.w600, color: AppColors.textPrimary),
+        bodyLarge:     _t(size: 15, weight: FontWeight.w400, color: AppColors.textPrimary),
+        bodyMedium:    _t(size: 14, weight: FontWeight.w400, color: AppColors.textSecondary),
+        bodySmall:     _t(size: 12, weight: FontWeight.w400, color: AppColors.textSecondary),
+        labelLarge:    _t(size: 15, weight: FontWeight.w700, color: Colors.white),
+        labelMedium:   _t(size: 13, weight: FontWeight.w600, color: AppColors.textPrimary),
+        labelSmall:    _t(size: 11, weight: FontWeight.w500, color: AppColors.textHint),
+      );
 
   static ThemeData get light {
     return ThemeData(
@@ -64,6 +50,7 @@ class AppTheme {
         onSurface: AppColors.textPrimary,
         error: AppColors.error,
       ),
+      fontFamily: _fontFamily,
       scaffoldBackgroundColor: AppColors.background,
       textTheme: _textTheme,
       appBarTheme: AppBarTheme(
@@ -71,9 +58,7 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
-        titleTextStyle: GoogleFonts.ibmPlexSansArabic(
-          fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
-        ),
+        titleTextStyle: _t(size: 18, weight: FontWeight.w700, color: AppColors.textPrimary),
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       cardTheme: CardThemeData(
@@ -92,9 +77,7 @@ class AppTheme {
           shadowColor: Colors.transparent,
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: GoogleFonts.ibmPlexSansArabic(
-            fontSize: 15, fontWeight: FontWeight.w700,
-          ),
+          textStyle: _t(size: 15, weight: FontWeight.w700),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -103,9 +86,7 @@ class AppTheme {
           side: const BorderSide(color: AppColors.borderStrong),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: GoogleFonts.ibmPlexSansArabic(
-            fontSize: 14, fontWeight: FontWeight.w700,
-          ),
+          textStyle: _t(size: 14, weight: FontWeight.w700),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -124,9 +105,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
-        hintStyle: GoogleFonts.ibmPlexSansArabic(
-          fontSize: 14, color: AppColors.textHint,
-        ),
+        hintStyle: _t(size: 14, color: AppColors.textHint),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: AppColors.surface,

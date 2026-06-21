@@ -1,115 +1,489 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/sessions_provider.dart';
+import '../../../core/services/supabase_service.dart';
 
-class TeacherSelfProfileScreen extends StatelessWidget {
+class TeacherSelfProfileScreen extends ConsumerStatefulWidget {
   const TeacherSelfProfileScreen({super.key});
+  @override
+  ConsumerState<TeacherSelfProfileScreen> createState() => _TeacherSelfProfileScreenState();
+}
+
+class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScreen> {
+  bool _loggingOut      = false;
+  bool _uploadingAvatar = false;
+  RealtimeChannel? _channel;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeApproval();
+  }
+
+  void _subscribeApproval() {
+    final uid = SupabaseService.userId;
+    if (uid == null) return;
+    _channel = SupabaseService.client
+        .channel('teacher-profile-approval-$uid')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'teacher_profiles',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: uid,
+          ),
+          callback: (_) => ref.invalidate(teacherProfileProvider),
+        )
+        .subscribe();
+  }
+
+  @override
+  void dispose() {
+    _channel?.unsubscribe();
+    super.dispose();
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    final picker = ImagePicker();
+    final file = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 85,
+    );
+    if (file == null || !mounted) return;
+
+    setState(() => _uploadingAvatar = true);
+    try {
+      final uid   = SupabaseService.userId!;
+      final bytes = await File(file.path).readAsBytes();
+      final ext   = file.path.split('.').last.toLowerCase();
+      final contentType = ext == 'png' ? 'image/png' : 'image/jpeg';
+
+      await SupabaseService.client.storage
+          .from('avatars')
+          .uploadBinary(
+            '$uid/avatar.$ext',
+            bytes,
+            fileOptions: FileOptions(contentType: contentType, upsert: true),
+          );
+
+      final publicUrl = SupabaseService.client.storage
+          .from('avatars')
+          .getPublicUrl('$uid/avatar.$ext');
+
+      await SupabaseService.client
+          .from('profiles')
+          .update({'avatar_url': publicUrl})
+          .eq('id', uid);
+
+      ref.invalidate(teacherProfileProvider);
+      ref.invalidate(currentProfileProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('فشل رفع الصورة: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
+    }
+  }
+
+  Future<void> _deleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف الحساب', style: TextStyle(color: AppColors.error)),
+        content: const Text(
+          'هذا الإجراء لا يمكن التراجع عنه.\nسيتم حذف جميع بياناتك بشكل نهائي.',
+          style: TextStyle(height: 1.5),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('حذف', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final input = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final ctrl = TextEditingController();
+        return AlertDialog(
+          title: const Text('تأكيد الحذف النهائي'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('اكتب "احذف حسابي" للتأكيد:',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              const SizedBox(height: 10),
+              TextField(
+                controller: ctrl,
+                textDirection: TextDirection.rtl,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('إلغاء')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, ctrl.text),
+              child: const Text('تأكيد', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        );
+      },
+    );
+    if (input != 'احذف حسابي' || !mounted) return;
+
+    try {
+      await SupabaseService.client.rpc('delete_my_account');
+      await SupabaseService.client.auth.signOut();
+      if (mounted) context.go('/login');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('فشل حذف الحساب: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تسجيل الخروج'),
+        content: const Text('هل أنت متأكد من رغبتك في تسجيل الخروج؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('خروج', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _loggingOut = true);
+    try {
+      await SupabaseService.client.auth.signOut();
+    } finally {
+      if (mounted) {
+        setState(() => _loggingOut = false);
+        context.go('/login');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final profileAsync = ref.watch(teacherProfileProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: ListView(
-        children: [
-          SizedBox(height: MediaQuery.of(context).padding.top + 8),
-          _ProfileHeader(),
-          const SizedBox(height: 20),
-          _StatsRow(),
-          const SizedBox(height: 24),
-          _MenuSection(title: 'الحساب والملف الشخصي', items: [
-            _MenuItem(icon: Icons.person_outline_rounded,  label: 'تعديل الملف الشخصي', onTap: () {}),
-            _MenuItem(icon: Icons.subject_rounded,         label: 'المواد والتخصصات',   onTap: () {}),
-            _MenuItem(icon: Icons.schedule_rounded,        label: 'إدارة الأوقات المتاحة', onTap: () {}),
-            _MenuItem(icon: Icons.star_outline_rounded,    label: 'التقييمات',           onTap: () {}),
-          ]),
-          const SizedBox(height: 16),
-          _MenuSection(title: 'الأرباح والمدفوعات', items: [
-            _MenuItem(icon: Icons.account_balance_wallet_outlined, label: 'بيانات السحب (بنكيلي)', onTap: () {}),
-            _MenuItem(icon: Icons.receipt_long_outlined,           label: 'سجل الأرباح',            onTap: () {}),
-          ]),
-          const SizedBox(height: 16),
-          _MenuSection(title: 'الدعم', items: [
-            _MenuItem(icon: Icons.help_outline_rounded,   label: 'مركز المساعدة', onTap: () {}),
-            _MenuItem(icon: Icons.privacy_tip_outlined,   label: 'سياسة الخصوصية', onTap: () {}),
-            _MenuItem(icon: Icons.gavel_rounded,          label: 'شروط الاستخدام', onTap: () {}),
-          ]),
-          const SizedBox(height: 24),
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: () async => ref.invalidate(teacherProfileProvider),
+        child: profileAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+          error: (_, __) => _buildBody(context, null),
+          data: (profile) => _buildBody(context, profile),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, Map<String, dynamic>? profile) {
+    final profileInner = profile?['profile'] as Map? ?? {};
+    final name       = (profileInner['full_name'] as String?) ?? 'الأستاذ';
+    final avatarUrl  = (profileInner['avatar_url'] as String?);
+    final isActive   = (profileInner['is_active'] as bool?) ?? false;
+    final isApproved = (profile?['is_approved'] as bool?) ?? false;
+    final subjects   = (profile?['subjects'] as List?)?.cast<String>() ?? [];
+    final rating     = (profile?['rating'] as num?)?.toDouble() ?? 0.0;
+    final reviews    = (profile?['review_count'] as int?) ?? 0;
+    final sessions   = (profile?['total_sessions'] as int?) ?? 0;
+    final attendance = (profile?['attendance_rate'] as num?)?.toDouble() ?? 100.0;
+    final initial    = name.isNotEmpty ? name[0] : 'أ';
+    final hasProfile = profile != null;
+
+    return ListView(
+      children: [
+        SizedBox(height: MediaQuery.of(context).padding.top + 8),
+
+        // ── Header ─────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          child: Column(
+            children: [
+              GestureDetector(
+                onTap: _uploadingAvatar ? null : _pickAndUploadAvatar,
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 80, height: 80,
+                      decoration: BoxDecoration(
+                        gradient: avatarUrl == null
+                            ? const LinearGradient(
+                                colors: [Color(0xFF1B6B7A), Color(0xFF11313A)])
+                            : null,
+                        color: avatarUrl != null ? AppColors.surfaceAlt : null,
+                        shape: BoxShape.circle,
+                        image: avatarUrl != null
+                            ? DecorationImage(
+                                image: NetworkImage(avatarUrl),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                      alignment: Alignment.center,
+                      child: _uploadingAvatar
+                          ? const CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2)
+                          : avatarUrl == null
+                              ? Text(initial,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w700))
+                              : null,
+                    ),
+                    Positioned(
+                      bottom: 0, right: 0,
+                      child: Container(
+                        width: 26, height: 26,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(Icons.camera_alt_rounded,
+                            size: 12, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              if (subjects.isNotEmpty)
+                Text(subjects.take(3).join(' · '),
+                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              const SizedBox(height: 10),
+              // Status badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: isApproved ? const Color(0xFFE3F6EF) : const Color(0xFFFFF3E0),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isApproved ? Icons.verified_rounded : Icons.hourglass_empty_rounded,
+                      size: 14,
+                      color: isApproved ? const Color(0xFF1B9E77) : const Color(0xFFF57C00),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      isApproved ? (isActive ? 'أستاذ موثّق · نشط' : 'أستاذ موثّق · غير نشط') : 'في انتظار الاعتماد',
+                      style: TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w600,
+                        color: isApproved ? const Color(0xFF15805F) : const Color(0xFFE65100),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // ── Stats ───────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          child: Row(
+            children: [
+              _StatCard(value: '$sessions',  label: 'جلسة مكتملة'),
+              const SizedBox(width: 10),
+              _StatCard(value: rating > 0 ? rating.toStringAsFixed(1) : '—', label: 'التقييم ($reviews)'),
+              const SizedBox(width: 10),
+              _StatCard(value: '${attendance.toInt()}%', label: 'الحضور'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // ── توثيق الحساب (if not onboarded) ────────────────
+        if (!hasProfile) ...[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 22),
-            child: OutlinedButton(
-              onPressed: () => context.go('/login'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                side: const BorderSide(color: Color(0xFFF6CFCF)),
-                foregroundColor: AppColors.error,
+            child: GestureDetector(
+              onTap: () => context.push('/teacher/onboarding'),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF8E1),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFFFCC02).withValues(alpha: 0.5)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Color(0xFFF57C00), size: 22),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('أكمل توثيق حسابك', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFE65100))),
+                          SizedBox(height: 2),
+                          Text('أضف بياناتك لتبدأ استقبال الطلاب', style: TextStyle(fontSize: 12, color: Color(0xFFF57C00))),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.arrow_back_ios_rounded, size: 14, color: Color(0xFFF57C00)),
+                  ],
+                ),
               ),
-              child: const Text('تسجيل الخروج', style: TextStyle(fontWeight: FontWeight.w700)),
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 16),
         ],
-      ),
-    );
-  }
-}
 
-class _ProfileHeader extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 22),
-      child: Column(
-        children: [
-          Container(
-            width: 80, height: 80,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF1B6B7A), Color(0xFF11313A)]),
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: const Text('م', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w700)),
+        // ── Menus ───────────────────────────────────────────
+        _MenuSection(title: 'الحساب والملف الشخصي', items: [
+          _MenuItem(
+            icon: Icons.badge_outlined,
+            label: hasProfile ? 'تعديل الملف الشخصي' : 'توثيق الحساب',
+            trailing: !hasProfile ? const _WarningBadge() : null,
+            onTap: () => context.push('/teacher/onboarding'),
           ),
-          const SizedBox(height: 12),
-          const Text('د. محمد الأمين', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-          const SizedBox(height: 4),
-          const Text('أستاذ رياضيات وفيزياء', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE3F6EF),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.verified_rounded, size: 14, color: Color(0xFF1B9E77)),
-                SizedBox(width: 4),
-                Text('أستاذ موثّق', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF15805F))),
-              ],
-            ),
+          _MenuItem(
+            icon: Icons.lock_outline_rounded,
+            label: 'تغيير كلمة المرور',
+            onTap: () => context.push('/change-password'),
           ),
-        ],
-      ),
-    );
-  }
-}
+          _MenuItem(
+            icon: Icons.schedule_rounded,
+            label: 'إدارة الأوقات المتاحة',
+            onTap: () => context.push('/teacher/availability'),
+          ),
+          _MenuItem(
+            icon: Icons.notifications_outlined,
+            label: 'الإشعارات',
+            onTap: () => context.go('/teacher/notifications'),
+          ),
+          _MenuItem(
+            icon: Icons.star_outline_rounded,
+            label: 'التقييمات',
+            onTap: () {},
+          ),
+        ]),
+        const SizedBox(height: 16),
 
-class _StatsRow extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 22),
-      child: Row(
-        children: [
-          _StatCard(value: '148',  label: 'جلسة مكتملة'),
-          const SizedBox(width: 10),
-          _StatCard(value: '4.9',  label: 'التقييم'),
-          const SizedBox(width: 10),
-          _StatCard(value: '98%',  label: 'الحضور'),
-        ],
-      ),
+        _MenuSection(title: 'الأرباح والمدفوعات', items: [
+          _MenuItem(
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'سجل الأرباح',
+            onTap: () => context.go('/teacher/earnings'),
+          ),
+        ]),
+        const SizedBox(height: 16),
+
+        _MenuSection(title: 'الدعم', items: [
+          _MenuItem(icon: Icons.help_outline_rounded,  label: 'مركز المساعدة',   onTap: () {}),
+          _MenuItem(icon: Icons.privacy_tip_outlined,  label: 'سياسة الخصوصية', onTap: () {}),
+          _MenuItem(icon: Icons.gavel_rounded,         label: 'شروط الاستخدام',  onTap: () {}),
+        ]),
+        const SizedBox(height: 24),
+
+        // ── Logout ──────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          child: GestureDetector(
+            onTap: _loggingOut ? null : _logout,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: AppColors.statusRejectedBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.statusRejected.withValues(alpha: 0.3)),
+              ),
+              child: _loggingOut
+                  ? const Center(child: SizedBox(width: 20, height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error)))
+                  : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.logout_rounded, color: AppColors.error, size: 18),
+                        SizedBox(width: 8),
+                        Text('تسجيل الخروج',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.error)),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // ── Delete account ──────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          child: GestureDetector(
+            onTap: _deleteAccount,
+            child: Center(
+              child: Text(
+                'حذف الحساب نهائياً',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.error.withValues(alpha: 0.7),
+                  decoration: TextDecoration.underline,
+                  decorationColor: AppColors.error.withValues(alpha: 0.5),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Center(
+          child: Text('سولني · الإصدار 1.0.0',
+            style: TextStyle(fontSize: 11, color: AppColors.textHint)),
+        ),
+        const SizedBox(height: 40),
+      ],
     );
   }
 }
@@ -118,96 +492,91 @@ class _StatCard extends StatelessWidget {
   final String value;
   final String label;
   const _StatCard({required this.value, required this.label});
-
   @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          children: [
-            Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-            const SizedBox(height: 3),
-            Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textHint)),
-          ],
-        ),
+  Widget build(BuildContext context) => Expanded(
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: AppColors.border),
       ),
-    );
-  }
+      child: Column(
+        children: [
+          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          const SizedBox(height: 3),
+          Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textHint), textAlign: TextAlign.center),
+        ],
+      ),
+    ),
+  );
+}
+
+class _WarningBadge extends StatelessWidget {
+  const _WarningBadge();
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(color: const Color(0xFFFFF3E0), borderRadius: BorderRadius.circular(999)),
+    child: const Text('مطلوب', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFF57C00))),
+  );
 }
 
 class _MenuSection extends StatelessWidget {
   final String title;
   final List<_MenuItem> items;
   const _MenuSection({required this.title, required this.items});
-
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 22),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textHint)),
-          const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(
-              children: items.asMap().entries.map((e) {
-                final isLast = e.key == items.length - 1;
-                return _MenuItemTile(item: e.value, showDivider: !isLast);
-              }).toList(),
-            ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 22),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textHint)),
+        const SizedBox(height: 10),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
           ),
-        ],
-      ),
-    );
-  }
+          child: Column(
+            children: items.asMap().entries.map((e) {
+              final isLast = e.key == items.length - 1;
+              return Column(
+                children: [
+                  InkWell(
+                    onTap: e.value.onTap,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      child: Row(
+                        children: [
+                          Icon(e.value.icon, size: 20, color: AppColors.textSecondary),
+                          const SizedBox(width: 12),
+                          Expanded(child: Text(e.value.label,
+                            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary))),
+                          if (e.value.trailing != null) ...[e.value.trailing!, const SizedBox(width: 8)],
+                          const Icon(Icons.arrow_back_ios_rounded, size: 14, color: AppColors.textHint),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (!isLast) const Divider(height: 1, indent: 48, color: AppColors.border),
+                ],
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _MenuItem {
   final IconData icon;
   final String label;
+  final Widget? trailing;
   final VoidCallback onTap;
-  const _MenuItem({required this.icon, required this.label, required this.onTap});
-}
-
-class _MenuItemTile extends StatelessWidget {
-  final _MenuItem item;
-  final bool showDivider;
-  const _MenuItemTile({required this.item, required this.showDivider});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        InkWell(
-          onTap: item.onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                Icon(item.icon, size: 20, color: AppColors.textSecondary),
-                const SizedBox(width: 12),
-                Expanded(child: Text(item.label, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary))),
-                const Icon(Icons.arrow_back_ios_rounded, size: 14, color: AppColors.textHint),
-              ],
-            ),
-          ),
-        ),
-        if (showDivider)
-          const Divider(height: 1, indent: 48, color: AppColors.border),
-      ],
-    );
-  }
+  const _MenuItem({required this.icon, required this.label, required this.onTap, this.trailing});
 }
