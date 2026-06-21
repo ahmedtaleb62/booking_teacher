@@ -45,5 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>نحتاج إلى الوصول إلى مكتبة الصور لرفع صورة إثبات الدفع</string>
+	<key>NSCameraUsageDescription</key>
+	<string>نحتاج إلى الكاميرا لالتقاط صورة إثبات الدفع</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>نحتاج إلى الميكروفون للجلسات الصوتية المباشرة</string>
 </dict>
 </plist>
