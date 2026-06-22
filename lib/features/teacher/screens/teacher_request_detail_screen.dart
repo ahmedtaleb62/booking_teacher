@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/constants/session_states.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
@@ -234,7 +235,7 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                         ),
                         child: Column(
                           children: [
-                            _DetailRow(label: l.teacherSubjectLabel, value: session.subject),
+                            _DetailRow(label: l.teacherSubjectLabel, value: translateSubject(session.subject, Localizations.localeOf(context))),
                             const SizedBox(height: 11),
                             if (session.studentLevel != null && session.studentLevel!.isNotEmpty) ...[
                               _DetailRow(label: l.teacherLevelLabel, value: session.studentLevel!),
@@ -395,48 +396,54 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
     final reasonCtrl = TextEditingController();
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(l.teacherRejectDialogTitle,
-          style: const TextStyle(fontWeight: FontWeight.w700)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l.teacherRejectDialogBody,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: reasonCtrl,
-              maxLines: 2,
-              style: const TextStyle(fontSize: 13),
-              decoration: InputDecoration(
-                hintText: l.teacherRejectReasonHint,
-                hintStyle: const TextStyle(fontSize: 13, color: AppColors.textHint),
-                filled: true,
-                fillColor: AppColors.surfaceAlt,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, set) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(l.teacherRejectDialogTitle,
+            style: const TextStyle(fontWeight: FontWeight.w700)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l.teacherRejectDialogBody,
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: reasonCtrl,
+                maxLines: 2,
+                style: const TextStyle(fontSize: 13),
+                onChanged: (_) => set(() {}),
+                decoration: InputDecoration(
+                  hintText: l.teacherRejectReasonHint,
+                  hintStyle: const TextStyle(fontSize: 13, color: AppColors.textHint),
+                  filled: true,
+                  fillColor: AppColors.surfaceAlt,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.all(11),
+                  helperText: l.teacherRejectReasonRequired,
+                  helperStyle: const TextStyle(fontSize: 11, color: AppColors.textHint),
                 ),
-                contentPadding: const EdgeInsets.all(11),
               ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
+            ElevatedButton(
+              onPressed: reasonCtrl.text.trim().isEmpty ? null : () {
+                final reason = reasonCtrl.text.trim();
+                Navigator.pop(ctx);
+                _reject(reason);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error, foregroundColor: Colors.white,
+                disabledBackgroundColor: AppColors.error.withValues(alpha: 0.4)),
+              child: Text(l.commonReject),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
-          ElevatedButton(
-            onPressed: () {
-              final reason = reasonCtrl.text.trim();
-              Navigator.pop(ctx);
-              _reject(reason.isNotEmpty ? reason : null);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error, foregroundColor: Colors.white),
-            child: Text(l.commonReject),
-          ),
-        ],
       ),
     ).whenComplete(reasonCtrl.dispose);
   }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/subjects.dart';
+import '../../core/extensions/l10n_extension.dart';
 import '../../core/models/teacher.dart';
 
 class TeacherCard extends StatelessWidget {
@@ -57,9 +59,9 @@ class TeacherCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 4),
-                            const Text(
-                              'متصل',
-                              style: TextStyle(
+                            Text(
+                              context.l10n.statusOnline,
+                              style: const TextStyle(
                                 fontSize: 10, fontWeight: FontWeight.w600,
                                 color: AppColors.online,
                               ),
@@ -70,7 +72,7 @@ class TeacherCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    teacher.subject,
+                    translateSubject(teacher.subject, Localizations.localeOf(context)),
                     style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 9),
@@ -87,23 +89,24 @@ class TeacherCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '(${teacher.reviewCount} تقييم)',
+                        context.l10n.teacherRatingCount(teacher.reviewCount),
                         style: const TextStyle(fontSize: 11, color: AppColors.textHint),
                       ),
                       const Spacer(),
                       RichText(
                         text: TextSpan(
+                          style: const TextStyle(fontFamily: 'IBM Plex Sans Arabic'),
                           children: [
                             TextSpan(
-                              text: '${teacher.pricePerHour.toInt()}',
+                              text: '${teacher.pricePerHour.toInt()} ',
                               style: const TextStyle(
                                 fontSize: 13, fontWeight: FontWeight.w700,
                                 color: AppColors.primary,
                               ),
                             ),
-                            const TextSpan(
-                              text: ' أوقية/س',
-                              style: TextStyle(
+                            TextSpan(
+                              text: context.l10n.unitOugiyaPerHour,
+                              style: const TextStyle(
                                 fontSize: 10, color: AppColors.textHint,
                                 fontWeight: FontWeight.w500,
                               ),

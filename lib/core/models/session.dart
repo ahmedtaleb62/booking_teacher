@@ -17,6 +17,7 @@ class Session {
   final String? parentSessionId;
   final String? roomUrl;
   final DateTime? startedAt;
+  final DateTime? studentJoinedAt;
   final DateTime? paymentDeadline;
   final Payment? payment;
   final List<SessionEvent> events;
@@ -40,6 +41,7 @@ class Session {
     this.parentSessionId,
     this.roomUrl,
     this.startedAt,
+    this.studentJoinedAt,
     this.paymentDeadline,
     this.payment,
     required this.events,
@@ -55,7 +57,7 @@ class Session {
 
   bool get isLive => state == SessionState.activeSession;
 
-  Session copyWith({SessionState? state, String? roomUrl, DateTime? paymentDeadline, Payment? payment, List<SessionEvent>? events}) {
+  Session copyWith({SessionState? state, String? roomUrl, DateTime? studentJoinedAt, DateTime? paymentDeadline, Payment? payment, List<SessionEvent>? events}) {
     return Session(
       id: id,
       studentId: studentId,
@@ -72,6 +74,7 @@ class Session {
       parentSessionId: parentSessionId,
       roomUrl: roomUrl ?? this.roomUrl,
       startedAt: startedAt,
+      studentJoinedAt: studentJoinedAt ?? this.studentJoinedAt,
       paymentDeadline: paymentDeadline ?? this.paymentDeadline,
       payment: payment ?? this.payment,
       events: events ?? this.events,
@@ -100,6 +103,7 @@ class Session {
       parentSessionId: json['parent_session_id'] as String?,
       roomUrl: json['room_url'] as String?,
       startedAt: json['started_at'] != null ? DateTime.parse(json['started_at'] as String) : null,
+      studentJoinedAt: json['student_joined_at'] != null ? DateTime.parse(json['student_joined_at'] as String) : null,
       paymentDeadline: json['payment_deadline'] != null ? DateTime.parse(json['payment_deadline'] as String) : null,
       payment: json['payment'] != null
           ? Payment.fromJson(json['payment'] as Map<String, dynamic>)

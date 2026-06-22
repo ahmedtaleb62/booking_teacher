@@ -491,6 +491,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get paymentDeadlineExpired => 'انتهت مهلة الدفع';
 
   @override
+  String get paymentDeadlineExpiredAction =>
+      'انتهت مهلة إتمام الدفع — لا يمكن المتابعة. تواصل مع الدعم إن كان لديك استفسار.';
+
+  @override
   String get liveConnectError => 'تعذّر الاتصال';
 
   @override
@@ -615,7 +619,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get teacherRejectDialogBody => 'سيتم إشعار الطالب بالرفض.';
 
   @override
-  String get teacherRejectReasonHint => 'سبب الرفض (اختياري)';
+  String get teacherRejectReasonHint => 'أدخل سبب الرفض';
+
+  @override
+  String get teacherRejectReasonRequired =>
+      'مطلوب — سيُرسَل للطالب لمساعدته على الفهم';
 
   @override
   String get teacherNetEarning => 'صافي ربحك';
@@ -922,8 +930,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get paymentDeadlineLabel => 'مهلة إكمال الدفع';
 
   @override
+  String get paymentConfirmedTitle => 'جارٍ إعداد الحجز…';
+
+  @override
   String get paymentConfirmedInfo =>
-      'تم تأكيد دفعتك. سيتم تثبيت موعد جلستك قريباً.';
+      'تم تأكيد دفعتك. سيتم تثبيت موعد جلستك تلقائياً خلال لحظات وستصل إشعاراً بذلك.';
 
   @override
   String get actionCancelFinal => 'إلغاء الجلسة نهائياً';
@@ -961,8 +972,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get sessionStudentAbsentInfo => 'تم تسجيل غيابك عن هذه الجلسة.';
 
   @override
+  String get sessionDisputeTitle => 'نزاع مفتوح';
+
+  @override
   String get sessionDisputeInfo =>
-      'فُتح نزاع إداري. الإدارة تراجع الحالة وستتواصل معك.';
+      'فتح الأستاذ نزاعاً على هذه الجلسة. الإدارة تراجع الحالة وستتواصل معك في أقرب وقت.';
+
+  @override
+  String get sessionDisputeNextStep =>
+      'الخطوة التالية: انتظر قرار الإدارة — لا إجراء منك حالياً.';
 
   @override
   String get sessionTeacherNoShowInfo =>
@@ -1322,6 +1340,10 @@ class AppLocalizationsAr extends AppLocalizations {
       'تأكّد الدفع. الجلسة ستُفتح عند موعدها.';
 
   @override
+  String get teacherPaymentConfirmedWaiting =>
+      'تأكّد الدفع — يجاري النظام إعداد الحجز تلقائياً. ستصل إشعاراً بمجرد تأكيد الجلسة.';
+
+  @override
   String get teacherSubConfirmedBooking =>
       'الحجز مؤكّد — جلستك جاهزة. ابدأ عند الموعد.';
 
@@ -1357,6 +1379,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get teacherMarkNoShow => 'تسجيل غياب الطالب';
+
+  @override
+  String get teacherStudentAlreadyJoined =>
+      'تنبيه: الطالب انضم للجلسة مسبقاً. تأكّد من عدم وجود مشكلة تقنية قبل تسجيل الغياب.';
 
   @override
   String get teacherStartSession => 'بدء الجلسة الآن';
@@ -2081,6 +2107,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get unitOugiyaPerHour => 'أوقية/ساعة';
+
+  @override
+  String get statusOnline => 'متصل';
 
   @override
   String get timeAmAbbrev => 'ص';

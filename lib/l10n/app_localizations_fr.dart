@@ -503,6 +503,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get paymentDeadlineExpired => 'Délai de paiement expiré';
 
   @override
+  String get paymentDeadlineExpiredAction =>
+      'Le délai de paiement est expiré — impossible de continuer. Contactez le support si vous avez des questions.';
+
+  @override
   String get liveConnectError => 'Connexion impossible';
 
   @override
@@ -630,7 +634,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get teacherRejectDialogBody => 'L\'étudiant sera notifié du refus.';
 
   @override
-  String get teacherRejectReasonHint => 'Raison du refus (optionnel)';
+  String get teacherRejectReasonHint => 'Saisissez la raison du refus';
+
+  @override
+  String get teacherRejectReasonRequired =>
+      'Obligatoire — sera envoyé à l\'étudiant pour l\'aider à comprendre';
 
   @override
   String get teacherNetEarning => 'Votre gain net';
@@ -944,8 +952,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get paymentDeadlineLabel => 'Délai de paiement';
 
   @override
+  String get paymentConfirmedTitle => 'Préparation de la réservation…';
+
+  @override
   String get paymentConfirmedInfo =>
-      'Paiement confirmé. Votre session sera bientôt programmée.';
+      'Paiement confirmé. Votre session sera automatiquement programmée dans quelques instants et vous recevrez une notification.';
 
   @override
   String get actionCancelFinal => 'Annuler définitivement la session';
@@ -985,8 +996,15 @@ class AppLocalizationsFr extends AppLocalizations {
       'Votre absence à cette session a été enregistrée.';
 
   @override
+  String get sessionDisputeTitle => 'Litige ouvert';
+
+  @override
   String get sessionDisputeInfo =>
-      'Un litige a été ouvert. L\'administration examine la situation et vous contactera.';
+      'L\'enseignant a ouvert un litige sur cette session. L\'administration examine la situation et vous contactera dans les plus brefs délais.';
+
+  @override
+  String get sessionDisputeNextStep =>
+      'Prochaine étape : attendez la décision de l\'administration — aucune action requise de votre part.';
 
   @override
   String get sessionTeacherNoShowInfo =>
@@ -1349,6 +1367,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Paiement confirmé. La session s\'ouvrira à l\'heure prévue.';
 
   @override
+  String get teacherPaymentConfirmedWaiting =>
+      'Paiement confirmé — le système prépare la réservation automatiquement. Vous recevrez une notification dès que la session est confirmée.';
+
+  @override
   String get teacherSubConfirmedBooking =>
       'Réservation confirmée — votre session est prête.';
 
@@ -1386,6 +1408,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get teacherMarkNoShow => 'Enregistrer l\'absence de l\'étudiant';
+
+  @override
+  String get teacherStudentAlreadyJoined =>
+      'Attention : l\'étudiant a déjà rejoint la session. Vérifiez qu\'il ne s\'agit pas d\'un problème technique avant d\'enregistrer l\'absence.';
 
   @override
   String get teacherStartSession => 'Démarrer la session';
@@ -2130,6 +2156,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get unitOugiyaPerHour => 'MRU/h';
+
+  @override
+  String get statusOnline => 'En ligne';
 
   @override
   String get timeAmAbbrev => 'am';

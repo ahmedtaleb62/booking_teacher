@@ -181,6 +181,7 @@
   "paymentErrNoProof": "ارفع صورة إثبات الدفع أولاً",
   "paymentRejectedBanner": "رُفض إثبات الدفع — أعد رفع صورة واضحة للتحويل",
   "paymentDeadlineExpired": "انتهت مهلة الدفع",
+  "paymentDeadlineExpiredAction": "انتهت مهلة إتمام الدفع — لا يمكن المتابعة. تواصل مع الدعم إن كان لديك استفسار.",
 
   "liveConnectError": "تعذّر الاتصال",
   "liveWaitingTeacher": "في انتظار الأستاذ لبدء الجلسة…",
@@ -227,7 +228,8 @@
   "teacherApproveBtn": "قبول الطلب",
   "teacherRejectDialogTitle": "رفض الطلب",
   "teacherRejectDialogBody": "سيتم إشعار الطالب بالرفض.",
-  "teacherRejectReasonHint": "سبب الرفض (اختياري)",
+  "teacherRejectReasonHint": "أدخل سبب الرفض",
+  "teacherRejectReasonRequired": "مطلوب — سيُرسَل للطالب لمساعدته على الفهم",
   "teacherNetEarning": "صافي ربحك",
   "teacherCommissionNote": "من {total} − عمولة 15%",
   "@teacherCommissionNote": {
@@ -341,7 +343,8 @@
   "paymentTimeLabel": "الوقت المتبقي: {time}",
   "@paymentTimeLabel": { "placeholders": { "time": { "type": "String" } } },
   "paymentDeadlineLabel": "مهلة إكمال الدفع",
-  "paymentConfirmedInfo": "تم تأكيد دفعتك. سيتم تثبيت موعد جلستك قريباً.",
+  "paymentConfirmedTitle": "جارٍ إعداد الحجز…",
+  "paymentConfirmedInfo": "تم تأكيد دفعتك. سيتم تثبيت موعد جلستك تلقائياً خلال لحظات وستصل إشعاراً بذلك.",
 
   "actionCancelFinal": "إلغاء الجلسة نهائياً",
   "dialogCancelConfirmText2": "هل أنت متأكد؟ سيتم إلغاء الطلب نهائياً.",
@@ -355,7 +358,9 @@
   "sessionCancelledInfo": "تم إلغاء هذه الجلسة.",
   "sessionNewSession": "حجز جلسة جديدة",
   "sessionStudentAbsentInfo": "تم تسجيل غيابك عن هذه الجلسة.",
-  "sessionDisputeInfo": "فُتح نزاع إداري. الإدارة تراجع الحالة وستتواصل معك.",
+  "sessionDisputeTitle": "نزاع مفتوح",
+  "sessionDisputeInfo": "فتح الأستاذ نزاعاً على هذه الجلسة. الإدارة تراجع الحالة وستتواصل معك في أقرب وقت.",
+  "sessionDisputeNextStep": "الخطوة التالية: انتظر قرار الإدارة — لا إجراء منك حالياً.",
   "sessionTeacherNoShowInfo": "تم رصد غياب الأستاذ. يمكنك إعادة الجدولة بنفس الدفعة.",
   "sessionRescheduledSuccess": "تمت إعادة الجدولة بنجاح",
   "sessionStartDate": "تبدأ الجلسة {date}",
@@ -493,6 +498,7 @@
   "teacherSubAwaitingPayment": "في انتظار أن يُكمل الطالب الدفع.",
   "teacherSubPaymentSubmitted": "الإدارة تراجع إثبات الدفع. لا إجراء منك.",
   "teacherSubPaymentConfirmed": "تأكّد الدفع. الجلسة ستُفتح عند موعدها.",
+  "teacherPaymentConfirmedWaiting": "تأكّد الدفع — يجاري النظام إعداد الحجز تلقائياً. ستصل إشعاراً بمجرد تأكيد الجلسة.",
   "teacherSubConfirmedBooking": "الحجز مؤكّد — جلستك جاهزة. ابدأ عند الموعد.",
   "teacherSubActiveSession": "الجلسة جارية الآن — ادخل للانضمام.",
   "teacherSubCompleted": "اكتملت الجلسة. تحقق من الأرباح.",
@@ -507,6 +513,7 @@
 
   "sessionAmountLabel": "المبلغ",
   "teacherMarkNoShow": "تسجيل غياب الطالب",
+  "teacherStudentAlreadyJoined": "تنبيه: الطالب انضم للجلسة مسبقاً. تأكّد من عدم وجود مشكلة تقنية قبل تسجيل الغياب.",
   "teacherStartSession": "بدء الجلسة الآن",
   "teacherCantAttend": "لا أستطيع الحضور — فتح نزاع",
   "teacherOpenDispute": "فتح نزاع",
@@ -764,6 +771,7 @@
   "unitMinAbbrev": "د",
   "unitMinFull": "دقيقة",
   "unitOugiyaPerHour": "أوقية/ساعة",
+  "statusOnline": "متصل",
   "timeAmAbbrev": "ص",
   "timePmAbbrev": "م",
 

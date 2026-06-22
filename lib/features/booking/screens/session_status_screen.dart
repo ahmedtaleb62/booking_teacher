@@ -503,6 +503,15 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
     }
 
     if (s.state == SessionState.awaitingPayment || s.state == SessionState.teacherApproved) {
+      final deadlineExpired = s.paymentDeadline != null && _remaining == Duration.zero;
+      if (deadlineExpired) {
+        return _buildInfoBanner(
+          icon: Icons.timer_off_rounded,
+          message: l.paymentDeadlineExpiredAction,
+          color: const Color(0xFF9CA3AF),
+          bgColor: const Color(0xFFF3F4F6),
+        );
+      }
       return AppButton(
         label: l.actionCompletePayment,
         onTap: () => context.push('/payment/${s.id}'),
@@ -537,11 +546,33 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
     }
 
     if (s.state == SessionState.paymentConfirmed) {
-      return _buildInfoBanner(
-        icon: Icons.hourglass_top_rounded,
-        message: l.paymentConfirmedInfo,
-        color: AppColors.statusConfirmed,
-        bgColor: AppColors.statusConfirmedBg,
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.statusConfirmedBg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.statusConfirmed.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const SizedBox(
+                  width: 18, height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.statusConfirmed),
+                ),
+                const SizedBox(width: 10),
+                Text(l.paymentConfirmedTitle,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
+                    color: AppColors.statusConfirmedText)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(l.paymentConfirmedInfo,
+              style: const TextStyle(fontSize: 12.5, color: AppColors.statusConfirmedText, height: 1.5)),
+          ],
+        ),
       );
     }
 
@@ -585,11 +616,33 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
     }
 
     if (s.state == SessionState.dispute) {
-      return _buildInfoBanner(
-        icon: Icons.policy_outlined,
-        message: l.sessionDisputeInfo,
-        color: AppColors.error,
-        bgColor: const Color(0xFFFDECEC),
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFDECEC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFFCA5A5)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.policy_outlined, color: AppColors.error, size: 18),
+                const SizedBox(width: 8),
+                Text(l.sessionDisputeTitle,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.error)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(l.sessionDisputeInfo,
+              style: const TextStyle(fontSize: 12.5, color: Color(0xFF7F1D1D), height: 1.5)),
+            const SizedBox(height: 10),
+            Text(l.sessionDisputeNextStep,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF9B1C1C), height: 1.5,
+                fontWeight: FontWeight.w600)),
+          ],
+        ),
       );
     }
 

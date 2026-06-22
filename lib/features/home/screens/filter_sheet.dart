@@ -115,7 +115,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                     children: _subjects.map((s) {
                       final sel = _subject == s;
                       return _chip(
-                        label: s,
+                        label: translateSubject(s, Localizations.localeOf(context)),
                         selected: sel,
                         onTap: () => setState(
                             () => _subject = sel ? null : s),

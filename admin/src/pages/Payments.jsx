@@ -35,7 +35,7 @@ export default function Payments({ adminId }) {
     setLoading(true)
     const [payRes, subPayRes] = await Promise.all([
       supabase.from('payments')
-        .select('*, session:session_id(id,subject,student_id,teacher_id), student:student_id(full_name)')
+        .select('*, session:session_id(id,subject,student_id,teacher_id,scheduled_at,payment_deadline,state), student:student_id(full_name)')
         .order('created_at', { ascending: false }),
       supabase.from('subscriptions')
         .select('*, student:student_id(full_name), course:course_id(title, teacher_id), package:package_id(title)')
@@ -323,13 +323,33 @@ export default function Payments({ adminId }) {
                   <div><b>الخطة:</b> شهري (شهر واحد)</div>
                 </>
               )}
-              {modal.type === 'session' && (
-                <>
-                  <div><b>الطالب:</b> {modal.row.student?.full_name || '—'}</div>
-                  <div><b>المادة:</b> {modal.row.session?.subject || '—'}</div>
-                  <div><b>الطريقة:</b> {modal.row.method || '—'}</div>
-                </>
-              )}
+              {modal.type === 'session' && (() => {
+                const session = modal.row.session
+                const deadline = session?.payment_deadline ? new Date(session.payment_deadline) : null
+                const scheduledAt = session?.scheduled_at ? new Date(session.scheduled_at) : null
+                const deadlineExpired = deadline && deadline < new Date()
+                return (
+                  <>
+                    <div><b>الطالب:</b> {modal.row.student?.full_name || '—'}</div>
+                    <div><b>المادة:</b> {session?.subject || '—'}</div>
+                    <div><b>الطريقة:</b> {modal.row.method || '—'}</div>
+                    {scheduledAt && (
+                      <div><b>موعد الجلسة:</b> {scheduledAt.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}</div>
+                    )}
+                    {deadline && (
+                      <div style={{ color: deadlineExpired ? '#DC2626' : '#D97706', fontWeight: 600 }}>
+                        <b>مهلة الدفع:</b> {deadline.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
+                        {deadlineExpired ? ' ⚠ منتهية' : ''}
+                      </div>
+                    )}
+                    {deadlineExpired && (
+                      <div style={{ background: '#FEE2E2', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: '#991B1B', marginTop: 4 }}>
+                        ⚠ انتهت مهلة الدفع — تأكّد قبل الموافقة أن الجلسة لا تزال صالحة.
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
               <div><b>المبلغ الكلي:</b> {modal.row.amount?.toLocaleString('ar')} أوقية</div>
               <div><b>التاريخ:</b> {modal.row.created_at?.slice(0, 10)}</div>
             </div>

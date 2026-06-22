@@ -253,6 +253,11 @@ class SessionService {
   }) async {
     final original = await getSession(parentSessionId);
 
+    const allowedStates = {SessionState.teacherNoShow, SessionState.completed};
+    if (!allowedStates.contains(original.state)) {
+      throw Exception('لا يمكن إعادة الجدولة إلا بعد غياب الأستاذ أو اكتمال الجلسة');
+    }
+
     final isAfterTeacherNoShow = original.state == SessionState.teacherNoShow;
     final newState = isAfterTeacherNoShow
         ? SessionState.confirmedBooking.englishKey

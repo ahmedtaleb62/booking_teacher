@@ -332,7 +332,7 @@ class _TeachersTab extends ConsumerWidget {
                       color: selected ? AppColors.primary : AppColors.borderStrong),
                 ),
                 child: Text(
-                  isAll ? l.homeAllSubjects : s,
+                  isAll ? l.homeAllSubjects : translateSubject(s, Localizations.localeOf(context)),
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -464,7 +464,7 @@ class _CoursesTab extends ConsumerWidget {
                       color: selected ? AppColors.primary : AppColors.borderStrong),
                 ),
                 child: Text(
-                  isAll ? l.homeAllSubjects : s,
+                  isAll ? l.homeAllSubjects : translateSubject(s, Localizations.localeOf(context)),
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,

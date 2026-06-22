@@ -1040,6 +1040,12 @@ abstract class AppLocalizations {
   /// **'انتهت مهلة الدفع'**
   String get paymentDeadlineExpired;
 
+  /// No description provided for @paymentDeadlineExpiredAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'انتهت مهلة إتمام الدفع — لا يمكن المتابعة. تواصل مع الدعم إن كان لديك استفسار.'**
+  String get paymentDeadlineExpiredAction;
+
   /// No description provided for @liveConnectError.
   ///
   /// In ar, this message translates to:
@@ -1289,8 +1295,14 @@ abstract class AppLocalizations {
   /// No description provided for @teacherRejectReasonHint.
   ///
   /// In ar, this message translates to:
-  /// **'سبب الرفض (اختياري)'**
+  /// **'أدخل سبب الرفض'**
   String get teacherRejectReasonHint;
+
+  /// No description provided for @teacherRejectReasonRequired.
+  ///
+  /// In ar, this message translates to:
+  /// **'مطلوب — سيُرسَل للطالب لمساعدته على الفهم'**
+  String get teacherRejectReasonRequired;
 
   /// No description provided for @teacherNetEarning.
   ///
@@ -1874,10 +1886,16 @@ abstract class AppLocalizations {
   /// **'مهلة إكمال الدفع'**
   String get paymentDeadlineLabel;
 
+  /// No description provided for @paymentConfirmedTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'جارٍ إعداد الحجز…'**
+  String get paymentConfirmedTitle;
+
   /// No description provided for @paymentConfirmedInfo.
   ///
   /// In ar, this message translates to:
-  /// **'تم تأكيد دفعتك. سيتم تثبيت موعد جلستك قريباً.'**
+  /// **'تم تأكيد دفعتك. سيتم تثبيت موعد جلستك تلقائياً خلال لحظات وستصل إشعاراً بذلك.'**
   String get paymentConfirmedInfo;
 
   /// No description provided for @actionCancelFinal.
@@ -1946,11 +1964,23 @@ abstract class AppLocalizations {
   /// **'تم تسجيل غيابك عن هذه الجلسة.'**
   String get sessionStudentAbsentInfo;
 
+  /// No description provided for @sessionDisputeTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'نزاع مفتوح'**
+  String get sessionDisputeTitle;
+
   /// No description provided for @sessionDisputeInfo.
   ///
   /// In ar, this message translates to:
-  /// **'فُتح نزاع إداري. الإدارة تراجع الحالة وستتواصل معك.'**
+  /// **'فتح الأستاذ نزاعاً على هذه الجلسة. الإدارة تراجع الحالة وستتواصل معك في أقرب وقت.'**
   String get sessionDisputeInfo;
+
+  /// No description provided for @sessionDisputeNextStep.
+  ///
+  /// In ar, this message translates to:
+  /// **'الخطوة التالية: انتظر قرار الإدارة — لا إجراء منك حالياً.'**
+  String get sessionDisputeNextStep;
 
   /// No description provided for @sessionTeacherNoShowInfo.
   ///
@@ -2582,6 +2612,12 @@ abstract class AppLocalizations {
   /// **'تأكّد الدفع. الجلسة ستُفتح عند موعدها.'**
   String get teacherSubPaymentConfirmed;
 
+  /// No description provided for @teacherPaymentConfirmedWaiting.
+  ///
+  /// In ar, this message translates to:
+  /// **'تأكّد الدفع — يجاري النظام إعداد الحجز تلقائياً. ستصل إشعاراً بمجرد تأكيد الجلسة.'**
+  String get teacherPaymentConfirmedWaiting;
+
   /// No description provided for @teacherSubConfirmedBooking.
   ///
   /// In ar, this message translates to:
@@ -2653,6 +2689,12 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'تسجيل غياب الطالب'**
   String get teacherMarkNoShow;
+
+  /// No description provided for @teacherStudentAlreadyJoined.
+  ///
+  /// In ar, this message translates to:
+  /// **'تنبيه: الطالب انضم للجلسة مسبقاً. تأكّد من عدم وجود مشكلة تقنية قبل تسجيل الغياب.'**
+  String get teacherStudentAlreadyJoined;
 
   /// No description provided for @teacherStartSession.
   ///
@@ -3985,6 +4027,12 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'أوقية/ساعة'**
   String get unitOugiyaPerHour;
+
+  /// No description provided for @statusOnline.
+  ///
+  /// In ar, this message translates to:
+  /// **'متصل'**
+  String get statusOnline;
 
   /// No description provided for @timeAmAbbrev.
   ///

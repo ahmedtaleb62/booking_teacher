@@ -26,7 +26,33 @@ class _SubscriptionPendingScreenState
   @override
   void initState() {
     super.initState();
+    _checkCurrentStatus();
     _subscribeToChanges();
+  }
+
+  Future<void> _checkCurrentStatus() async {
+    try {
+      final row = await SupabaseService.client
+          .from('subscriptions')
+          .select('status, reject_reason')
+          .eq('id', widget.subscriptionId)
+          .maybeSingle();
+      if (!mounted || row == null) return;
+      final status = row['status'] as String?;
+      if (status == 'active') {
+        ref.invalidate(mySubscriptionsProvider);
+        setState(() => _activated = true);
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) context.go('/my-courses');
+        });
+      } else if (status == 'rejected') {
+        ref.invalidate(mySubscriptionsProvider);
+        setState(() {
+          _rejected = true;
+          _rejectReason = row['reject_reason'] as String?;
+        });
+      }
+    } catch (_) {}
   }
 
   void _subscribeToChanges() {

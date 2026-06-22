@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/session.dart';
 import '../../../core/constants/session_states.dart';
@@ -345,7 +346,7 @@ class _SummaryCard extends StatelessWidget {
         children: [
           _Row(label: l.teacherStudentLabel, value: s.studentName.isNotEmpty ? s.studentName : l.authStudent),
           const Divider(height: 18),
-          _Row(label: l.teacherSubjectLabel,  value: s.subject),
+          _Row(label: l.teacherSubjectLabel,  value: translateSubject(s.subject, Localizations.localeOf(context))),
           const SizedBox(height: 10),
           _Row(label: l.sessionDate,          value: '${_fmtDate(s.scheduledAt, l)} · ${l.dashMinutesShort(s.durationMinutes)}'),
           const SizedBox(height: 10),
@@ -509,20 +510,47 @@ class _BottomActionState extends State<_BottomAction> {
 
       Widget mainBtn;
       if (noShowWindowPassed && s.state == SessionState.confirmedBooking) {
-        mainBtn = SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () => context.push('/teacher/no-show/${s.id}'),
-            icon: const Icon(Icons.person_off_rounded, size: 16),
-            label: Text(l.teacherMarkNoShow,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 15),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
-              foregroundColor: AppColors.error,
+        final studentJoined = s.studentJoinedAt != null;
+        mainBtn = Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (studentJoined)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFBBF24)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(l.teacherStudentAlreadyJoined,
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF92400E), height: 1.4)),
+                    ),
+                  ],
+                ),
+              ),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => context.push('/teacher/no-show/${s.id}'),
+                icon: const Icon(Icons.person_off_rounded, size: 16),
+                label: Text(l.teacherMarkNoShow,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
+                  foregroundColor: AppColors.error,
+                ),
+              ),
             ),
-          ),
+          ],
         );
       } else {
         mainBtn = SizedBox(
@@ -591,27 +619,57 @@ class _BottomActionState extends State<_BottomAction> {
       ));
     }
 
-    // ── PAYMENT_CONFIRMED: can open dispute but not cancel ────
+    // ── PAYMENT_CONFIRMED: preparing booking automatically ────
     if (s.state == SessionState.paymentConfirmed) {
-      return _wrap(context, SizedBox(
-        width: double.infinity,
-        child: OutlinedButton.icon(
-          onPressed: _cancelling ? null : () => _cancelOrDispute(true),
-          icon: _cancelling
-              ? const SizedBox(width: 16, height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
-              : const Icon(Icons.warning_amber_rounded, size: 16),
-          label: Text(
-            _cancelling ? l.teacherDisputingMsg : l.teacherCantAttend,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+      return _wrap(context, Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFD1FAE5),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFF6EE7B7)),
+            ),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 18, height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF065F46)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l.teacherPaymentConfirmedWaiting,
+                    style: const TextStyle(fontSize: 12.5, color: Color(0xFF065F46), height: 1.5),
+                  ),
+                ),
+              ],
+            ),
           ),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 15),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
-            foregroundColor: AppColors.error,
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _cancelling ? null : () => _cancelOrDispute(true),
+              icon: _cancelling
+                  ? const SizedBox(width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
+                  : const Icon(Icons.warning_amber_rounded, size: 16),
+              label: Text(
+                _cancelling ? l.teacherDisputingMsg : l.teacherCantAttend,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
+                foregroundColor: AppColors.error,
+              ),
+            ),
           ),
-        ),
+        ],
       ));
     }
 
