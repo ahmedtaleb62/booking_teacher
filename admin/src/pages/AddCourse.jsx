@@ -57,20 +57,27 @@ function QuizBuilder({ questions, onChange }) {
 }
 
 /* ── Drop Zone ────────────────────────────────────── */
-function DropZone({ accept, icon, hint, file, onChange }) {
+function DropZone({ accept, icon, hint, file, existingUrl, onChange }) {
   const [drag, setDrag] = useState(false)
   const ref = useRef()
+  const hasExisting = !file && !!existingUrl
+  const existingName = existingUrl ? decodeURIComponent(existingUrl.split('/').pop().split('?')[0]) : ''
+  const active = file || hasExisting
   return (
     <div
       onDragOver={e=>{e.preventDefault();setDrag(true)}}
       onDragLeave={()=>setDrag(false)}
       onDrop={e=>{e.preventDefault();setDrag(false);const f=e.dataTransfer.files?.[0];if(f)onChange(f)}}
       onClick={()=>ref.current?.click()}
-      style={{border:'2px dashed '+(drag?'var(--primary)':file?'#1B9E77':'#C9D3DC'),borderRadius:11,padding:'14px 16px',display:'flex',alignItems:'center',gap:12,cursor:'pointer',background:drag?'var(--primary-light)':file?'#F0FBF7':'#FAFBFC',transition:'all .15s'}}>
-      <span style={{fontSize:26,flexShrink:0}}>{file?'✅':icon}</span>
+      style={{border:'2px dashed '+(drag?'var(--primary)':active?'#1B9E77':'#C9D3DC'),borderRadius:11,padding:'14px 16px',display:'flex',alignItems:'center',gap:12,cursor:'pointer',background:drag?'var(--primary-light)':active?'#F0FBF7':'#FAFBFC',transition:'all .15s'}}>
+      <span style={{fontSize:26,flexShrink:0}}>{active?'✅':icon}</span>
       <div style={{flex:1,minWidth:0}}>
-        <div style={{fontSize:12.5,fontWeight:700,color:file?'#15805F':'var(--text2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{file?file.name:'اختر أو اسحب ملفاً هنا'}</div>
-        <div style={{fontSize:11,color:'var(--text3)',marginTop:2}}>{hint}</div>
+        <div style={{fontSize:12.5,fontWeight:700,color:active?'#15805F':'var(--text2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+          {file ? file.name : hasExisting ? existingName : 'اختر أو اسحب ملفاً هنا'}
+        </div>
+        <div style={{fontSize:11,color:active?'#1B9E77':'var(--text3)',marginTop:2}}>
+          {hasExisting ? 'ملف محفوظ — انقر لاستبداله' : hint}
+        </div>
       </div>
       {file && <button onClick={e=>{e.stopPropagation();onChange(null)}} style={{background:'none',border:'none',cursor:'pointer',color:'#C0C9D2',fontSize:16}}>✕</button>}
       <input ref={ref} type="file" accept={accept} style={{display:'none'}} onChange={e=>onChange(e.target.files?.[0]||null)} />
@@ -83,122 +90,74 @@ const LTYPE_COLORS = { video:'#1B6B7A', file:'#7B61FF', exercise:'#C77A1A', summ
 const LTYPE_BG    = { video:'#E7F1F2', file:'#F0EDFF', exercise:'#FEF3E2', summary:'#E3F6EF' }
 
 function LessonItem({ lesson, ci, li, onUpdate, onDelete }) {
-  const [open, setOpen]           = useState(true)
-  const [editTitle, setEditTitle] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
-  const titleRef = useRef()
-  useEffect(()=>{ if(editTitle && titleRef.current) titleRef.current.focus() },[editTitle])
-  const set   = f => onUpdate(ci, li, {...lesson,...f})
-  const ltype = LTYPES.find(t=>t.id===lesson.type) || LTYPES[0]
-  const col   = LTYPE_COLORS[lesson.type] || '#555'
-  const bg    = LTYPE_BG[lesson.type]    || '#F5F5F5'
+  const set = f => onUpdate(ci, li, {...lesson,...f})
+  const col = LTYPE_COLORS[lesson.type] || '#555'
+  const bg  = LTYPE_BG[lesson.type]    || '#F5F5F5'
 
   return (
     <div style={{borderRadius:12,overflow:'hidden',background:'#fff',border:'1.5px solid #E4EBF0',boxShadow:'0 1px 4px rgba(0,0,0,.04)'}}>
-      {/* ── Lesson header ── */}
-      <div style={{display:'flex',alignItems:'center',gap:10,padding:'11px 14px',background:'#F8FAFB',borderBottom:open?'1.5px solid #EDF1F4':'none'}}>
-        {/* type badge */}
-        <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 10px',borderRadius:20,background:bg,color:col,fontSize:11.5,fontWeight:700,flexShrink:0,whiteSpace:'nowrap'}}>
-          {ltype.icon} {ltype.label}
-        </span>
-        {/* title */}
-        {editTitle
-          ? <input ref={titleRef} className="field-input" style={{flex:1,fontSize:13,fontWeight:600,padding:'5px 10px'}}
-              value={lesson.title} placeholder="عنوان الدرس…"
-              onChange={e=>set({title:e.target.value})}
-              onBlur={()=>setEditTitle(false)}
-              onKeyDown={e=>e.key==='Enter'&&setEditTitle(false)} />
-          : <span onClick={()=>setEditTitle(true)} style={{flex:1,fontSize:13,fontWeight:600,color:lesson.title?'#1A2B33':'#A0B4BE',cursor:'text'}}>
-              {lesson.title||'اكتب عنوان الدرس هنا…'}
-            </span>
-        }
-        {/* duration (minutes) — or pages for file type */}
+      {/* ─ Header: always-visible editable row ─ */}
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 12px',background:'#F8FAFB',borderBottom:collapsed?'none':'1.5px solid #EDF1F4',flexWrap:'wrap'}}>
+        {/* Title — always an input */}
+        <input
+          className="field-input"
+          value={lesson.title}
+          placeholder="عنوان الدرس…"
+          onChange={e=>set({title:e.target.value})}
+          style={{flex:'1 1 200px',fontSize:13,fontWeight:600,padding:'6px 10px',minWidth:0}}
+        />
+        {/* Duration / pages */}
         <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
           <input
             type="number" min="0" placeholder="0"
-            value={lesson.type === 'file' ? (lesson.pages||'') : (lesson.duration||'')}
-            onChange={e => lesson.type === 'file'
-              ? set({pages: e.target.value})
-              : set({duration: e.target.value})}
-            style={{width:52,padding:'5px 7px',borderRadius:8,border:'1.5px solid #D6DFE6',fontSize:12,fontWeight:700,textAlign:'center',fontFamily:'inherit',color:'#1A2B33'}}
+            value={lesson.type==='file'?(lesson.pages||''):(lesson.duration||'')}
+            onChange={e=>lesson.type==='file'?set({pages:e.target.value}):set({duration:e.target.value})}
+            style={{width:50,padding:'6px 7px',borderRadius:8,border:'1.5px solid #D6DFE6',fontSize:12,fontWeight:700,textAlign:'center',fontFamily:'inherit'}}
           />
-          <span style={{fontSize:11,color:'#8A96A3',flexShrink:0}}>
-            {lesson.type === 'file' ? 'ص' : 'د'}
-          </span>
+          <span style={{fontSize:11,color:'#8A96A3'}}>{lesson.type==='file'?'ص':'د'}</span>
         </div>
-        {/* free badge */}
-        <label style={{display:'flex',alignItems:'center',gap:5,cursor:'pointer',flexShrink:0,userSelect:'none',
-          padding:'4px 10px',borderRadius:20,border:'1.5px solid '+(lesson.isPreview?'#1B9E77':'#DDE3E8'),
-          background:lesson.isPreview?'#E3F6EF':'#fff',color:lesson.isPreview?'#15805F':'#8A96A3',fontSize:11.5,fontWeight:700}}>
+        {/* Preview toggle */}
+        <label style={{display:'flex',alignItems:'center',gap:5,cursor:'pointer',userSelect:'none',padding:'5px 10px',borderRadius:20,border:'1.5px solid '+(lesson.isPreview?'#1B9E77':'#DDE3E8'),background:lesson.isPreview?'#E3F6EF':'#fff',color:lesson.isPreview?'#15805F':'#8A96A3',fontSize:11.5,fontWeight:700,flexShrink:0}}>
           <input type="checkbox" checked={lesson.isPreview} onChange={e=>set({isPreview:e.target.checked})} style={{display:'none'}} />
-          {lesson.isPreview?'✓ مجاني':'مجاني؟'}
+          {lesson.isPreview?'✓ مجاني':'مجاني'}
         </label>
-        {/* actions */}
-        <button onClick={()=>setEditTitle(true)}
-          style={{display:'flex',alignItems:'center',gap:4,padding:'5px 11px',borderRadius:8,border:'1.5px solid #D6DFE6',background:'#fff',color:'#516170',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'inherit',flexShrink:0}}>
-          ✏️ تعديل
-        </button>
-        <button onClick={()=>setOpen(o=>!o)}
-          style={{width:32,height:32,borderRadius:8,border:'1.5px solid #D6DFE6',background:'#fff',color:'#8A96A3',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-          {open?'▲':'▼'}
-        </button>
+        {/* Collapse */}
+        <button onClick={()=>setCollapsed(c=>!c)} title={collapsed?'عرض خيارات الدرس':'طي'} style={{width:30,height:30,borderRadius:8,border:'1.5px solid #D6DFE6',background:'#fff',color:'#8A96A3',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'transform .15s',transform:collapsed?'rotate(180deg)':'none'}}>▲</button>
+        {/* Delete */}
         {confirmDel
           ? <div style={{display:'flex',gap:5,flexShrink:0}}>
-              <button onClick={()=>onDelete(ci,li)}
-                style={{padding:'5px 12px',borderRadius:8,border:'none',background:'#DC2626',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>
-                تأكيد الحذف
-              </button>
-              <button onClick={()=>setConfirmDel(false)}
-                style={{padding:'5px 12px',borderRadius:8,border:'1.5px solid #DDE3E8',background:'#fff',color:'#516170',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>
-                إلغاء
-              </button>
+              <button onClick={()=>onDelete(ci,li)} style={{padding:'5px 11px',borderRadius:8,border:'none',background:'#DC2626',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>تأكيد</button>
+              <button onClick={()=>setConfirmDel(false)} style={{padding:'5px 11px',borderRadius:8,border:'1.5px solid #DDE3E8',background:'#fff',color:'#516170',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>إلغاء</button>
             </div>
-          : <button onClick={()=>setConfirmDel(true)}
-              style={{display:'flex',alignItems:'center',gap:4,padding:'5px 11px',borderRadius:8,border:'1.5px solid #FCA5A5',background:'#FEF2F2',color:'#DC2626',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'inherit',flexShrink:0}}>
-              🗑 حذف
-            </button>
+          : <button onClick={()=>setConfirmDel(true)} style={{padding:'5px 10px',borderRadius:8,border:'1.5px solid #FCA5A5',background:'#FEF2F2',color:'#DC2626',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'inherit',flexShrink:0}}>🗑</button>
         }
       </div>
 
-      {/* ── Lesson body ── */}
-      {open && (
-        <div style={{padding:'14px 16px 18px'}}>
-          {/* type selector */}
-          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:16}}>
+      {/* ─ Body: type selector + content fields ─ */}
+      {!collapsed && (
+        <div style={{padding:'14px 14px 16px'}}>
+          {/* Type selector */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:7,marginBottom:14}}>
             {LTYPES.map(t=>{
               const sel=lesson.type===t.id
               return <button key={t.id} onClick={()=>set({type:t.id})}
-                style={{display:'flex',flexDirection:'column',alignItems:'center',gap:5,padding:'10px 6px',borderRadius:10,
-                  border:'2px solid '+(sel?LTYPE_COLORS[t.id]:'#DDE3E8'),
-                  background:sel?LTYPE_BG[t.id]:'#FAFBFC',
-                  color:sel?LTYPE_COLORS[t.id]:'#7A8FA0',
-                  fontWeight:700,fontSize:12,cursor:'pointer',fontFamily:'inherit',transition:'all .12s'}}>
-                <span style={{fontSize:20}}>{t.icon}</span>
-                {t.label}
+                style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,padding:'9px 4px',borderRadius:10,border:'2px solid '+(sel?LTYPE_COLORS[t.id]:'#DDE3E8'),background:sel?LTYPE_BG[t.id]:'#FAFBFC',color:sel?LTYPE_COLORS[t.id]:'#7A8FA0',fontWeight:700,fontSize:11.5,cursor:'pointer',fontFamily:'inherit',transition:'all .12s'}}>
+                <span style={{fontSize:19}}>{t.icon}</span>{t.label}
               </button>
             })}
           </div>
 
           {/* Video */}
           {lesson.type==='video' && (
-            <div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',gap:10,alignItems:'start'}}>
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
               <div>
-                <div style={{fontSize:11.5,fontWeight:700,color:'#516170',marginBottom:7,display:'flex',alignItems:'center',gap:5}}>
-                  <span style={{width:20,height:20,borderRadius:5,background:'#E7F1F2',color:'#1B6B7A',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12}}>🔗</span>
-                  رابط الفيديو
-                </div>
-                <input className="field-input" dir="ltr" placeholder="https://youtube.com/watch?v=..."
-                  value={lesson.url} onChange={e=>set({url:e.target.value})} style={{fontSize:12}} />
-                {lesson.url&&<div style={{fontSize:11,color:'#15805F',marginTop:5,fontWeight:700,display:'flex',alignItems:'center',gap:4}}>✅ رابط محفوظ</div>}
+                <div className="field-label" style={{marginBottom:6}}>🔗 رابط الفيديو (YouTube / Vimeo / مباشر)</div>
+                <input className="field-input" dir="ltr" placeholder="https://youtube.com/watch?v=..." value={lesson.url} onChange={e=>set({url:e.target.value,uploadUrl:''})} style={{fontSize:12.5}} />
               </div>
-              <div style={{textAlign:'center',fontSize:12,color:'#A0B4BE',fontWeight:700,paddingTop:28,paddingInline:4}}>أو</div>
-              <div>
-                <div style={{fontSize:11.5,fontWeight:700,color:'#516170',marginBottom:7,display:'flex',alignItems:'center',gap:5}}>
-                  <span style={{width:20,height:20,borderRadius:5,background:'#E7F1F2',color:'#1B6B7A',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12}}>⬆</span>
-                  رفع ملف فيديو
-                </div>
-                <DropZone accept="video/*" icon="🎬" hint="MP4، MOV — حتى 500 MB" file={lesson.file} onChange={f=>set({file:f,uploadUrl:''})} />
-              </div>
+              <div style={{textAlign:'center',fontSize:12,color:'#A0B4BE',fontWeight:700}}>— أو رفع ملف فيديو مباشرة —</div>
+              <DropZone accept="video/*" icon="🎬" hint="MP4، MOV — حتى 500 MB" file={lesson.file} existingUrl={lesson.uploadUrl&&!lesson.url?lesson.uploadUrl:null} onChange={f=>set({file:f,url:'',uploadUrl:''})} />
             </div>
           )}
 
@@ -209,33 +168,29 @@ function LessonItem({ lesson, ci, li, onUpdate, onDelete }) {
               icon={lesson.type==='summary'?'📋':'📄'}
               hint="PDF، Word، PowerPoint"
               file={lesson.file}
-              onChange={f=>set({file:f,uploadUrl:''})} />
+              existingUrl={lesson.uploadUrl||null}
+              onChange={f=>set({file:f,uploadUrl:''})}
+            />
           )}
 
           {/* Exercise */}
           {lesson.type==='exercise' && (
             <>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:14}}>
-                {[{id:'file',icon:'📄',label:'ملف تمرين PDF',sub:'ارفع ملف PDF أو Word'},{id:'quiz',icon:'❓',label:'كويز — أسئلة',sub:'أسئلة متعددة الخيارات'}].map(k=>{
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
+                {[{id:'file',icon:'📄',label:'ملف تمرين',sub:'PDF أو Word'},{id:'quiz',icon:'❓',label:'كويز',sub:'أسئلة متعددة'}].map(k=>{
                   const sel=lesson.exerciseKind===k.id
                   return <button key={k.id} onClick={()=>set({exerciseKind:k.id})}
-                    style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',borderRadius:11,
-                      border:'2px solid '+(sel?'#C77A1A':'#DDE3E8'),
-                      background:sel?'#FEF3E2':'#FAFBFC',
-                      color:sel?'#C77A1A':'#516170',
-                      fontWeight:700,fontSize:12.5,cursor:'pointer',fontFamily:'inherit',transition:'all .12s',textAlign:'right'}}>
-                    <span style={{fontSize:22,flexShrink:0}}>{k.icon}</span>
-                    <div><div>{k.label}</div><div style={{fontSize:10.5,fontWeight:400,marginTop:2,color:sel?'#A0682A':'#A0B4BE'}}>{k.sub}</div></div>
+                    style={{display:'flex',alignItems:'center',gap:9,padding:'11px 12px',borderRadius:10,border:'2px solid '+(sel?'#C77A1A':'#DDE3E8'),background:sel?'#FEF3E2':'#FAFBFC',color:sel?'#C77A1A':'#516170',fontWeight:700,fontSize:12.5,cursor:'pointer',fontFamily:'inherit',transition:'all .12s'}}>
+                    <span style={{fontSize:20}}>{k.icon}</span><div><div>{k.label}</div><div style={{fontSize:10.5,fontWeight:400,color:sel?'#A0682A':'#A0B4BE'}}>{k.sub}</div></div>
                   </button>
                 })}
               </div>
               {lesson.exerciseKind==='file'
-                ? <DropZone accept=".pdf,.doc,.docx" icon="📝" hint="PDF أو Word" file={lesson.file} onChange={f=>set({file:f,uploadUrl:''})} />
+                ? <DropZone accept=".pdf,.doc,.docx" icon="📝" hint="PDF أو Word" file={lesson.file} existingUrl={lesson.uploadUrl||null} onChange={f=>set({file:f,uploadUrl:''})} />
                 : <QuizBuilder questions={lesson.quizQuestions} onChange={q=>set({quizQuestions:q})} />
               }
             </>
           )}
-          {lesson.uploadUrl&&<div style={{marginTop:10,display:'flex',alignItems:'center',gap:5,fontSize:12,color:'#15805F',fontWeight:700}}>✅ تم الرفع بنجاح</div>}
         </div>
       )}
     </div>
@@ -252,20 +207,11 @@ function ChapterBlock({ chapter, idx, onUpdate, onDelete, onLessonUpdate, onLess
 
   return (
     <div style={{borderRadius:16,overflow:'hidden',border:'2px solid #D0DBE6',boxShadow:'0 2px 10px rgba(0,0,0,.05)'}}>
-      {/* ── Chapter header ── */}
-      <div style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',
-        background:chapter.expanded?'#1B6B7A':'#244B55',cursor:'pointer'}}
-        onClick={()=>upd({expanded:!chapter.expanded})}>
-        {/* number badge */}
-        <span style={{width:38,height:38,borderRadius:11,background:'rgba(255,255,255,.18)',color:'#fff',
-          display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:16,flexShrink:0}}>
-          {idx+1}
-        </span>
-        {/* title */}
+      <div style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',background:chapter.expanded?'#1B6B7A':'#244B55',cursor:'pointer'}} onClick={()=>upd({expanded:!chapter.expanded})}>
+        <span style={{width:38,height:38,borderRadius:11,background:'rgba(255,255,255,.18)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:16,flexShrink:0}}>{idx+1}</span>
         {editTitle
           ? <input ref={titleRef} className="field-input"
-              style={{flex:1,fontWeight:700,fontSize:14,padding:'7px 11px',background:'rgba(255,255,255,.15)',
-                border:'1.5px solid rgba(255,255,255,.4)',color:'#fff',borderRadius:9}}
+              style={{flex:1,fontWeight:700,fontSize:14,padding:'7px 11px',background:'rgba(255,255,255,.15)',border:'1.5px solid rgba(255,255,255,.4)',color:'#fff',borderRadius:9}}
               value={chapter.title} placeholder="اسم الفصل…"
               onChange={e=>upd({title:e.target.value})}
               onBlur={()=>setEditTitle(false)}
@@ -273,63 +219,29 @@ function ChapterBlock({ chapter, idx, onUpdate, onDelete, onLessonUpdate, onLess
               onClick={e=>e.stopPropagation()} />
           : <span style={{flex:1,fontWeight:700,fontSize:15,color:'#fff'}}>{chapter.title}</span>
         }
-        {/* lesson count */}
-        <span style={{padding:'3px 10px',borderRadius:20,background:'rgba(255,255,255,.15)',color:'rgba(255,255,255,.9)',fontSize:12,fontWeight:700,flexShrink:0}}>
-          {chapter.lessons.length} درس
-        </span>
-        {/* action buttons */}
+        <span style={{padding:'3px 10px',borderRadius:20,background:'rgba(255,255,255,.15)',color:'rgba(255,255,255,.9)',fontSize:12,fontWeight:700,flexShrink:0}}>{chapter.lessons.length} درس</span>
         <div style={{display:'flex',gap:7,flexShrink:0}} onClick={e=>e.stopPropagation()}>
-          <button onClick={()=>setEditTitle(true)}
-            style={{display:'flex',alignItems:'center',gap:5,padding:'7px 13px',borderRadius:9,
-              border:'1.5px solid rgba(255,255,255,.4)',background:'rgba(255,255,255,.12)',
-              color:'#fff',fontSize:12.5,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}>
-            ✏️ تعديل الاسم
-          </button>
+          <button onClick={()=>setEditTitle(true)} style={{display:'flex',alignItems:'center',gap:5,padding:'7px 13px',borderRadius:9,border:'1.5px solid rgba(255,255,255,.4)',background:'rgba(255,255,255,.12)',color:'#fff',fontSize:12.5,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}>✏️ تعديل الاسم</button>
           {confirmDel
             ? <div style={{display:'flex',gap:6}}>
-                <button onClick={()=>onDelete(idx)}
-                  style={{padding:'7px 14px',borderRadius:9,border:'none',background:'#DC2626',color:'#fff',fontSize:12.5,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}>
-                  ✓ تأكيد الحذف
-                </button>
-                <button onClick={()=>setConfirmDel(false)}
-                  style={{padding:'7px 14px',borderRadius:9,border:'1.5px solid rgba(255,255,255,.35)',background:'rgba(255,255,255,.1)',color:'#fff',fontSize:12.5,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>
-                  إلغاء
-                </button>
+                <button onClick={()=>onDelete(idx)} style={{padding:'7px 14px',borderRadius:9,border:'none',background:'#DC2626',color:'#fff',fontSize:12.5,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}>✓ تأكيد الحذف</button>
+                <button onClick={()=>setConfirmDel(false)} style={{padding:'7px 14px',borderRadius:9,border:'1.5px solid rgba(255,255,255,.35)',background:'rgba(255,255,255,.1)',color:'#fff',fontSize:12.5,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>إلغاء</button>
               </div>
-            : <button onClick={()=>setConfirmDel(true)}
-                style={{display:'flex',alignItems:'center',gap:5,padding:'7px 13px',borderRadius:9,
-                  border:'1.5px solid #FCA5A5',background:'rgba(220,38,38,.18)',
-                  color:'#FCA5A5',fontSize:12.5,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}>
-                🗑 حذف الفصل
-              </button>
+            : <button onClick={()=>setConfirmDel(true)} style={{display:'flex',alignItems:'center',gap:5,padding:'7px 13px',borderRadius:9,border:'1.5px solid #FCA5A5',background:'rgba(220,38,38,.18)',color:'#FCA5A5',fontSize:12.5,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}>🗑 حذف الفصل</button>
           }
-          <button onClick={()=>upd({expanded:!chapter.expanded})}
-            style={{width:36,height:36,borderRadius:9,border:'1.5px solid rgba(255,255,255,.3)',
-              background:'rgba(255,255,255,.1)',color:'#fff',fontSize:14,cursor:'pointer',
-              display:'flex',alignItems:'center',justifyContent:'center',transform:chapter.expanded?'rotate(180deg)':'none',transition:'transform .2s'}}>
-            ▼
-          </button>
+          <button onClick={()=>upd({expanded:!chapter.expanded})} style={{width:36,height:36,borderRadius:9,border:'1.5px solid rgba(255,255,255,.3)',background:'rgba(255,255,255,.1)',color:'#fff',fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',transform:chapter.expanded?'rotate(180deg)':'none',transition:'transform .2s'}}>▼</button>
         </div>
       </div>
 
-      {/* ── Lessons list ── */}
       {chapter.expanded && (
         <div style={{padding:'16px',display:'flex',flexDirection:'column',gap:10,background:'#F4F7F9'}}>
           {chapter.lessons.length===0 && (
-            <div style={{textAlign:'center',padding:'20px 0',color:'#8A96A3',fontSize:13}}>
-              لا توجد دروس بعد — انقر الزر أدناه لإضافة أول درس
-            </div>
+            <div style={{textAlign:'center',padding:'20px 0',color:'#8A96A3',fontSize:13}}>لا توجد دروس بعد — انقر الزر أدناه لإضافة أول درس</div>
           )}
           {chapter.lessons.map((l, li) =>
             <LessonItem key={l.id} lesson={l} ci={idx} li={li} onUpdate={onLessonUpdate} onDelete={onLessonDelete} />
           )}
-          {/* Add lesson button */}
-          <button onClick={()=>onAddLesson(idx)}
-            style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,
-              padding:'13px 0',borderRadius:11,
-              background:'#1B6B7A',color:'#fff',
-              border:'none',fontSize:13.5,fontWeight:700,cursor:'pointer',fontFamily:'inherit',
-              boxShadow:'0 2px 8px rgba(27,107,122,.3)',transition:'opacity .15s'}}>
+          <button onClick={()=>onAddLesson(idx)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'13px 0',borderRadius:11,background:'#1B6B7A',color:'#fff',border:'none',fontSize:13.5,fontWeight:700,cursor:'pointer',fontFamily:'inherit',boxShadow:'0 2px 8px rgba(27,107,122,.3)',transition:'opacity .15s'}}>
             ＋ إضافة درس جديد في هذا الفصل
           </button>
         </div>
@@ -339,79 +251,191 @@ function ChapterBlock({ chapter, idx, onUpdate, onDelete, onLessonUpdate, onLess
 }
 
 /* ── Main Page ────────────────────────────────────── */
-export default function AddCourse({ onNavigate }) {
-  const [form, setForm]           = useState({title:'',description:'',subject:'',level:'',priceMonthly:'',priceYearly:'',originalPrice:'',teacherId:''})
-  const [chapters, setChapters]   = useState([newChapter(1)])
-  const [teachers, setTeachers]   = useState([])
-  const [saving, setSaving]       = useState(false)
-  const [msg, setMsg]             = useState('')
+export default function AddCourse({ onNavigate, courseId }) {
+  const isEdit = !!courseId
 
-  useEffect(()=>{
-    async function loadTeachers() {
-      const {data:tps} = await supabase.from('teacher_profiles').select('id').eq('is_approved',true)
-      const ids = (tps||[]).map(t=>t.id)
-      if(!ids.length){setTeachers([]);return}
-      const {data:profs} = await supabase.from('profiles').select('id,full_name').in('id',ids)
-      const map = Object.fromEntries((profs||[]).map(p=>[p.id,p]))
-      setTeachers((tps||[]).map(t=>({...t,profiles:map[t.id]||{}})))
-    }
+  const [form, setForm]         = useState({title:'',description:'',subject:'',level:'',priceMonthly:'',priceYearly:'',originalPrice:'',teacherId:''})
+  const [chapters, setChapters] = useState([newChapter(1)])
+  const [teachers, setTeachers] = useState([])
+  const [saving, setSaving]     = useState(false)
+  const [loadingCourse, setLoadingCourse] = useState(isEdit)
+  const [msg, setMsg]           = useState('')
+
+  useEffect(() => {
     loadTeachers()
-  },[])
+    if (isEdit) loadCourse(courseId)
+  }, [courseId])
 
-  const set          = (k,v) => setForm(f=>({...f,[k]:v}))
-  const addChapter   = ()        => setChapters(c=>[...c,newChapter(c.length+1)])
-  const updChapter   = (i,ch)    => setChapters(c=>c.map((x,j)=>j===i?ch:x))
-  const delChapter   = i         => setChapters(c=>c.filter((_,j)=>j!==i))
-  const addLesson    = ci        => setChapters(c=>c.map((ch,i)=>i===ci?{...ch,lessons:[...ch.lessons,newLesson()]}:ch))
-  const updLesson    = (ci,li,u) => setChapters(c=>c.map((ch,i)=>i===ci?{...ch,lessons:ch.lessons.map((l,j)=>j===li?u:l)}:ch))
-  const delLesson    = (ci,li)   => setChapters(c=>c.map((ch,i)=>i===ci?{...ch,lessons:ch.lessons.filter((_,j)=>j!==li)}:ch))
+  async function loadTeachers() {
+    const {data:tps} = await supabase.from('teacher_profiles').select('id').eq('is_approved',true)
+    const ids = (tps||[]).map(t=>t.id)
+    if(!ids.length){setTeachers([]);return}
+    const {data:profs} = await supabase.from('profiles').select('id,full_name').in('id',ids)
+    const map = Object.fromEntries((profs||[]).map(p=>[p.id,p]))
+    setTeachers((tps||[]).map(t=>({...t,profiles:map[t.id]||{}})))
+  }
 
-  async function publish(isDraft) {
-    if(!form.title||!form.subject||!form.level||!form.priceMonthly||!form.teacherId){setMsg('يرجى تعبئة جميع الحقول المطلوبة (العنوان، المادة، المستوى، السعر الشهري، الأستاذ)');return}
-    setSaving(true);setMsg('')
+  async function loadCourse(id) {
+    setLoadingCourse(true)
+    const [{data:course},{data:lessons}] = await Promise.all([
+      supabase.from('courses').select('*').eq('id',id).single(),
+      supabase.from('course_lessons').select('*').eq('course_id',id).order('order_index'),
+    ])
+    if (!course) { setLoadingCourse(false); return }
+
+    setForm({
+      title:         course.title         || '',
+      description:   course.description   || '',
+      subject:       course.subject       || '',
+      level:         course.level         || '',
+      priceMonthly:  course.price_monthly  != null ? String(course.price_monthly)  : '',
+      priceYearly:   course.price_yearly   != null ? String(course.price_yearly)   : '',
+      originalPrice: course.original_price != null ? String(course.original_price) : '',
+      teacherId:     course.teacher_id    || '',
+    })
+
+    // Reconstruct chapters from flat lesson rows grouped by chapter_title
+    const chapterMap = {}
+    const chapterOrder = []
+    for (const l of (lessons||[])) {
+      const ch = l.chapter_title || 'الفصل 1'
+      if (!chapterMap[ch]) { chapterMap[ch] = []; chapterOrder.push(ch) }
+      chapterMap[ch].push({
+        id:             uid(),
+        title:          l.title || '',
+        type:           l.lesson_type || 'video',
+        url:            l.video_url   || '',
+        file:           null,
+        uploadUrl:      l.video_url   || '',  // already uploaded
+        isPreview:      l.is_preview  || false,
+        exerciseKind:   l.quiz_data   ? 'quiz' : 'file',
+        quizQuestions:  l.quiz_data   || [],
+        duration:       l.duration_minutes ? String(l.duration_minutes) : '',
+        pages:          l.file_pages        ? String(l.file_pages)        : '',
+      })
+    }
+    const rebuilt = chapterOrder.map(title => ({
+      id:       uid(),
+      title,
+      expanded: true,
+      lessons:  chapterMap[title],
+    }))
+    setChapters(rebuilt.length > 0 ? rebuilt : [newChapter(1)])
+    setLoadingCourse(false)
+  }
+
+  const set        = (k,v) => setForm(f=>({...f,[k]:v}))
+  const addChapter = ()        => setChapters(c=>[...c,newChapter(c.length+1)])
+  const updChapter = (i,ch)    => setChapters(c=>c.map((x,j)=>j===i?ch:x))
+  const delChapter = i         => setChapters(c=>c.filter((_,j)=>j!==i))
+  const addLesson  = ci        => setChapters(c=>c.map((ch,i)=>i===ci?{...ch,lessons:[...ch.lessons,newLesson()]}:ch))
+  const updLesson  = (ci,li,u) => setChapters(c=>c.map((ch,i)=>i===ci?{...ch,lessons:ch.lessons.map((l,j)=>j===li?u:l)}:ch))
+  const delLesson  = (ci,li)   => setChapters(c=>c.map((ch,i)=>i===ci?{...ch,lessons:ch.lessons.filter((_,j)=>j!==li)}:ch))
+
+  async function save(isDraft) {
+    if(!form.title||!form.subject||!form.level||!form.priceMonthly||!form.teacherId){
+      setMsg('يرجى تعبئة جميع الحقول المطلوبة (العنوان، المادة، المستوى، السعر الشهري، الأستاذ)')
+      return
+    }
+    setSaving(true); setMsg('')
     try {
-      const uploaded = await Promise.all(chapters.map(async ch=>({...ch,lessons:await Promise.all(ch.lessons.map(async l=>{
-        if(!l.file)return l
-        const bucket=l.type==='video'?'course-videos':'course-files'
-        return {...l,uploadUrl:await uploadFile(bucket,l.file)}
-      }))})))
-      const total=uploaded.reduce((s,ch)=>s+ch.lessons.length,0)
-      const totalMins=uploaded.reduce((s,ch)=>s+ch.lessons.reduce((ss,l)=>ss+(parseInt(l.duration)||0),0),0)
-      const totalHours=parseFloat((totalMins/60).toFixed(1))
-      const {data:course,error}=await supabase.from('courses').insert({title:form.title,description:form.description,subject:form.subject,level:form.level,price_monthly:parseFloat(form.priceMonthly),price_yearly:form.priceYearly?parseFloat(form.priceYearly):null,original_price:form.originalPrice?parseFloat(form.originalPrice):null,teacher_id:form.teacherId,is_active:!isDraft,total_lessons:total,total_hours:totalHours}).select().single()
-      if(error)throw error
-      let order=0
-      const lessonRows=[]
+      // Upload only NEW files (file !== null)
+      const uploaded = await Promise.all(chapters.map(async ch=>({
+        ...ch,
+        lessons: await Promise.all(ch.lessons.map(async l=>{
+          if(!l.file) return l
+          const bucket = l.type==='video' ? 'course-videos' : 'course-files'
+          return {...l, uploadUrl: await uploadFile(bucket, l.file)}
+        }))
+      })))
+
+      const total      = uploaded.reduce((s,ch)=>s+ch.lessons.length,0)
+      const totalMins  = uploaded.reduce((s,ch)=>s+ch.lessons.reduce((ss,l)=>ss+(parseInt(l.duration)||0),0),0)
+      const totalHours = parseFloat((totalMins/60).toFixed(1))
+
+      const courseData = {
+        title:         form.title,
+        description:   form.description,
+        subject:       form.subject,
+        level:         form.level,
+        price_monthly: parseFloat(form.priceMonthly),
+        price_yearly:  form.priceYearly   ? parseFloat(form.priceYearly)   : null,
+        original_price:form.originalPrice ? parseFloat(form.originalPrice) : null,
+        teacher_id:    form.teacherId,
+        is_active:     !isDraft,
+        total_lessons: total,
+        total_hours:   totalHours,
+      }
+
+      let finalCourseId = courseId
+      if (isEdit) {
+        const {error} = await supabase.from('courses').update(courseData).eq('id', courseId)
+        if (error) throw error
+        // Replace all lessons atomically
+        await supabase.from('course_lessons').delete().eq('course_id', courseId)
+      } else {
+        const {data:course,error} = await supabase.from('courses').insert(courseData).select().single()
+        if (error) throw error
+        finalCourseId = course.id
+      }
+
+      const lessonRows = []
+      let order = 0
       for(const ch of uploaded)
         for(const l of ch.lessons){
           order++
-          lessonRows.push({course_id:course.id,title:l.title||('درس '+order),video_url:l.uploadUrl||l.url||null,order_index:order,is_preview:l.isPreview,lesson_type:l.type,chapter_title:ch.title,duration_minutes:parseInt(l.duration)||0,file_pages:parseInt(l.pages)||0,quiz_data:(l.type==='exercise'&&l.exerciseKind==='quiz'&&l.quizQuestions?.length>0)?l.quizQuestions:null})
+          lessonRows.push({
+            course_id:        finalCourseId,
+            title:            l.title || ('درس '+order),
+            video_url:        l.uploadUrl || l.url || null,
+            order_index:      order,
+            is_preview:       l.isPreview,
+            lesson_type:      l.type,
+            chapter_title:    ch.title,
+            duration_minutes: parseInt(l.duration)||0,
+            file_pages:       parseInt(l.pages)||0,
+            quiz_data:        (l.type==='exercise'&&l.exerciseKind==='quiz'&&l.quizQuestions?.length>0)?l.quizQuestions:null,
+          })
         }
-      if(lessonRows.length>0){const{error:le}=await supabase.from('course_lessons').insert(lessonRows);if(le)throw le}
+      if(lessonRows.length>0){
+        const{error:le}=await supabase.from('course_lessons').insert(lessonRows)
+        if(le) throw le
+      }
       onNavigate('courses')
-    } catch(err){setMsg('خطأ: '+(err.message||String(err)))}
+    } catch(err){
+      setMsg('خطأ: '+(err.message||String(err)))
+    }
     setSaving(false)
   }
 
-  const totalLessons=chapters.reduce((s,ch)=>s+ch.lessons.length,0)
+  if (loadingCourse) return <div className="loading-center"><div className="spinner" /></div>
+
+  const totalLessons = chapters.reduce((s,ch)=>s+ch.lessons.length,0)
 
   return (
     <div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
         <button className="btn btn-secondary btn-sm" onClick={()=>onNavigate('courses')}>← الرجوع</button>
         <div style={{display:'flex',gap:10}}>
-          <button className="btn btn-secondary" disabled={saving} onClick={()=>publish(true)}>💾 مسودّة</button>
-          <button className="btn btn-primary" style={{background:'#1B9E77'}} disabled={saving} onClick={()=>publish(false)}>
-            {saving?<span className="spinner" style={{width:17,height:17,borderWidth:2}}/>:'🚀 نشر الدرس'}
+          <button className="btn btn-secondary" disabled={saving} onClick={()=>save(true)}>💾 مسودّة</button>
+          <button className="btn btn-primary" style={{background:'#1B9E77'}} disabled={saving} onClick={()=>save(false)}>
+            {saving
+              ? <span className="spinner" style={{width:17,height:17,borderWidth:2}}/>
+              : isEdit ? '💾 حفظ التعديلات' : '🚀 نشر الدرس'}
           </button>
         </div>
       </div>
       {msg && <div className="login-error" style={{marginBottom:16}}>{msg}</div>}
 
+      {isEdit && (
+        <div className="info-banner blue" style={{marginBottom:16}}>
+          ✏️ &nbsp;وضع التعديل — أي تغيير في الدروس سيحل محل الدروس الحالية كاملاً عند الحفظ.
+        </div>
+      )}
+
       <div style={{display:'grid',gridTemplateColumns:'1.65fr 1fr',gap:20,maxWidth:1180}}>
         {/* LEFT */}
         <div style={{display:'flex',flexDirection:'column',gap:18}}>
-          {/* Info */}
           <div className="card">
             <div className="card-title" style={{marginBottom:14}}>معلومات الدرس *</div>
             <div className="field-label">عنوان الدرس</div>
@@ -420,7 +444,6 @@ export default function AddCourse({ onNavigate }) {
             <textarea className="field-input" placeholder="دورة شاملة تغطي…" rows={3} value={form.description} onChange={e=>set('description',e.target.value)} style={{resize:'vertical'}} />
           </div>
 
-          {/* Subject */}
           <div className="card">
             <div className="field-label" style={{marginBottom:10}}>المادة الدراسية *</div>
             <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
@@ -428,7 +451,6 @@ export default function AddCourse({ onNavigate }) {
             </div>
           </div>
 
-          {/* Level */}
           <div className="card">
             <div className="field-label" style={{marginBottom:12}}>المستوى الدراسي *</div>
             {LEVELS.map(g=>(
@@ -443,36 +465,22 @@ export default function AddCourse({ onNavigate }) {
 
           {/* Chapters */}
           <div>
-            {/* Section header */}
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',
-              padding:'14px 18px',background:'#0E2B33',borderRadius:14,marginBottom:16}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',background:'#0E2B33',borderRadius:14,marginBottom:16}}>
               <div>
                 <div style={{fontSize:15,fontWeight:800,color:'#fff'}}>الفصول والدروس</div>
-                <div style={{fontSize:12,color:'#7ABBC4',marginTop:2}}>
-                  {chapters.length} فصل · {totalLessons} درس إجمالاً
-                </div>
+                <div style={{fontSize:12,color:'#7ABBC4',marginTop:2}}>{chapters.length} فصل · {totalLessons} درس إجمالاً</div>
               </div>
-              <button onClick={addChapter}
-                style={{display:'flex',alignItems:'center',gap:8,padding:'10px 20px',
-                  background:'#1B9E77',color:'#fff',border:'none',borderRadius:11,
-                  fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit',
-                  boxShadow:'0 3px 10px rgba(27,158,119,.35)'}}>
+              <button onClick={addChapter} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 20px',background:'#1B9E77',color:'#fff',border:'none',borderRadius:11,fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit',boxShadow:'0 3px 10px rgba(27,158,119,.35)'}}>
                 ＋ إضافة فصل جديد
               </button>
             </div>
-
             <div style={{display:'flex',flexDirection:'column',gap:16}}>
               {chapters.length===0
-                ? <div onClick={addChapter}
-                    style={{border:'2.5px dashed #BDD1D9',borderRadius:16,padding:'40px 20px',
-                      textAlign:'center',cursor:'pointer',background:'#F7FAFB',transition:'background .15s'}}>
+                ? <div onClick={addChapter} style={{border:'2.5px dashed #BDD1D9',borderRadius:16,padding:'40px 20px',textAlign:'center',cursor:'pointer',background:'#F7FAFB'}}>
                     <div style={{fontSize:48,marginBottom:12}}>📚</div>
                     <div style={{fontSize:15,fontWeight:700,color:'#3A5260',marginBottom:6}}>ابدأ بإضافة أول فصل</div>
                     <div style={{fontSize:12.5,color:'#8A9EAB'}}>كل فصل يحتوي على دروس: فيديو · ملف · تمرين · ملخّص</div>
-                    <div style={{marginTop:16,display:'inline-flex',alignItems:'center',gap:7,padding:'9px 20px',
-                      borderRadius:10,background:'#1B6B7A',color:'#fff',fontSize:13,fontWeight:700}}>
-                      ＋ إضافة فصل
-                    </div>
+                    <div style={{marginTop:16,display:'inline-flex',alignItems:'center',gap:7,padding:'9px 20px',borderRadius:10,background:'#1B6B7A',color:'#fff',fontSize:13,fontWeight:700}}>＋ إضافة فصل</div>
                   </div>
                 : chapters.map((ch,i)=><ChapterBlock key={ch.id} chapter={ch} idx={i} onUpdate={updChapter} onDelete={delChapter} onLessonUpdate={updLesson} onLessonDelete={delLesson} onAddLesson={addLesson} />)
               }
@@ -484,25 +492,21 @@ export default function AddCourse({ onNavigate }) {
         <div style={{display:'flex',flexDirection:'column',gap:18}}>
           <div className="card">
             <div className="card-title" style={{marginBottom:16}}>الأسعار</div>
-            {/* Monthly */}
             <div className="field-label" style={{marginBottom:6}}>السعر الشهري <span style={{color:'#E53E3E'}}>*</span></div>
             <div style={{display:'flex',alignItems:'center',border:'1.5px solid #E1E5E9',borderRadius:10,overflow:'hidden',background:'#FCFCFD',marginBottom:12}}>
               <input type="number" style={{border:'none',background:'transparent',fontSize:17,fontWeight:700,padding:'11px 13px',width:'100%',outline:'none',fontFamily:'inherit'}} placeholder="1200" value={form.priceMonthly} onChange={e=>set('priceMonthly',e.target.value)} />
               <span style={{padding:'0 13px',fontSize:12,color:'var(--text3)',fontWeight:600,whiteSpace:'nowrap',borderRight:'1px solid #E1E5E9'}}>أوقية/شهر</span>
             </div>
-            {/* Yearly */}
             <div className="field-label" style={{marginBottom:6}}>السعر السنوي <span style={{fontSize:10.5,color:'var(--text3)',fontWeight:400}}>(اختياري)</span></div>
             <div style={{display:'flex',alignItems:'center',border:'1.5px solid #E1E5E9',borderRadius:10,overflow:'hidden',background:'#FCFCFD',marginBottom:12}}>
               <input type="number" style={{border:'none',background:'transparent',fontSize:17,fontWeight:700,padding:'11px 13px',width:'100%',outline:'none',fontFamily:'inherit'}} placeholder="11000" value={form.priceYearly} onChange={e=>set('priceYearly',e.target.value)} />
               <span style={{padding:'0 13px',fontSize:12,color:'var(--text3)',fontWeight:600,whiteSpace:'nowrap',borderRight:'1px solid #E1E5E9'}}>أوقية/سنة</span>
             </div>
-            {/* Original / crossed-out price */}
-            <div className="field-label" style={{marginBottom:6}}>السعر الأصلي قبل الخصم <span style={{fontSize:10.5,color:'var(--text3)',fontWeight:400}}>(اختياري — يظهر مشطوباً)</span></div>
+            <div className="field-label" style={{marginBottom:6}}>السعر الأصلي قبل الخصم <span style={{fontSize:10.5,color:'var(--text3)',fontWeight:400}}>(اختياري)</span></div>
             <div style={{display:'flex',alignItems:'center',border:'1.5px solid #E1E5E9',borderRadius:10,overflow:'hidden',background:'#FCFCFD'}}>
               <input type="number" style={{border:'none',background:'transparent',fontSize:17,fontWeight:700,padding:'11px 13px',width:'100%',outline:'none',fontFamily:'inherit'}} placeholder="1600" value={form.originalPrice} onChange={e=>set('originalPrice',e.target.value)} />
               <span style={{padding:'0 13px',fontSize:12,color:'var(--text3)',fontWeight:600,whiteSpace:'nowrap',borderRight:'1px solid #E1E5E9'}}>أوقية</span>
             </div>
-            {/* Preview badge */}
             {(form.priceMonthly||form.priceYearly||form.originalPrice) && (
               <div style={{marginTop:13,padding:'11px 13px',background:'#F7F9FA',borderRadius:10,border:'1px solid #EFF2F4'}}>
                 <div style={{fontSize:10.5,color:'var(--text3)',fontWeight:700,marginBottom:7}}>معاينة عرض السعر</div>
@@ -539,7 +543,14 @@ export default function AddCourse({ onNavigate }) {
 
           <div style={{background:'#0E2B33',borderRadius:14,padding:'18px 20px',color:'#fff'}}>
             <div style={{fontSize:12.5,fontWeight:700,marginBottom:14,color:'#7ABBC4'}}>ملخّص الدرس</div>
-            {[['📚','الفصول',chapters.length],['🎬','إجمالي الدروس',totalLessons],['✅','مجانية',chapters.reduce((s,c)=>s+c.lessons.filter(l=>l.isPreview).length,0)],['🎬','فيديوهات',chapters.reduce((s,c)=>s+c.lessons.filter(l=>l.type==='video').length,0)],['📝','تمارين',chapters.reduce((s,c)=>s+c.lessons.filter(l=>l.type==='exercise').length,0)],['📋','ملخّصات',chapters.reduce((s,c)=>s+c.lessons.filter(l=>l.type==='summary').length,0)]].map(([icon,label,val])=>(
+            {[
+              ['📚','الفصول',chapters.length],
+              ['🎬','إجمالي الدروس',totalLessons],
+              ['✅','مجانية',chapters.reduce((s,c)=>s+c.lessons.filter(l=>l.isPreview).length,0)],
+              ['🎬','فيديوهات',chapters.reduce((s,c)=>s+c.lessons.filter(l=>l.type==='video').length,0)],
+              ['📝','تمارين',chapters.reduce((s,c)=>s+c.lessons.filter(l=>l.type==='exercise').length,0)],
+              ['📋','ملخّصات',chapters.reduce((s,c)=>s+c.lessons.filter(l=>l.type==='summary').length,0)],
+            ].map(([icon,label,val])=>(
               <div key={label} style={{display:'flex',justifyContent:'space-between',fontSize:12.5,marginBottom:9}}>
                 <span style={{color:'#8AACB3'}}>{icon} {label}</span>
                 <span style={{fontWeight:700,color:'#7BE0C0'}}>{val}</span>

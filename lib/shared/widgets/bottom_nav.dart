@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/extensions/l10n_extension.dart';
 
 class AppBottomNav extends StatelessWidget {
   final int currentIndex;
@@ -13,6 +14,7 @@ class AppBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -24,10 +26,10 @@ class AppBottomNav extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
-              _NavItem(icon: Icons.home_rounded, label: 'الرئيسية', selected: currentIndex == 0, onTap: () => onTap(0)),
-              _NavItem(icon: Icons.calendar_today_rounded, label: 'جلساتي', selected: currentIndex == 1, onTap: () => onTap(1)),
-              _NavItem(icon: Icons.school_rounded, label: 'دروسي', selected: currentIndex == 2, onTap: () => onTap(2)),
-              _NavItem(icon: Icons.person_rounded, label: 'حسابي', selected: currentIndex == 3, onTap: () => onTap(3)),
+              _NavItem(icon: Icons.home_rounded,          label: l.navHome,     selected: currentIndex == 0, onTap: () => onTap(0)),
+              _NavItem(icon: Icons.calendar_today_rounded, label: l.navSessions, selected: currentIndex == 1, onTap: () => onTap(1)),
+              _NavItem(icon: Icons.school_rounded,         label: l.navCourses,  selected: currentIndex == 2, onTap: () => onTap(2)),
+              _NavItem(icon: Icons.person_rounded,         label: l.navProfile,  selected: currentIndex == 3, onTap: () => onTap(3)),
             ],
           ),
         ),

@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/lang_toggle.dart';
 
-class RegisterScreen extends StatefulWidget {
+class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey  = GlobalKey<FormState>();
   final _nameCtrl  = TextEditingController();
   final _emailCtrl = TextEditingController();
@@ -40,7 +43,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       if (!mounted) return;
       if (res.user == null) {
-        setState(() => _error = 'تحقق من بريدك الإلكتروني لتأكيد الحساب');
+        setState(() => _error = context.l10n.authErrCheckEmail);
         return;
       }
       if (_role == 'teacher') {
@@ -51,38 +54,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } on AuthException catch (e) {
       setState(() => _error = _friendlyAuthError(e.message));
     } catch (e) {
-      setState(() => _error = 'حدث خطأ غير متوقع، حاول مرة أخرى');
+      setState(() => _error = context.l10n.authErrUnexpected);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   String _friendlyAuthError(String raw) {
+    final l = context.l10n;
     final msg = raw.toLowerCase();
-    if (msg.contains('already registered') || msg.contains('already exists')) {
-      return 'هذا البريد الإلكتروني مسجّل مسبقاً، سجّل دخولك بدلاً من ذلك';
-    }
-    if (msg.contains('database error') || msg.contains('unexpected_failure') || msg.contains('saving new user')) {
-      return 'خطأ في الخادم، تأكد من اتصالك بالإنترنت وأعد المحاولة';
-    }
-    if (msg.contains('invalid email') || msg.contains('valid email')) {
-      return 'صيغة البريد الإلكتروني غير صحيحة';
-    }
-    if (msg.contains('password') && msg.contains('6')) {
-      return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
-    }
-    if (msg.contains('rate limit') || msg.contains('too many')) {
-      return 'محاولات كثيرة، انتظر قليلاً ثم أعد المحاولة';
-    }
-    if (msg.contains('network') || msg.contains('connection') || msg.contains('socket')) {
-      return 'تعذّر الاتصال بالخادم، تحقق من الإنترنت';
-    }
-    // fallback — don't show raw JSON
-    return 'حدث خطأ، حاول مرة أخرى';
+    if (msg.contains('already registered') || msg.contains('already exists')) return l.authErrEmailExists;
+    if (msg.contains('database error') || msg.contains('unexpected_failure') || msg.contains('saving new user')) return l.authErrServer;
+    if (msg.contains('invalid email') || msg.contains('valid email')) return l.authErrEmailFormat;
+    if (msg.contains('password') && msg.contains('6')) return l.authValidPassword;
+    if (msg.contains('rate limit') || msg.contains('too many')) return l.authErrRateLimit;
+    if (msg.contains('network') || msg.contains('connection') || msg.contains('socket')) return l.authErrNetwork;
+    return l.authErrGeneral;
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.primaryDark,
       body: SafeArea(
@@ -90,14 +82,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(28, 40, 28, 28),
+                padding: const EdgeInsets.fromLTRB(28, 32, 28, 20),
                 child: Column(
                   children: [
-                    const Text('إنشاء حساب جديد',
-                      style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white)),
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: const LangToggle(),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(l.authRegisterTitle,
+                      style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white)),
                     const SizedBox(height: 6),
-                    const Text('انضم لمنصة حجز استاذ',
-                      style: TextStyle(fontSize: 14, color: Color(0xFF9DB2B8))),
+                    Text(l.authRegisterSubtitle,
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF9DB2B8))),
                   ],
                 ),
               ),
@@ -127,28 +124,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(height: 16),
                       ],
-                      _label('نوع الحساب'),
+                      _label(l.authAccountType),
                       const SizedBox(height: 10),
                       Row(
                         children: [
-                          Expanded(child: _roleChip('student', 'طالب', Icons.school_outlined)),
+                          Expanded(child: _roleChip('student', l.authStudent, Icons.school_outlined)),
                           const SizedBox(width: 12),
-                          Expanded(child: _roleChip('teacher', 'أستاذ', Icons.person_outlined)),
+                          Expanded(child: _roleChip('teacher', l.authTeacher, Icons.person_outlined)),
                         ],
                       ),
                       const SizedBox(height: 20),
-                      _label('الاسم الكامل'),
+                      _label(l.authFullName),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _nameCtrl,
-                        decoration: const InputDecoration(
-                          hintText: 'سيدنا أحمد',
-                          prefixIcon: Icon(Icons.person_outline_rounded, color: AppColors.textHint),
+                        decoration: InputDecoration(
+                          hintText: l.authFullNameHint,
+                          prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.textHint),
                         ),
-                        validator: (v) => (v == null || v.isEmpty) ? 'أدخل اسمك الكامل' : null,
+                        validator: (v) => (v == null || v.isEmpty) ? l.authValidName : null,
                       ),
                       const SizedBox(height: 18),
-                      _label('البريد الإلكتروني'),
+                      _label(l.authEmail),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _emailCtrl,
@@ -158,10 +155,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           hintText: 'example@email.com',
                           prefixIcon: Icon(Icons.email_outlined, color: AppColors.textHint),
                         ),
-                        validator: (v) => (v == null || !v.contains('@')) ? 'بريد إلكتروني غير صحيح' : null,
+                        validator: (v) => (v == null || !v.contains('@')) ? l.authValidEmailFormat : null,
                       ),
                       const SizedBox(height: 18),
-                      _label('كلمة المرور'),
+                      _label(l.authPassword),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _passCtrl,
@@ -176,20 +173,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             onPressed: () => setState(() => _obscure = !_obscure),
                           ),
                         ),
-                        validator: (v) => (v == null || v.length < 6) ? 'كلمة المرور 6 أحرف على الأقل' : null,
+                        validator: (v) => (v == null || v.length < 6) ? l.authValidPassword : null,
                       ),
                       const SizedBox(height: 28),
-                      AppButton(label: 'إنشاء الحساب', isLoading: _loading, onTap: _register),
+                      AppButton(label: l.authRegisterBtn, isLoading: _loading, onTap: _register),
                       const SizedBox(height: 18),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text('لديك حساب بالفعل؟  ',
-                            style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                          Text(l.authHaveAccount,
+                            style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
                           GestureDetector(
                             onTap: () => context.pop(),
-                            child: const Text('تسجيل الدخول',
-                              style: TextStyle(fontSize: 14, color: AppColors.primary, fontWeight: FontWeight.w700)),
+                            child: Text(l.authLoginLink,
+                              style: const TextStyle(fontSize: 14, color: AppColors.primary, fontWeight: FontWeight.w700)),
                           ),
                         ],
                       ),

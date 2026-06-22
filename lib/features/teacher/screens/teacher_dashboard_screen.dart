@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/services/supabase_service.dart';
 
@@ -25,7 +26,7 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذّر تغيير الحالة')),
+          SnackBar(content: Text(context.l10n.dashToggleError)),
         );
       }
     } finally {
@@ -33,17 +34,19 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
     }
   }
 
-  String _fmtDate(String isoStr) {
+  String _fmtDate(String isoStr, BuildContext context) {
+    final l = context.l10n;
     final dt = DateTime.tryParse(isoStr);
     if (dt == null) return '';
-    const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    final days = [l.daySun, l.dayMon, l.dayTue, l.dayWed, l.dayThu, l.dayFri, l.daySat];
     final h = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
-    final period = dt.hour >= 12 ? 'م' : 'ص';
+    final period = dt.hour >= 12 ? l.timePM : l.timeAM;
     return '${days[dt.weekday % 7]} $h:${dt.minute.toString().padLeft(2, '0')} $period';
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final async = ref.watch(teacherDashboardProvider);
 
     return Scaffold(
@@ -54,10 +57,10 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('تعذّر تحميل البيانات'),
+              Text(l.dashLoadError),
               TextButton(
                 onPressed: () => ref.invalidate(teacherDashboardProvider),
-                child: const Text('إعادة المحاولة'),
+                child: Text(l.commonRetry),
               ),
             ],
           ),
@@ -66,58 +69,61 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
           color: AppColors.primary,
           onRefresh: () async => ref.invalidate(teacherDashboardProvider),
           child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: _Header(
-                name: stats.teacherName,
-                initial: stats.teacherInitial,
-                isAvailable: stats.isAvailable,
-                toggling: _togglingAvailability,
-                weekEarnings: stats.weekEarnings,
-                completedSessions: stats.completedSessions,
-                onToggle: () => _toggleAvailability(stats.isAvailable),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: _StatsRow(
-                pendingCount: stats.pendingCount,
-                todayCount: stats.todayCount,
-                attendanceRate: stats.attendanceRate,
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 20)),
-            if (stats.pendingRequests.isNotEmpty) ...[
+            slivers: [
               SliverToBoxAdapter(
-                child: _SectionHeader(
-                  title: 'طلبات جديدة',
-                  badge: '${stats.pendingCount} بانتظارك',
-                  badgeFg: const Color(0xFFC77A1A),
-                  badgeBg: const Color(0xFFFEF3E2),
+                child: _Header(
+                  name: stats.teacherName,
+                  initial: stats.teacherInitial,
+                  avatarUrl: stats.teacherAvatarUrl,
+                  isAvailable: stats.isAvailable,
+                  toggling: _togglingAvailability,
+                  weekEarnings: stats.weekEarnings,
+                  completedSessions: stats.completedSessions,
+                  onToggle: () => _toggleAvailability(stats.isAvailable),
                 ),
               ),
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (ctx, i) => _RequestCard(session: stats.pendingRequests[i], fmtDate: _fmtDate),
-                  childCount: stats.pendingRequests.length,
+              SliverToBoxAdapter(
+                child: _StatsRow(
+                  pendingCount: stats.pendingCount,
+                  todayCount: stats.todayCount,
+                  attendanceRate: stats.attendanceRate,
                 ),
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 20)),
-            ],
-            if (stats.upcomingSessions.isNotEmpty) ...[
-              const SliverToBoxAdapter(child: _SectionHeader(title: 'الجلسات القادمة')),
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (ctx, i) => _UpcomingCard(session: stats.upcomingSessions[i], fmtDate: _fmtDate),
-                  childCount: stats.upcomingSessions.length,
+              if (stats.pendingRequests.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: _SectionHeader(
+                    title: l.dashNewRequests,
+                    badge: l.dashAwaitingBadge('${stats.pendingCount}'),
+                    badgeFg: const Color(0xFFC77A1A),
+                    badgeBg: const Color(0xFFFEF3E2),
+                  ),
                 ),
-              ),
-            ] else ...[
-              const SliverToBoxAdapter(child: _SectionHeader(title: 'الجلسات القادمة')),
-              const SliverToBoxAdapter(child: _EmptyUpcoming()),
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (ctx, i) => _RequestCard(
+                        session: stats.pendingRequests[i],
+                        fmtDate: (s) => _fmtDate(s, context)),
+                    childCount: stats.pendingRequests.length,
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+              ],
+              SliverToBoxAdapter(child: _SectionHeader(title: l.dashUpcomingSessions)),
+              if (stats.upcomingSessions.isNotEmpty)
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (ctx, i) => _UpcomingCard(
+                        session: stats.upcomingSessions[i],
+                        fmtDate: (s) => _fmtDate(s, context)),
+                    childCount: stats.upcomingSessions.length,
+                  ),
+                )
+              else
+                const SliverToBoxAdapter(child: _EmptyUpcoming()),
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
-          ],
-        ),
+          ),
         ),
       ),
     );
@@ -128,6 +134,7 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
 class _Header extends StatelessWidget {
   final String name;
   final String initial;
+  final String? avatarUrl;
   final bool isAvailable;
   final bool toggling;
   final double weekEarnings;
@@ -135,13 +142,15 @@ class _Header extends StatelessWidget {
   final VoidCallback onToggle;
 
   const _Header({
-    required this.name, required this.initial, required this.isAvailable,
-    required this.toggling, required this.weekEarnings,
-    required this.completedSessions, required this.onToggle,
+    required this.name, required this.initial, this.avatarUrl,
+    required this.isAvailable, required this.toggling,
+    required this.weekEarnings, required this.completedSessions,
+    required this.onToggle,
   });
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -159,19 +168,28 @@ class _Header extends StatelessWidget {
               children: [
                 Container(
                   width: 46, height: 46,
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(13)),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(13),
+                    image: avatarUrl != null
+                        ? DecorationImage(image: NetworkImage(avatarUrl!), fit: BoxFit.cover)
+                        : null,
+                  ),
                   alignment: Alignment.center,
-                  child: Text(initial,
-                    style: const TextStyle(color: Color(0xFF1B6B7A), fontWeight: FontWeight.w700, fontSize: 19)),
+                  child: avatarUrl == null
+                      ? Text(initial,
+                          style: const TextStyle(color: Color(0xFF1B6B7A), fontWeight: FontWeight.w700, fontSize: 19))
+                      : null,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('أهلاً،', style: TextStyle(fontSize: 12, color: Color(0xFFCFE6EA))),
+                      Text(l.dashWelcome,
+                        style: const TextStyle(fontSize: 12, color: Color(0xFFCFE6EA))),
                       Text(
-                        name.isNotEmpty ? name : 'أستاذ',
+                        name.isNotEmpty ? name : l.dashTeacherFallback,
                         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
                       ),
                     ],
@@ -193,7 +211,7 @@ class _Header extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               child: Align(
-                                alignment: isAvailable ? Alignment.centerLeft : Alignment.centerRight,
+                                alignment: isAvailable ? Alignment.centerRight : Alignment.centerLeft,
                                 child: Container(
                                   margin: const EdgeInsets.all(3),
                                   width: 21, height: 21,
@@ -203,7 +221,7 @@ class _Header extends StatelessWidget {
                             ),
                       const SizedBox(height: 4),
                       Text(
-                        isAvailable ? 'متاح للحجز' : 'غير متاح',
+                        isAvailable ? l.dashAvailableLabel : l.dashUnavailableLabel,
                         style: const TextStyle(fontSize: 9, color: Color(0xFFCFE6EA), fontWeight: FontWeight.w600),
                       ),
                     ],
@@ -223,7 +241,8 @@ class _Header extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('أرباح هذا الأسبوع', style: TextStyle(fontSize: 12, color: Color(0xFFCFE6EA))),
+                Text(l.dashWeekEarnings,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFCFE6EA))),
                 const SizedBox(height: 4),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -234,17 +253,16 @@ class _Header extends StatelessWidget {
                       style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white),
                     ),
                     const SizedBox(width: 6),
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 5),
-                      child: Text('أوقية', style: TextStyle(fontSize: 13, color: Color(0xFF7BE0C0))),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 5),
+                      child: Text(l.dashOugiya,
+                        style: const TextStyle(fontSize: 13, color: Color(0xFF7BE0C0))),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '$completedSessions جلسة مكتملة · بعد عمولة 15%',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF9DB2B8)),
-                ),
+                Text(l.dashCompletedNote(completedSessions),
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF9DB2B8))),
               ],
             ),
           ),
@@ -263,15 +281,16 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 18, 22, 0),
       child: Row(
         children: [
-          _StatCard(value: '$pendingCount', label: 'طلب جديد', color: const Color(0xFFF2994A)),
+          _StatCard(value: '$pendingCount', label: l.dashStatNew, color: const Color(0xFFF2994A)),
           const SizedBox(width: 10),
-          _StatCard(value: '$todayCount', label: 'جلسات اليوم', color: AppColors.textPrimary),
+          _StatCard(value: '$todayCount', label: l.dashStatToday, color: AppColors.textPrimary),
           const SizedBox(width: 10),
-          _StatCard(value: '${attendanceRate.toInt()}%', label: 'الحضور', color: AppColors.success),
+          _StatCard(value: '${attendanceRate.toInt()}%', label: l.dashStatAttendance, color: AppColors.success),
         ],
       ),
     );
@@ -320,7 +339,8 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
       child: Row(
         children: [
-          Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          Text(title,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           if (badge != null) ...[
             const Spacer(),
             Container(
@@ -329,7 +349,9 @@ class _SectionHeader extends StatelessWidget {
                 color: badgeBg ?? AppColors.accentLight,
                 borderRadius: BorderRadius.circular(999),
               ),
-              child: Text(badge!, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: badgeFg ?? AppColors.primary)),
+              child: Text(badge!,
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+                  color: badgeFg ?? AppColors.primary)),
             ),
           ],
         ],
@@ -346,13 +368,14 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final id = session['id'] as String;
     final studentMap = session['student'] as Map? ?? {};
-    final studentName = (studentMap['full_name'] as String?) ?? 'طالب';
+    final studentName = (studentMap['full_name'] as String?) ?? l.authStudent;
     final subject = (session['subject'] as String?) ?? '';
     final scheduledAt = (session['scheduled_at'] as String?) ?? '';
     final duration = (session['duration_minutes'] as int?) ?? 60;
-    final initial = studentName.isNotEmpty ? studentName[0] : 'ط';
+    final initial = studentName.isNotEmpty ? studentName[0] : l.authStudent[0];
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 22, vertical: 5),
@@ -368,25 +391,35 @@ class _RequestCard extends StatelessWidget {
             children: [
               Container(
                 width: 42, height: 42,
-                decoration: BoxDecoration(color: AppColors.accentLight, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: AppColors.accentLight,
+                  borderRadius: BorderRadius.circular(12)),
                 alignment: Alignment.center,
-                child: Text(initial, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 17)),
+                child: Text(initial,
+                  style: const TextStyle(color: AppColors.primary,
+                    fontWeight: FontWeight.w700, fontSize: 17)),
               ),
               const SizedBox(width: 11),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(studentName, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                    Text('$subject · ${fmtDate(scheduledAt)} · $duration د',
+                    Text(studentName,
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
+                    Text('$subject · ${fmtDate(scheduledAt)} · ${l.dashMinutesShort(duration)}',
                       style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
                   ],
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: const Color(0xFFFEF3E2), borderRadius: BorderRadius.circular(6)),
-                child: const Text('جديد', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: Color(0xFFC77A1A))),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3E2),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(l.dashNewBadge,
+                  style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700,
+                    color: Color(0xFFC77A1A))),
               ),
             ],
           ),
@@ -403,7 +436,8 @@ class _RequestCard extends StatelessWidget {
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('مراجعة وقبول', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                  child: Text(l.dashReviewBtn,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                 ),
               ),
             ],
@@ -422,9 +456,10 @@ class _UpcomingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final id = session['id'] as String;
     final studentMap = session['student'] as Map? ?? {};
-    final studentName = (studentMap['full_name'] as String?) ?? 'طالب';
+    final studentName = (studentMap['full_name'] as String?) ?? l.authStudent;
     final subject = (session['subject'] as String?) ?? '';
     final scheduledAt = (session['scheduled_at'] as String?) ?? '';
     final duration = (session['duration_minutes'] as int?) ?? 60;
@@ -432,9 +467,9 @@ class _UpcomingCard extends StatelessWidget {
     final dt = DateTime.tryParse(scheduledAt);
     final diffMin = dt != null ? dt.difference(DateTime.now()).inMinutes : 0;
     final timeLabel = diffMin < 60
-        ? 'بعد $diffMin دقيقة'
+        ? l.dashInMinutes(diffMin)
         : diffMin < 1440
-            ? 'بعد ${diffMin ~/ 60} ساعة'
+            ? l.dashInHours(diffMin ~/ 60)
             : fmtDate(scheduledAt);
 
     return Container(
@@ -449,16 +484,18 @@ class _UpcomingCard extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-            decoration: BoxDecoration(color: AppColors.accentLight, borderRadius: BorderRadius.circular(11)),
+            decoration: BoxDecoration(color: AppColors.accentLight,
+              borderRadius: BorderRadius.circular(11)),
             child: Column(
               children: [
                 Text(
                   dt != null
                       ? '${dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour)}:${dt.minute.toString().padLeft(2, '0')}'
                       : '--',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
+                    color: AppColors.primary),
                 ),
-                Text(dt != null && dt.hour >= 12 ? 'مساءً' : 'صباحاً',
+                Text(dt != null && dt.hour >= 12 ? l.dashEveningLabel : l.dashMorningLabel,
                   style: const TextStyle(fontSize: 9, color: AppColors.primary)),
               ],
             ),
@@ -469,8 +506,9 @@ class _UpcomingCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('$studentName · $subject',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                Text('$duration دقيقة · $timeLabel',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
+                Text('${l.sessionMinutes(duration)} · $timeLabel',
                   style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
               ],
             ),
@@ -479,8 +517,13 @@ class _UpcomingCard extends StatelessWidget {
             onTap: () => context.push('/teacher/session/$id'),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-              decoration: BoxDecoration(color: const Color(0xFFE3F6EF), borderRadius: BorderRadius.circular(6)),
-              child: const Text('مؤكّد', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF15805F))),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE3F6EF),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(l.dashConfirmedBadge,
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+                  color: Color(0xFF15805F))),
             ),
           ),
         ],
@@ -502,9 +545,9 @@ class _EmptyUpcoming extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
-      child: const Center(
-        child: Text('لا توجد جلسات قادمة',
-          style: TextStyle(fontSize: 13, color: AppColors.textHint)),
+      child: Center(
+        child: Text(context.l10n.dashNoUpcoming,
+          style: const TextStyle(fontSize: 13, color: AppColors.textHint)),
       ),
     );
   }

@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
-import '../../../core/services/supabase_service.dart';
+import '../../../l10n/app_localizations.dart';
 
 class TeacherEarningsScreen extends ConsumerWidget {
   const TeacherEarningsScreen({super.key});
 
-  String _fmtDate(String isoStr) {
+  String _fmtDate(String isoStr, AppLocalizations l) {
     final dt = DateTime.tryParse(isoStr);
     if (dt == null) return '';
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 60) return 'منذ ${diff.inMinutes} دقيقة';
-    if (diff.inHours < 24) return 'اليوم ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+    if (diff.inMinutes < 60) return l.timeMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) {
+      return '${l.timeToday} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+    }
     return '${dt.day}/${dt.month}/${dt.year}';
   }
 
@@ -23,6 +26,7 @@ class TeacherEarningsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l     = context.l10n;
     final async = ref.watch(teacherEarningsProvider);
 
     return Scaffold(
@@ -33,10 +37,10 @@ class TeacherEarningsScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('تعذّر تحميل الأرباح'),
+              Text(l.dashLoadError),
               TextButton(
                 onPressed: () => ref.invalidate(teacherEarningsProvider),
-                child: const Text('إعادة المحاولة'),
+                child: Text(l.commonRetry),
               ),
             ],
           ),
@@ -47,8 +51,9 @@ class TeacherEarningsScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 22),
             children: [
               SizedBox(height: MediaQuery.of(context).padding.top + 16),
-              const Text('الأرباح',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              Text(l.teacherEarningsTitle,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary)),
               const SizedBox(height: 16),
               _BalanceCard(balance: data.totalBalance, fmtAmount: _fmtAmount),
               const SizedBox(height: 16),
@@ -64,17 +69,22 @@ class TeacherEarningsScreen extends ConsumerWidget {
                 fmtAmount: _fmtAmount,
               ),
               const SizedBox(height: 14),
-              _CommissionBanner(),
+              const _CommissionBanner(),
               const SizedBox(height: 20),
-              const Text('سجل المعاملات',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              Text(l.teacherLedgerTitle,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary)),
               const SizedBox(height: 12),
               if (data.entries.isEmpty)
                 _EmptyLedger()
               else
                 ...data.entries.map((e) => Padding(
                   padding: const EdgeInsets.only(bottom: 9),
-                  child: _LedgerRow(entry: e, fmtDate: _fmtDate, fmtAmount: _fmtAmount),
+                  child: _LedgerRow(
+                    entry: e,
+                    fmtDate: (s) => _fmtDate(s, l),
+                    fmtAmount: _fmtAmount,
+                  ),
                 )),
               const SizedBox(height: 20),
             ],
@@ -85,20 +95,14 @@ class TeacherEarningsScreen extends ConsumerWidget {
   }
 }
 
-class _BalanceCard extends StatefulWidget {
+class _BalanceCard extends StatelessWidget {
   final double balance;
   final String Function(num) fmtAmount;
   const _BalanceCard({required this.balance, required this.fmtAmount});
 
   @override
-  State<_BalanceCard> createState() => _BalanceCardState();
-}
-
-class _BalanceCardState extends State<_BalanceCard> {
-  bool _loading = false;
-
-  @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -108,40 +112,31 @@ class _BalanceCardState extends State<_BalanceCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('الرصيد الإجمالي المكتسب', style: TextStyle(fontSize: 12, color: Color(0xFF9DB2B8))),
+          Text(l.teacherEarningsBalance,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF9DB2B8))),
           const SizedBox(height: 4),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(widget.fmtAmount(widget.balance),
-                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: Colors.white)),
+              Text(fmtAmount(balance),
+                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700,
+                  color: Colors.white)),
               const SizedBox(width: 6),
-              const Padding(
-                padding: EdgeInsets.only(bottom: 5),
-                child: Text('أوقية', style: TextStyle(fontSize: 13, color: Color(0xFF7BE0C0))),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 5),
+                child: Text(l.dashOugiya,
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF7BE0C0))),
               ),
             ],
           ),
           const SizedBox(height: 14),
           GestureDetector(
-            onTap: _loading ? null : () async {
-              final messenger = ScaffoldMessenger.of(context);
-              setState(() => _loading = true);
-              try {
-                await SupabaseService.client.from('session_events').insert({
-                  'session_id': null,
-                  'event_type': 'WITHDRAWAL_REQUESTED',
-                  'actor': 'teacher',
-                  'actor_id': SupabaseService.userId,
-                  'note': 'طلب سحب من الأستاذ',
-                });
-              } catch (_) {}
-              if (!mounted) return;
-              setState(() => _loading = false);
-              messenger.showSnackBar(
-                const SnackBar(
-                  content: Text('تم إرسال طلب السحب إلى الإدارة'),
-                  backgroundColor: Color(0xFF1B9E77),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(l.teacherEarningsWithdrawContact),
+                  backgroundColor: const Color(0xFF1B6B7A),
+                  duration: const Duration(seconds: 4),
                 ),
               );
             },
@@ -153,11 +148,9 @@ class _BalanceCardState extends State<_BalanceCard> {
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
-              child: _loading
-                  ? const SizedBox(width: 20, height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF11313A)))
-                  : const Text('طلب سحب الأرباح',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF11313A))),
+              child: Text(l.teacherEarningsWithdraw,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
+                  color: Color(0xFF11313A))),
             ),
           ),
         ],
@@ -170,15 +163,20 @@ class _StatsRow extends StatelessWidget {
   final double weekEarnings;
   final double monthEarnings;
   final String Function(num) fmtAmount;
-  const _StatsRow({required this.weekEarnings, required this.monthEarnings, required this.fmtAmount});
+  const _StatsRow({
+    required this.weekEarnings,
+    required this.monthEarnings,
+    required this.fmtAmount,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Row(
       children: [
-        Expanded(child: _StatBox(label: 'هذا الأسبوع', value: fmtAmount(weekEarnings))),
+        Expanded(child: _StatBox(label: l.teacherEarningsWeek, value: fmtAmount(weekEarnings))),
         const SizedBox(width: 10),
-        Expanded(child: _StatBox(label: 'هذا الشهر', value: fmtAmount(monthEarnings))),
+        Expanded(child: _StatBox(label: l.teacherEarningsMonth, value: fmtAmount(monthEarnings))),
       ],
     );
   }
@@ -201,7 +199,8 @@ class _StatBox extends StatelessWidget {
       child: Column(
         children: [
           Text(value,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary)),
           const SizedBox(height: 2),
           Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textHint)),
         ],
@@ -222,12 +221,13 @@ class _SourcesRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Row(
       children: [
         Expanded(
           child: _SourceBox(
             icon: Icons.video_call_outlined,
-            label: 'من الجلسات',
+            label: l.teacherEarningsFromSessions,
             value: fmtAmount(sessionEarnings),
             color: AppColors.primary,
           ),
@@ -236,7 +236,7 @@ class _SourcesRow extends StatelessWidget {
         Expanded(
           child: _SourceBox(
             icon: Icons.menu_book_outlined,
-            label: 'من الدروس',
+            label: l.teacherEarningsFromCourses,
             value: fmtAmount(courseEarnings),
             color: const Color(0xFF7B61FF),
           ),
@@ -282,10 +282,9 @@ class _SourceBox extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(value,
-                    style: TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color)),
                 Text(label,
-                    style: const TextStyle(fontSize: 10, color: AppColors.textHint)),
+                  style: const TextStyle(fontSize: 10, color: AppColors.textHint)),
               ],
             ),
           ),
@@ -296,22 +295,25 @@ class _SourceBox extends StatelessWidget {
 }
 
 class _CommissionBanner extends StatelessWidget {
+  const _CommissionBanner();
+
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         color: const Color(0xFFFEF3E2),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFC77A1A)),
-          SizedBox(width: 8),
+          const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFC77A1A)),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'تخصم المنصة عمولة 15% من كل جلسة ودرس مؤكّد تلقائياً.',
-              style: TextStyle(fontSize: 11, color: Color(0xFF8A5A14), height: 1.5),
+              l.earningsCommissionText,
+              style: const TextStyle(fontSize: 11, color: Color(0xFF8A5A14), height: 1.5),
             ),
           ),
         ],
@@ -328,12 +330,14 @@ class _LedgerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l         = context.l10n;
     final amt       = (entry['net_amount'] as num?) ?? 0;
     final createdAt = (entry['created_at'] as String?) ?? '';
     final type      = (entry['type'] as String?) ?? '';
 
     final isCourse  = type == 'course_subscription';
     final isSession = type == 'session_payment';
+    final isPayout  = type == 'payout_sent';
 
     final sessionMap  = entry['session'] as Map?;
     final subject     = (sessionMap?['subject'] as String?) ?? '';
@@ -341,21 +345,29 @@ class _LedgerRow extends StatelessWidget {
     final studentName = (studentMap?['full_name'] as String?) ?? '';
 
     final title = isCourse
-        ? (entry['description'] as String? ?? 'اشتراك في دورة')
+        ? (entry['description'] as String? ?? l.earningsCourseDesc)
         : isSession
-            ? 'جلسة $subject${studentName.isNotEmpty ? ' · $studentName' : ''}'
-            : type.replaceAll('_', ' ');
+            ? (studentName.isNotEmpty
+                ? l.earningsSessionDescWithStudent(subject, studentName)
+                : l.earningsSessionDesc(subject))
+            : isPayout
+                ? l.teacherLedgerPayout
+                : type.replaceAll('_', ' ');
 
     final iconColor = isCourse
         ? const Color(0xFF7B61FF)
         : isSession
             ? const Color(0xFF1B9E77)
-            : AppColors.textSecondary;
+            : isPayout
+                ? const Color(0xFFC77A1A)
+                : AppColors.textSecondary;
     final iconBg = isCourse
         ? const Color(0xFFF0EDFF)
         : isSession
             ? const Color(0xFFE3F6EF)
-            : const Color(0xFFEEF0F2);
+            : isPayout
+                ? const Color(0xFFFEF3E2)
+                : const Color(0xFFEEF0F2);
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -368,17 +380,16 @@ class _LedgerRow extends StatelessWidget {
         children: [
           Container(
             width: 36, height: 36,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(10),
-            ),
+            decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10)),
             alignment: Alignment.center,
             child: Icon(
               isCourse
                   ? Icons.menu_book_outlined
                   : isSession
                       ? Icons.video_call_outlined
-                      : Icons.swap_horiz_rounded,
+                      : isPayout
+                          ? Icons.account_balance_wallet_outlined
+                          : Icons.swap_horiz_rounded,
               size: 18,
               color: iconColor,
             ),
@@ -389,7 +400,8 @@ class _LedgerRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title,
-                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary),
                   maxLines: 1, overflow: TextOverflow.ellipsis),
                 Text(fmtDate(createdAt),
                   style: const TextStyle(fontSize: 10.5, color: AppColors.textHint)),
@@ -397,10 +409,12 @@ class _LedgerRow extends StatelessWidget {
             ),
           ),
           Text(
-            '+${fmtAmount(amt)}',
+            isPayout
+                ? '-${fmtAmount(amt.abs())}'
+                : '+${fmtAmount(amt)}',
             style: TextStyle(
               fontSize: 13, fontWeight: FontWeight.w700,
-              color: iconColor,
+              color: isPayout ? const Color(0xFFE03E3E) : iconColor,
             ),
           ),
         ],
@@ -412,6 +426,7 @@ class _LedgerRow extends StatelessWidget {
 class _EmptyLedger extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -419,12 +434,12 @@ class _EmptyLedger extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
-      child: const Column(
+      child: Column(
         children: [
-          Icon(Icons.receipt_long_outlined, size: 32, color: AppColors.textHint),
-          SizedBox(height: 8),
-          Text('لا توجد معاملات بعد',
-            style: TextStyle(fontSize: 13, color: AppColors.textHint)),
+          const Icon(Icons.receipt_long_outlined, size: 32, color: AppColors.textHint),
+          const SizedBox(height: 8),
+          Text(l.teacherLedgerEmpty,
+            style: const TextStyle(fontSize: 13, color: AppColors.textHint)),
         ],
       ),
     );

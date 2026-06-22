@@ -42,8 +42,12 @@ export default function Subscriptions({ adminId }) {
     setShowRejectInput(false)
     setRejectReason('')
     if (row.proof_image_url) {
-      const { data } = await supabase.storage.from('subscription-proofs').createSignedUrl(row.proof_image_url, 3600)
-      setProofUrl(data?.signedUrl || null)
+      if (row.proof_image_url.startsWith('http')) {
+        setProofUrl(row.proof_image_url)
+      } else {
+        const { data } = await supabase.storage.from('subscription-proofs').createSignedUrl(row.proof_image_url, 3600)
+        setProofUrl(data?.signedUrl || null)
+      }
     }
   }
 

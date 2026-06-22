@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/session_states.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/services/session_service.dart';
+import '../../../l10n/app_localizations.dart';
 
 class TeacherRequestDetailScreen extends ConsumerStatefulWidget {
   final String requestId;
@@ -30,7 +32,7 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ: $e')));
+          SnackBar(content: Text('${context.l10n.commonError}: $e')));
       }
     } finally {
       if (mounted) setState(() => _approving = false);
@@ -50,22 +52,23 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ: $e')));
+          SnackBar(content: Text('${context.l10n.commonError}: $e')));
       }
     } finally {
       if (mounted) setState(() => _rejecting = false);
     }
   }
 
-  String _formatDate(DateTime dt) {
-    final days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  String _formatDate(DateTime dt, AppLocalizations l) {
+    final days = [l.daySun, l.dayMon, l.dayTue, l.dayWed, l.dayThu, l.dayFri, l.daySat];
     final h = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
-    final period = dt.hour >= 12 ? 'م' : 'ص';
+    final period = dt.hour >= 12 ? l.timePM : l.timeAM;
     return '${days[dt.weekday % 7]} $h:${dt.minute.toString().padLeft(2, '0')} $period';
   }
 
   @override
   Widget build(BuildContext context) {
+    final l            = context.l10n;
     final sessionAsync = ref.watch(sessionProvider(widget.requestId));
 
     return Scaffold(
@@ -76,22 +79,20 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('تعذّر تحميل الطلب'),
+              Text(l.teacherLoadRequestError),
               TextButton(
                 onPressed: () => ref.invalidate(sessionProvider(widget.requestId)),
-                child: const Text('إعادة المحاولة'),
+                child: Text(l.commonRetry),
               ),
             ],
           ),
         ),
         data: (session) {
-          if (session == null) {
-            return const Center(child: Text('الطلب غير موجود'));
-          }
+          if (session == null) return Center(child: Text(l.teacherRequestNotFound));
 
-          final isStillPending = session.state == SessionState.requested;
-          final commissionRate = 0.15;
-          final net = session.amount * (1 - commissionRate);
+          final isStillPending   = session.state == SessionState.requested;
+          const commissionRate   = 0.15;
+          final net              = session.amount * (1 - commissionRate);
 
           return Column(
             children: [
@@ -114,8 +115,9 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                         child: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.textPrimary),
                       ),
                     ),
-                    const Text('مراجعة الطلب',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    Text(l.teacherReviewRequestTitle,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
                   ],
                 ),
               ),
@@ -146,14 +148,14 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                                 child: const Icon(Icons.access_time_rounded, color: Colors.white, size: 18),
                               ),
                               const SizedBox(width: 10),
-                              const Expanded(
+                              Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('المسؤول الآن',
-                                      style: TextStyle(fontSize: 11, color: Color(0xFFB07A2A))),
-                                    Text('أنت — الرد على الطلب خلال 24 ساعة',
-                                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700,
+                                    Text(l.teacherNowResponsible,
+                                      style: const TextStyle(fontSize: 11, color: Color(0xFFB07A2A))),
+                                    Text(l.teacherStillPending,
+                                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700,
                                         color: AppColors.textPrimary)),
                                   ],
                                 ),
@@ -165,21 +167,15 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
                           decoration: BoxDecoration(
-                            color: AppColors.statusApprovedBg,
+                            color: _bannerBg(session.state),
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: Row(
                             children: [
-                              Icon(
-                                session.state == SessionState.teacherRejected
-                                    ? Icons.cancel_outlined : Icons.check_circle_outline_rounded,
-                                color: session.state == SessionState.teacherRejected
-                                    ? AppColors.error : AppColors.statusApproved,
-                              ),
+                              Icon(_bannerIcon(session.state), color: _bannerColor(session.state)),
                               const SizedBox(width: 10),
                               Text(
-                                session.state == SessionState.teacherRejected
-                                    ? 'تم رفض هذا الطلب' : 'تمت معالجة هذا الطلب',
+                                _bannerText(session.state, l),
                                 style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700,
                                   color: AppColors.textPrimary),
                               ),
@@ -215,11 +211,12 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(session.studentName.isNotEmpty ? session.studentName : 'طالب',
+                                Text(
+                                  session.studentName.isNotEmpty ? session.studentName : l.authStudent,
                                   style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700,
                                     color: AppColors.textPrimary)),
-                                const Text('طالب',
-                                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                Text(l.authStudent,
+                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                               ],
                             ),
                           ],
@@ -237,15 +234,17 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                         ),
                         child: Column(
                           children: [
-                            _DetailRow(label: 'المادة', value: session.subject),
+                            _DetailRow(label: l.teacherSubjectLabel, value: session.subject),
                             const SizedBox(height: 11),
                             if (session.studentLevel != null && session.studentLevel!.isNotEmpty) ...[
-                              _DetailRow(label: 'المستوى الدراسي', value: session.studentLevel!),
+                              _DetailRow(label: l.teacherLevelLabel, value: session.studentLevel!),
                               const SizedBox(height: 11),
                             ],
-                            _DetailRow(label: 'الموعد المطلوب', value: _formatDate(session.scheduledAt)),
+                            _DetailRow(label: l.teacherDateLabel,
+                              value: _formatDate(session.scheduledAt, l)),
                             const SizedBox(height: 11),
-                            _DetailRow(label: 'المدة', value: '${session.durationMinutes} دقيقة'),
+                            _DetailRow(label: l.teacherDurationLabel,
+                              value: l.sessionMinutes(session.durationMinutes)),
                             const Padding(
                               padding: EdgeInsets.symmetric(vertical: 11),
                               child: Divider(height: 1, color: Color(0xFFF0F1F3)),
@@ -253,19 +252,19 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('صافي ربحك',
-                                  style: TextStyle(fontSize: 13, color: AppColors.textHint)),
+                                Text(l.teacherNetEarning,
+                                  style: const TextStyle(fontSize: 13, color: AppColors.textHint)),
                                 RichText(
                                   text: TextSpan(
                                     style: const TextStyle(fontFamily: 'IBM Plex Sans Arabic'),
                                     children: [
                                       TextSpan(
-                                        text: '${net.toInt()} أوقية ',
+                                        text: '${l.sessionOugiya('${net.toInt()}')} ',
                                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
                                           color: Color(0xFF1B9E77)),
                                       ),
                                       TextSpan(
-                                        text: '(من ${session.amount.toInt()} − عمولة 15%)',
+                                        text: l.teacherCommissionNote('${session.amount.toInt()}'),
                                         style: const TextStyle(fontSize: 10, color: AppColors.textHint),
                                       ),
                                     ],
@@ -291,12 +290,13 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('وصف الطلب',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                              Text(l.teacherStudentNote,
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
                                   color: AppColors.textPrimary)),
                               const SizedBox(height: 7),
                               Text(session.studentNote!,
-                                style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.7)),
+                                style: const TextStyle(fontSize: 12.5,
+                                  color: AppColors.textSecondary, height: 1.7)),
                             ],
                           ),
                         ),
@@ -306,7 +306,7 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                 ),
               ),
 
-              // Bottom actions — only shown if still pending
+              // Bottom actions — only if still pending
               if (isStillPending)
                 Container(
                   color: AppColors.surface,
@@ -328,8 +328,8 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                           child: _rejecting
                               ? const SizedBox(width: 18, height: 18,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
-                              : const Text('رفض الطلب',
-                                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+                              : Text(l.teacherRejectBtn,
+                                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
                         ),
                       ),
                       const SizedBox(width: 11),
@@ -347,8 +347,8 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                           child: _approving
                               ? const SizedBox(width: 18, height: 18,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Text('قبول الطلب',
-                                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+                              : Text(l.teacherApproveBtn,
+                                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
                         ),
                       ),
                     ],
@@ -361,26 +361,57 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
     );
   }
 
+  Color _bannerBg(SessionState s) {
+    if (s == SessionState.teacherRejected || s == SessionState.cancelled) {
+      return const Color(0xFFFDECEC);
+    }
+    return AppColors.statusApprovedBg;
+  }
+
+  Color _bannerColor(SessionState s) {
+    if (s == SessionState.teacherRejected || s == SessionState.cancelled) {
+      return AppColors.error;
+    }
+    return AppColors.statusApproved;
+  }
+
+  IconData _bannerIcon(SessionState s) {
+    if (s == SessionState.teacherRejected || s == SessionState.cancelled) {
+      return Icons.cancel_outlined;
+    }
+    return Icons.check_circle_outline_rounded;
+  }
+
+  String _bannerText(SessionState s, AppLocalizations l) {
+    switch (s) {
+      case SessionState.teacherRejected: return l.teacherRequestRejected;
+      case SessionState.cancelled:       return l.teacherRequestCancelledByStudent;
+      default:                           return l.teacherRequestProcessed;
+    }
+  }
+
   void _showRejectDialog(BuildContext context) {
+    final l          = context.l10n;
     final reasonCtrl = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('رفض الطلب', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(l.teacherRejectDialogTitle,
+          style: const TextStyle(fontWeight: FontWeight.w700)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('سيتم إشعار الطالب بالرفض.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            Text(l.teacherRejectDialogBody,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
             const SizedBox(height: 12),
             TextField(
               controller: reasonCtrl,
               maxLines: 2,
               style: const TextStyle(fontSize: 13),
               decoration: InputDecoration(
-                hintText: 'سبب الرفض (اختياري)',
+                hintText: l.teacherRejectReasonHint,
                 hintStyle: const TextStyle(fontSize: 13, color: AppColors.textHint),
                 filled: true,
                 fillColor: AppColors.surfaceAlt,
@@ -394,7 +425,7 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
           ElevatedButton(
             onPressed: () {
               final reason = reasonCtrl.text.trim();
@@ -403,7 +434,7 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error, foregroundColor: Colors.white),
-            child: const Text('رفض'),
+            child: Text(l.commonReject),
           ),
         ],
       ),
@@ -417,13 +448,12 @@ class _DetailRow extends StatelessWidget {
   const _DetailRow({required this.label, required this.value});
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textHint)),
-        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textHint)),
+      Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+        color: AppColors.textPrimary)),
+    ],
+  );
 }

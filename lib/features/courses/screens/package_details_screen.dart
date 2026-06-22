@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/course.dart';
 import '../../../core/providers/courses_provider.dart';
 
@@ -11,6 +12,7 @@ class PackageDetailsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
     final pkgAsync = ref.watch(packageDetailsProvider(packageId));
     final hasSubAsync = ref.watch(hasPackageSubscriptionProvider(packageId));
 
@@ -22,7 +24,7 @@ class PackageDetailsScreen extends ConsumerWidget {
       error: (e, _) => Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(backgroundColor: AppColors.background, elevation: 0),
-        body: Center(child: Text('تعذّر التحميل: $e')),
+        body: Center(child: Text('${l.commonErrorLoading}: $e')),
       ),
       data: (pkg) {
         final hasSub = hasSubAsync.valueOrNull ?? false;
@@ -31,9 +33,9 @@ class PackageDetailsScreen extends ConsumerWidget {
           body: CustomScrollView(
             slivers: [
               _buildHeader(context, pkg),
-              SliverToBoxAdapter(child: _buildStats(pkg)),
+              SliverToBoxAdapter(child: _buildStats(context, pkg)),
               SliverToBoxAdapter(child: _buildDescription(pkg)),
-              SliverToBoxAdapter(child: _buildCoursesList(pkg)),
+              SliverToBoxAdapter(child: _buildCoursesList(context, pkg)),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
@@ -44,6 +46,7 @@ class PackageDetailsScreen extends ConsumerWidget {
   }
 
   Widget _buildHeader(BuildContext context, CoursePackage pkg) {
+    final l = context.l10n;
     return SliverAppBar(
       expandedHeight: 200,
       pinned: true,
@@ -77,8 +80,8 @@ class PackageDetailsScreen extends ConsumerWidget {
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: const Text('باقة',
-                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                    child: Text(l.packageTypeLabel,
+                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
                   ),
                   const SizedBox(height: 10),
                   Text(pkg.title,
@@ -99,7 +102,8 @@ class PackageDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStats(CoursePackage pkg) {
+  Widget _buildStats(BuildContext context, CoursePackage pkg) {
+    final l = context.l10n;
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       padding: const EdgeInsets.all(16),
@@ -111,9 +115,9 @@ class PackageDetailsScreen extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          _statItem('${pkg.courses.length}', 'دروس'),
+          _statItem('${pkg.courses.length}', l.packageCoursesStatLabel),
           _divider(),
-          _statItem('${pkg.totalLessons}', 'حصة'),
+          _statItem('${pkg.totalLessons}', l.packageLessonsStatLabel),
           _divider(),
           if (pkg.saveLabel != null)
             _statItem(pkg.saveLabel!, '', highlight: true),
@@ -158,12 +162,13 @@ class PackageDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildCoursesList(CoursePackage pkg) {
+  Widget _buildCoursesList(BuildContext context, CoursePackage pkg) {
+    final l = context.l10n;
     if (pkg.courses.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(20),
-        child: Text('لا توجد دروس في هذه الباقة بعد',
-            style: TextStyle(color: AppColors.textHint, fontSize: 13)),
+      return Padding(
+        padding: const EdgeInsets.all(20),
+        child: Text(l.packageNoCourses,
+            style: const TextStyle(color: AppColors.textHint, fontSize: 13)),
       );
     }
     return Padding(
@@ -171,8 +176,8 @@ class PackageDetailsScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('الدروس المشمولة',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          Text(l.packageCoursesTitle,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           const SizedBox(height: 12),
           ...pkg.courses.map((course) => Container(
                 margin: const EdgeInsets.only(bottom: 10),
@@ -203,7 +208,7 @@ class PackageDetailsScreen extends ConsumerWidget {
                               style: const TextStyle(
                                   fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                           const SizedBox(height: 3),
-                          Text('${course.totalLessons} درس · ${course.subject}',
+                          Text('${l.homeLessonCount(course.totalLessons)} · ${course.subject}',
                               style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
                         ],
                       ),
@@ -227,6 +232,7 @@ class PackageDetailsScreen extends ConsumerWidget {
   }
 
   Widget _buildBottomBar(BuildContext context, CoursePackage pkg, bool hasSub) {
+    final l = context.l10n;
     return SafeArea(
       top: false,
       child: SizedBox(
@@ -247,7 +253,7 @@ class PackageDetailsScreen extends ConsumerWidget {
                 children: [
                   if (pkg.originalPrice != null)
                     Text(
-                      '${pkg.originalPrice!.toStringAsFixed(0)} أوقية',
+                      l.homeOriginalPrice(pkg.originalPrice!.toStringAsFixed(0)),
                       style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.textHint,
@@ -260,13 +266,13 @@ class PackageDetailsScreen extends ConsumerWidget {
                       Text(pkg.priceMonthly.toStringAsFixed(0),
                           style: const TextStyle(
                               fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                      const Text(' أوقية/شهر',
-                          style: TextStyle(fontSize: 10, color: AppColors.textHint)),
+                      Text(' ${l.homeOugiyaPerMonth}',
+                          style: const TextStyle(fontSize: 10, color: AppColors.textHint)),
                     ],
                   ),
                   if (pkg.priceYearly != null)
                     Text(
-                      '${pkg.priceYearly!.toStringAsFixed(0)} أوقية/سنة',
+                      l.coursePriceYearly(pkg.priceYearly!.toStringAsFixed(0)),
                       style: const TextStyle(
                           fontSize: 10, color: AppColors.statusConfirmed, fontWeight: FontWeight.w600),
                     ),
@@ -281,13 +287,13 @@ class PackageDetailsScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: AppColors.statusConfirmed.withValues(alpha: 0.3)),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.check_circle_rounded, color: AppColors.statusConfirmed, size: 18),
-                            SizedBox(width: 6),
-                            Text('مشترك',
-                                style: TextStyle(color: AppColors.statusConfirmed, fontWeight: FontWeight.w700)),
+                            const Icon(Icons.check_circle_rounded, color: AppColors.statusConfirmed, size: 18),
+                            const SizedBox(width: 6),
+                            Text(l.courseSubscribedLabel,
+                                style: const TextStyle(color: AppColors.statusConfirmed, fontWeight: FontWeight.w700)),
                           ],
                         ),
                       )
@@ -299,9 +305,9 @@ class PackageDetailsScreen extends ConsumerWidget {
                             color: pkg.coverColor,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Center(
-                            child: Text('اشترك في الباقة',
-                                style: TextStyle(
+                          child: Center(
+                            child: Text(l.packageSubscribeBtn,
+                                style: const TextStyle(
                                     color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
                           ),
                         ),

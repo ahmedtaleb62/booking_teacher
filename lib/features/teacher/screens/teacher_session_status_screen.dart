@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/session.dart';
 import '../../../core/constants/session_states.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/services/session_service.dart';
+import '../../../l10n/app_localizations.dart';
 
 class TeacherSessionStatusScreen extends ConsumerWidget {
   final String sessionId;
@@ -13,6 +15,7 @@ class TeacherSessionStatusScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l     = context.l10n;
     final async = ref.watch(sessionProvider(sessionId));
 
     return Scaffold(
@@ -32,7 +35,7 @@ class TeacherSessionStatusScreen extends ConsumerWidget {
           ),
           onPressed: () => context.pop(),
         ),
-        title: const Text('حالة الطلب'),
+        title: Text(l.teacherSessionStatusTitle),
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
@@ -42,18 +45,16 @@ class TeacherSessionStatusScreen extends ConsumerWidget {
             children: [
               const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
               const SizedBox(height: 12),
-              const Text('تعذّر تحميل الجلسة'),
+              Text(l.sessionLoadError),
               TextButton(
                 onPressed: () => ref.invalidate(sessionProvider(sessionId)),
-                child: const Text('إعادة المحاولة'),
+                child: Text(l.commonRetry),
               ),
             ],
           ),
         ),
         data: (session) {
-          if (session == null) {
-            return const Center(child: Text('الجلسة غير موجودة'));
-          }
+          if (session == null) return Center(child: Text(l.sessionNotFound));
           return _SessionBody(session: session);
         },
       ),
@@ -101,8 +102,60 @@ class _HeroBanner extends StatelessWidget {
   final Session s;
   const _HeroBanner({required this.s});
 
+  (Color, Color) _gradientColors(SessionState state) {
+    switch (state) {
+      case SessionState.awaitingPayment:
+      case SessionState.teacherApproved:
+        return (const Color(0xFF7B61FF), const Color(0xFF4935CC));
+      case SessionState.paymentSubmitted:
+        return (const Color(0xFFC77A1A), const Color(0xFF8B5A14));
+      case SessionState.paymentConfirmed:
+      case SessionState.confirmedBooking:
+        return (const Color(0xFF1B9E77), const Color(0xFF15805F));
+      case SessionState.activeSession:
+        return (const Color(0xFF1B6B7A), const Color(0xFF0E4550));
+      case SessionState.completed:
+        return (const Color(0xFF2D6CDF), const Color(0xFF1E468F));
+      case SessionState.dispute:
+        return (AppColors.error, const Color(0xFF9B2D2D));
+      default:
+        return (AppColors.primaryDark, const Color(0xFF0E2A33));
+    }
+  }
+
+  IconData _stateIcon(SessionState state) {
+    switch (state) {
+      case SessionState.awaitingPayment:  return Icons.payment_rounded;
+      case SessionState.paymentSubmitted: return Icons.shield_outlined;
+      case SessionState.paymentConfirmed: return Icons.verified_rounded;
+      case SessionState.confirmedBooking: return Icons.event_available_rounded;
+      case SessionState.activeSession:    return Icons.videocam_rounded;
+      case SessionState.completed:        return Icons.star_rounded;
+      case SessionState.dispute:          return Icons.warning_rounded;
+      default:                            return Icons.info_outline_rounded;
+    }
+  }
+
+  String _subtitle(SessionState state, AppLocalizations l) {
+    switch (state) {
+      case SessionState.awaitingPayment:  return l.teacherSubAwaitingPayment;
+      case SessionState.paymentSubmitted: return l.teacherSubPaymentSubmitted;
+      case SessionState.paymentConfirmed: return l.teacherSubPaymentConfirmed;
+      case SessionState.confirmedBooking: return l.teacherSubConfirmedBooking;
+      case SessionState.activeSession:    return l.teacherSubActiveSession;
+      case SessionState.completed:        return l.teacherSubCompleted;
+      case SessionState.dispute:          return l.teacherSubDispute;
+      case SessionState.teacherNoShow:    return l.teacherStatusNoShow;
+      case SessionState.studentNoShow:    return l.teacherStatusStudentNoShow;
+      case SessionState.cancelled:        return l.sessionCancelledInfo;
+      case SessionState.teacherRejected:  return l.teacherSubRejected;
+      default:                            return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final (bg1, bg2) = _gradientColors(s.state);
     return Container(
       width: double.infinity,
@@ -144,58 +197,11 @@ class _HeroBanner extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 5),
-          Text(_subtitle(s.state),
+          Text(_subtitle(s.state, l),
             style: const TextStyle(fontSize: 12.5, color: Colors.white70, height: 1.6)),
         ],
       ),
     );
-  }
-
-  (Color, Color) _gradientColors(SessionState state) {
-    switch (state) {
-      case SessionState.awaitingPayment:
-      case SessionState.teacherApproved:
-        return (const Color(0xFF7B61FF), const Color(0xFF4935CC));
-      case SessionState.paymentSubmitted:
-        return (const Color(0xFFC77A1A), const Color(0xFF8B5A14));
-      case SessionState.paymentConfirmed:
-      case SessionState.confirmedBooking:
-        return (const Color(0xFF1B9E77), const Color(0xFF15805F));
-      case SessionState.activeSession:
-        return (const Color(0xFF1B6B7A), const Color(0xFF0E4550));
-      case SessionState.completed:
-        return (const Color(0xFF2D6CDF), const Color(0xFF1E468F));
-      case SessionState.dispute:
-        return (AppColors.error, const Color(0xFF9B2D2D));
-      default:
-        return (AppColors.primaryDark, const Color(0xFF0E2A33));
-    }
-  }
-
-  IconData _stateIcon(SessionState state) {
-    switch (state) {
-      case SessionState.awaitingPayment:     return Icons.payment_rounded;
-      case SessionState.paymentSubmitted:     return Icons.shield_outlined;
-      case SessionState.paymentConfirmed:     return Icons.verified_rounded;
-      case SessionState.confirmedBooking:     return Icons.event_available_rounded;
-      case SessionState.activeSession:        return Icons.videocam_rounded;
-      case SessionState.completed:            return Icons.star_rounded;
-      case SessionState.dispute:              return Icons.warning_rounded;
-      default:                               return Icons.info_outline_rounded;
-    }
-  }
-
-  String _subtitle(SessionState state) {
-    switch (state) {
-      case SessionState.awaitingPayment:     return 'في انتظار أن يُكمل الطالب الدفع.';
-      case SessionState.paymentSubmitted:     return 'الإدارة تراجع إثبات الدفع. لا إجراء منك.';
-      case SessionState.paymentConfirmed:     return 'تأكّد الدفع. الجلسة ستُفتح عند موعدها.';
-      case SessionState.confirmedBooking:     return 'الحجز مؤكّد ✓ جلستك جاهزة. ابدأ عند الموعد.';
-      case SessionState.activeSession:        return 'الجلسة جارية الآن — ادخل للانضمام.';
-      case SessionState.completed:            return 'اكتملت الجلسة. تحقق من الأرباح.';
-      case SessionState.dispute:              return 'تم فتح نزاع. الإدارة تراجع الحالة.';
-      default:                               return '';
-    }
   }
 }
 
@@ -208,18 +214,19 @@ class _MiniStepper extends StatelessWidget {
   int get _step {
     switch (state) {
       case SessionState.awaitingPayment:
-      case SessionState.teacherApproved:     return 1;
+      case SessionState.teacherApproved:  return 1;
       case SessionState.paymentSubmitted:
-      case SessionState.paymentConfirmed:    return 2;
-      case SessionState.confirmedBooking:    return 3;
+      case SessionState.paymentConfirmed: return 2;
+      case SessionState.confirmedBooking: return 3;
       case SessionState.activeSession:
-      case SessionState.completed:           return 4;
-      default:                              return 1;
+      case SessionState.completed:        return 4;
+      default:                            return 1;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l    = context.l10n;
     final step = _step;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -244,17 +251,17 @@ class _MiniStepper extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          const Row(
+          Row(
             children: [
-              SizedBox(width: 24, child: Text('طلب',    style: _stepStyle, textAlign: TextAlign.center)),
-              Spacer(),
-              SizedBox(width: 30, child: Text('موافقة', style: _stepStyle, textAlign: TextAlign.center)),
-              Spacer(),
-              SizedBox(width: 28, child: Text('دفع',    style: _stepStyle, textAlign: TextAlign.center)),
-              Spacer(),
-              SizedBox(width: 28, child: Text('مؤكّد',  style: _stepStyle, textAlign: TextAlign.center)),
-              Spacer(),
-              SizedBox(width: 28, child: Text('مكتمل',  style: _stepStyle, textAlign: TextAlign.center)),
+              SizedBox(width: 24, child: Text(l.stepRequest,  style: _stepStyle, textAlign: TextAlign.center)),
+              const Spacer(),
+              SizedBox(width: 30, child: Text(l.stepApproval, style: _stepStyle, textAlign: TextAlign.center)),
+              const Spacer(),
+              SizedBox(width: 28, child: Text(l.stepPayment,  style: _stepStyle, textAlign: TextAlign.center)),
+              const Spacer(),
+              SizedBox(width: 28, child: Text(l.stepConfirmed,style: _stepStyle, textAlign: TextAlign.center)),
+              const Spacer(),
+              SizedBox(width: 28, child: Text(l.stepCompleted,style: _stepStyle, textAlign: TextAlign.center)),
             ],
           ),
         ],
@@ -305,14 +312,9 @@ class _Line extends StatelessWidget {
   const _Line({required this.done});
 
   @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        height: 3,
-        color: done ? const Color(0xFF1B9E77) : AppColors.border,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Expanded(
+    child: Container(height: 3, color: done ? const Color(0xFF1B9E77) : AppColors.border),
+  );
 }
 
 // ── Session summary ───────────────────────────────────────────
@@ -321,15 +323,16 @@ class _SummaryCard extends StatelessWidget {
   final Session s;
   const _SummaryCard({required this.s});
 
-  String _fmtDate(DateTime dt) {
-    const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  String _fmtDate(DateTime dt, AppLocalizations l) {
+    final days = [l.daySun, l.dayMon, l.dayTue, l.dayWed, l.dayThu, l.dayFri, l.daySat];
     final h = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
-    final period = dt.hour >= 12 ? 'م' : 'ص';
+    final period = dt.hour >= 12 ? l.timePM : l.timeAM;
     return '${days[dt.weekday % 7]} $h:${dt.minute.toString().padLeft(2, '0')} $period';
   }
 
   @override
   Widget build(BuildContext context) {
+    final l   = context.l10n;
     final net = s.amount * 0.85;
     return Container(
       padding: const EdgeInsets.all(15),
@@ -340,15 +343,15 @@ class _SummaryCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _Row(label: 'الطالب',     value: s.studentName.isNotEmpty ? s.studentName : 'طالب'),
+          _Row(label: l.teacherStudentLabel, value: s.studentName.isNotEmpty ? s.studentName : l.authStudent),
           const Divider(height: 18),
-          _Row(label: 'المادة',     value: s.subject),
+          _Row(label: l.teacherSubjectLabel,  value: s.subject),
           const SizedBox(height: 10),
-          _Row(label: 'الموعد',     value: '${_fmtDate(s.scheduledAt)} · ${s.durationMinutes} د'),
+          _Row(label: l.sessionDate,          value: '${_fmtDate(s.scheduledAt, l)} · ${l.dashMinutesShort(s.durationMinutes)}'),
           const SizedBox(height: 10),
-          _Row(label: 'المبلغ',     value: '${s.amount.toInt()} أوقية'),
+          _Row(label: l.sessionAmountLabel,   value: l.sessionOugiya('${s.amount.toInt()}')),
           const SizedBox(height: 10),
-          _Row(label: 'صافي ربحك',  value: '${net.toInt()} أوقية',
+          _Row(label: l.teacherNetEarning,    value: l.sessionOugiya('${net.toInt()}'),
             valueColor: const Color(0xFF1B9E77)),
         ],
       ),
@@ -363,17 +366,14 @@ class _Row extends StatelessWidget {
   const _Row({required this.label, required this.value, this.valueColor});
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12.5, color: AppColors.textHint)),
-        Text(value, style: TextStyle(
-          fontSize: 12.5, fontWeight: FontWeight.w700,
-          color: valueColor ?? AppColors.textPrimary)),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Text(label, style: const TextStyle(fontSize: 12.5, color: AppColors.textHint)),
+      Text(value, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700,
+        color: valueColor ?? AppColors.textPrimary)),
+    ],
+  );
 }
 
 // ── Timeline ──────────────────────────────────────────────────
@@ -382,15 +382,16 @@ class _TimelineCard extends StatelessWidget {
   final Session s;
   const _TimelineCard({required this.s});
 
-  String _fmtTime(DateTime dt) {
+  String _fmtTime(DateTime dt, AppLocalizations l) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 60) return 'منذ ${diff.inMinutes} دقيقة';
-    if (diff.inHours < 24) return 'اليوم ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+    if (diff.inMinutes < 60) return l.timeMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return '${l.timeToday} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
     return '${dt.day}/${dt.month}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -401,12 +402,12 @@ class _TimelineCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('سجل الجلسة',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          Text(l.sessionHistory,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           const SizedBox(height: 12),
           ...s.events.asMap().entries.map((e) {
             final isLast = e.key == s.events.length - 1;
-            final event = e.value;
+            final event  = e.value;
             return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -427,8 +428,9 @@ class _TimelineCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(event.teacherLabel,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                        Text(_fmtTime(event.createdAt),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary)),
+                        Text(_fmtTime(event.createdAt, l),
                           style: const TextStyle(fontSize: 10.5, color: AppColors.textHint)),
                       ],
                     ),
@@ -457,25 +459,22 @@ class _BottomActionState extends State<_BottomAction> {
   bool _cancelling = false;
 
   Future<void> _cancelOrDispute(bool isDispute) async {
-    final action = isDispute ? 'فتح نزاع' : 'إلغاء الجلسة';
+    final l      = context.l10n;
+    final action = isDispute ? l.teacherOpenDispute : l.teacherCancelSession;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: Text(action,
-            style: const TextStyle(fontWeight: FontWeight.w700)),
-        content: Text(isDispute
-            ? 'الدفع مؤكّد — لا يمكن الإلغاء المباشر.\nسيُفتح نزاع وتراجعه الإدارة.'
-            : 'هل أنت متأكد من إلغاء هذه الجلسة؟'),
+        title: Text(action, style: const TextStyle(fontWeight: FontWeight.w700)),
+        content: Text(isDispute ? l.teacherDisputeDialogContent : l.teacherCancelSessionContent),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('تراجع')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.dialogBack)),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error,
-                foregroundColor: Colors.white),
+              backgroundColor: AppColors.error, foregroundColor: Colors.white),
             child: Text(action),
           ),
         ],
@@ -490,7 +489,7 @@ class _BottomActionState extends State<_BottomAction> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('حدث خطأ: $e')));
+          SnackBar(content: Text('${context.l10n.commonError}: $e')));
         setState(() => _cancelling = false);
       }
     }
@@ -498,13 +497,14 @@ class _BottomActionState extends State<_BottomAction> {
 
   @override
   Widget build(BuildContext context) {
-    final s = session;
+    final l = context.l10n;
+    final s = widget.session;
 
-    // ── CONFIRMED or ACTIVE: start / no-show ──────────────────
+    // ── CONFIRMED or ACTIVE ───────────────────────────────────
     if (s.state == SessionState.confirmedBooking ||
         s.state == SessionState.activeSession) {
-      final canEnter = s.canEnterSession || s.state == SessionState.activeSession;
-      final noShowDeadline = s.scheduledAt.add(const Duration(minutes: 15));
+      final canEnter           = s.canEnterSession || s.state == SessionState.activeSession;
+      final noShowDeadline     = s.scheduledAt.add(const Duration(minutes: 15));
       final noShowWindowPassed = DateTime.now().isAfter(noShowDeadline);
 
       Widget mainBtn;
@@ -514,12 +514,11 @@ class _BottomActionState extends State<_BottomAction> {
           child: OutlinedButton.icon(
             onPressed: () => context.push('/teacher/no-show/${s.id}'),
             icon: const Icon(Icons.person_off_rounded, size: 16),
-            label: const Text('تسجيل غياب الطالب',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+            label: Text(l.teacherMarkNoShow,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 15),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
               foregroundColor: AppColors.error,
             ),
@@ -529,39 +528,30 @@ class _BottomActionState extends State<_BottomAction> {
         mainBtn = SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed:
-                canEnter ? () => context.push('/teacher/live/${s.id}') : null,
+            onPressed: canEnter ? () => context.push('/teacher/live/${s.id}') : null,
             icon: const Icon(Icons.videocam_rounded, size: 18),
             label: Text(
-              canEnter
-                  ? 'بدء الجلسة الآن'
-                  : 'الدخول متاح قبل الموعد بـ 10 د',
-              style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w700),
+              canEnter ? l.teacherStartSession : l.teacherSessionEntryNote,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 15),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
-              backgroundColor:
-                  canEnter ? const Color(0xFF1B9E77) : AppColors.textHint,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              backgroundColor: canEnter ? const Color(0xFF1B9E77) : AppColors.textHint,
               foregroundColor: Colors.white,
             ),
           ),
         );
       }
 
-      // Secondary dispute link (only for confirmedBooking, not active)
       Widget? disputeLink;
       if (s.state == SessionState.confirmedBooking && !noShowWindowPassed) {
         disputeLink = TextButton(
           onPressed: _cancelling ? null : () => _cancelOrDispute(true),
           child: Text(
-            _cancelling ? 'جارٍ المعالجة…' : 'لا أستطيع الحضور — فتح نزاع',
-            style: TextStyle(
-                fontSize: 12,
-                color: AppColors.error.withValues(alpha: 0.8),
-                fontWeight: FontWeight.w600),
+            _cancelling ? l.teacherProcessingMsg : l.teacherCantAttend,
+            style: TextStyle(fontSize: 12, color: AppColors.error.withValues(alpha: 0.8),
+              fontWeight: FontWeight.w600),
           ),
         );
       }
@@ -570,15 +560,12 @@ class _BottomActionState extends State<_BottomAction> {
         mainAxisSize: MainAxisSize.min,
         children: [
           mainBtn,
-          if (disputeLink != null) ...[
-            const SizedBox(height: 4),
-            disputeLink,
-          ],
+          if (disputeLink != null) ...[const SizedBox(height: 4), disputeLink],
         ],
       ));
     }
 
-    // ── AWAITING_PAYMENT / PAYMENT_SUBMITTED / PAYMENT_REJECTED: can cancel ──
+    // ── AWAITING / SUBMITTED / REJECTED: can cancel ───────────
     if (s.state == SessionState.awaitingPayment ||
         s.state == SessionState.paymentSubmitted ||
         s.state == SessionState.paymentRejected) {
@@ -587,20 +574,16 @@ class _BottomActionState extends State<_BottomAction> {
         child: OutlinedButton.icon(
           onPressed: _cancelling ? null : () => _cancelOrDispute(false),
           icon: _cancelling
-              ? const SizedBox(
-                  width: 16, height: 16,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppColors.error))
+              ? const SizedBox(width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
               : const Icon(Icons.cancel_outlined, size: 16),
           label: Text(
-            _cancelling ? 'جارٍ الإلغاء…' : 'إلغاء الجلسة',
-            style: const TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w700),
+            _cancelling ? l.teacherCancellingMsg : l.teacherCancelSession,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
           ),
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 15),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
             foregroundColor: AppColors.error,
           ),
@@ -615,20 +598,16 @@ class _BottomActionState extends State<_BottomAction> {
         child: OutlinedButton.icon(
           onPressed: _cancelling ? null : () => _cancelOrDispute(true),
           icon: _cancelling
-              ? const SizedBox(
-                  width: 16, height: 16,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppColors.error))
+              ? const SizedBox(width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
               : const Icon(Icons.warning_amber_rounded, size: 16),
           label: Text(
-            _cancelling ? 'جارٍ فتح النزاع…' : 'فتح نزاع — لا أستطيع الحضور',
-            style: const TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w700),
+            _cancelling ? l.teacherDisputingMsg : l.teacherCantAttend,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
           ),
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 15),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
             foregroundColor: AppColors.error,
           ),
@@ -636,17 +615,38 @@ class _BottomActionState extends State<_BottomAction> {
       ));
     }
 
+    // ── STUDENT_NO_SHOW ───────────────────────────────────────
+    if (s.state == SessionState.studentNoShow) {
+      return _wrap(context, Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEF3E2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline_rounded, color: Color(0xFFC77A1A), size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                context.l10n.teacherStatusStudentNoShow,
+                style: const TextStyle(fontSize: 12.5, color: Color(0xFF8A5A14), height: 1.5),
+              ),
+            ),
+          ],
+        ),
+      ));
+    }
+
     return const SizedBox.shrink();
   }
 
-  Session get session => widget.session;
-
   Widget _wrap(BuildContext context, Widget child) => Container(
-        color: AppColors.surface,
-        padding: EdgeInsets.only(
-          left: 22, right: 22, top: 14,
-          bottom: MediaQuery.of(context).padding.bottom + 14,
-        ),
-        child: child,
-      );
+    color: AppColors.surface,
+    padding: EdgeInsets.only(
+      left: 22, right: 22, top: 14,
+      bottom: MediaQuery.of(context).padding.bottom + 14,
+    ),
+    child: child,
+  );
 }

@@ -5,9 +5,14 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/locale_provider.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/services/supabase_service.dart';
+
+// Cache-busting version for avatar URL — increments after each upload
+final _avatarVersionProvider = StateProvider<int>((ref) => 0);
 
 class TeacherSelfProfileScreen extends ConsumerStatefulWidget {
   const TeacherSelfProfileScreen({super.key});
@@ -52,6 +57,7 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
   }
 
   Future<void> _pickAndUploadAvatar() async {
+    final l = context.l10n;
     final picker = ImagePicker();
     final file = await picker.pickImage(
       source: ImageSource.gallery,
@@ -85,13 +91,16 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
           .update({'avatar_url': publicUrl})
           .eq('id', uid);
 
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+      ref.read(_avatarVersionProvider.notifier).state++;
       ref.invalidate(teacherProfileProvider);
       ref.invalidate(currentProfileProvider);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('فشل رفع الصورة: ${e.toString()}'),
+            content: Text(l.editProfileUploadError(e.toString())),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -104,59 +113,69 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
   }
 
   Future<void> _deleteAccount() async {
+    final l = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('حذف الحساب', style: TextStyle(color: AppColors.error)),
-        content: const Text(
-          'هذا الإجراء لا يمكن التراجع عنه.\nسيتم حذف جميع بياناتك بشكل نهائي.',
-          style: TextStyle(height: 1.5),
-        ),
+        title: Text(l.profileDeleteAccount,
+            style: const TextStyle(color: AppColors.error)),
+        content: Text(l.profileDeleteAccountBody,
+            style: const TextStyle(height: 1.5)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.dialogCancel)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('حذف', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
-          ),
+            child: Text(l.profileDeleteBtn,
+                style: const TextStyle(
+                    color: AppColors.error, fontWeight: FontWeight.w700))),
         ],
       ),
     );
     if (confirmed != true || !mounted) return;
 
+    final phrase = l.profileDeleteConfirmPhrase;
     final input = await showDialog<String>(
       context: context,
       builder: (ctx) {
         final ctrl = TextEditingController();
         return AlertDialog(
-          title: const Text('تأكيد الحذف النهائي'),
+          title: Text(l.profileDeleteConfirmTitle),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('اكتب "احذف حسابي" للتأكيد:',
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              Text(l.profileDeleteConfirmBody(phrase),
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.textSecondary)),
               const SizedBox(height: 10),
               TextField(
                 controller: ctrl,
                 textDirection: TextDirection.rtl,
                 decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
                 ),
               ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('إلغاء')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, null),
+              child: Text(l.dialogCancel)),
             TextButton(
               onPressed: () => Navigator.pop(ctx, ctrl.text),
-              child: const Text('تأكيد', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
-            ),
+              child: Text(l.dialogConfirm,
+                  style: const TextStyle(
+                      color: AppColors.error, fontWeight: FontWeight.w700))),
           ],
         );
       },
     );
-    if (input != 'احذف حسابي' || !mounted) return;
+    if (input != phrase || !mounted) return;
 
     try {
       await SupabaseService.client.rpc('delete_my_account');
@@ -166,10 +185,11 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('فشل حذف الحساب: ${e.toString()}'),
+            content: Text(context.l10n.profileDeleteAccountErr(e.toString())),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -177,17 +197,20 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
   }
 
   Future<void> _logout() async {
+    final l = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('تسجيل الخروج'),
-        content: const Text('هل أنت متأكد من رغبتك في تسجيل الخروج؟'),
+        title: Text(l.profileLogout),
+        content: Text(l.profileLogoutConfirmBody),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.dialogCancel)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('خروج', style: TextStyle(color: AppColors.error)),
-          ),
+            child: Text(l.profileLogoutConfirmYes,
+                style: const TextStyle(color: AppColors.error))),
         ],
       ),
     );
@@ -213,7 +236,8 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
         color: AppColors.primary,
         onRefresh: () async => ref.invalidate(teacherProfileProvider),
         child: profileAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+          loading: () => const Center(
+              child: CircularProgressIndicator(color: AppColors.primary)),
           error: (_, __) => _buildBody(context, null),
           data: (profile) => _buildBody(context, profile),
         ),
@@ -222,9 +246,12 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
   }
 
   Widget _buildBody(BuildContext context, Map<String, dynamic>? profile) {
+    final l = context.l10n;
     final profileInner = profile?['profile'] as Map? ?? {};
-    final name       = (profileInner['full_name'] as String?) ?? 'الأستاذ';
-    final avatarUrl  = (profileInner['avatar_url'] as String?);
+    final name       = (profileInner['full_name'] as String?) ?? l.teacherDefaultName;
+    final rawUrl     = (profileInner['avatar_url'] as String?);
+    final v          = ref.watch(_avatarVersionProvider);
+    final avatarUrl  = rawUrl != null ? '$rawUrl?v=$v' : null;
     final isActive   = (profileInner['is_active'] as bool?) ?? false;
     final isApproved = (profile?['is_approved'] as bool?) ?? false;
     final subjects   = (profile?['subjects'] as List?)?.cast<String>() ?? [];
@@ -239,7 +266,7 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
       children: [
         SizedBox(height: MediaQuery.of(context).padding.top + 8),
 
-        // ── Header ─────────────────────────────────────────
+        // ── Header ────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 22),
           child: Column(
@@ -260,8 +287,7 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
                         image: avatarUrl != null
                             ? DecorationImage(
                                 image: NetworkImage(avatarUrl),
-                                fit: BoxFit.cover,
-                              )
+                                fit: BoxFit.cover)
                             : null,
                       ),
                       alignment: Alignment.center,
@@ -294,33 +320,48 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
                 ),
               ),
               const SizedBox(height: 12),
-              Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              Text(name,
+                  style: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
               const SizedBox(height: 4),
               if (subjects.isNotEmpty)
                 Text(subjects.take(3).join(' · '),
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                    style: const TextStyle(
+                        fontSize: 13, color: AppColors.textSecondary)),
               const SizedBox(height: 10),
-              // Status badge
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
-                  color: isApproved ? const Color(0xFFE3F6EF) : const Color(0xFFFFF3E0),
+                  color: isApproved
+                      ? const Color(0xFFE3F6EF)
+                      : const Color(0xFFFFF3E0),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      isApproved ? Icons.verified_rounded : Icons.hourglass_empty_rounded,
+                      isApproved
+                          ? Icons.verified_rounded
+                          : Icons.hourglass_empty_rounded,
                       size: 14,
-                      color: isApproved ? const Color(0xFF1B9E77) : const Color(0xFFF57C00),
+                      color: isApproved
+                          ? const Color(0xFF1B9E77)
+                          : const Color(0xFFF57C00),
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      isApproved ? (isActive ? 'أستاذ موثّق · نشط' : 'أستاذ موثّق · غير نشط') : 'في انتظار الاعتماد',
+                      isApproved
+                          ? (isActive
+                              ? l.teacherStatusApprovedActive
+                              : l.teacherStatusApprovedInactive)
+                          : l.teacherStatusPending,
                       style: TextStyle(
                         fontSize: 12, fontWeight: FontWeight.w600,
-                        color: isApproved ? const Color(0xFF15805F) : const Color(0xFFE65100),
+                        color: isApproved
+                            ? const Color(0xFF15805F)
+                            : const Color(0xFFE65100),
                       ),
                     ),
                   ],
@@ -331,22 +372,26 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
         ),
         const SizedBox(height: 20),
 
-        // ── Stats ───────────────────────────────────────────
+        // ── Stats ─────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 22),
           child: Row(
             children: [
-              _StatCard(value: '$sessions',  label: 'جلسة مكتملة'),
+              _StatCard(value: '$sessions',  label: l.teacherStatSessions),
               const SizedBox(width: 10),
-              _StatCard(value: rating > 0 ? rating.toStringAsFixed(1) : '—', label: 'التقييم ($reviews)'),
+              _StatCard(
+                value: rating > 0 ? rating.toStringAsFixed(1) : '—',
+                label: l.teacherStatRating(reviews)),
               const SizedBox(width: 10),
-              _StatCard(value: '${attendance.toInt()}%', label: 'الحضور'),
+              _StatCard(
+                value: '${attendance.toInt()}%',
+                label: l.teacherStatAttendance),
             ],
           ),
         ),
         const SizedBox(height: 24),
 
-        // ── توثيق الحساب (if not onboarded) ────────────────
+        // ── Complete profile banner ───────────────────────────
         if (!hasProfile) ...[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -357,23 +402,31 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFF8E1),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFFFCC02).withValues(alpha: 0.5)),
+                  border: Border.all(
+                      color: const Color(0xFFFFCC02).withValues(alpha: 0.5)),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: Color(0xFFF57C00), size: 22),
-                    SizedBox(width: 12),
+                    const Icon(Icons.warning_amber_rounded,
+                        color: Color(0xFFF57C00), size: 22),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('أكمل توثيق حسابك', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFE65100))),
-                          SizedBox(height: 2),
-                          Text('أضف بياناتك لتبدأ استقبال الطلاب', style: TextStyle(fontSize: 12, color: Color(0xFFF57C00))),
+                          Text(l.teacherCompleteProfile,
+                            style: const TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.w700,
+                                color: Color(0xFFE65100))),
+                          const SizedBox(height: 2),
+                          Text(l.teacherCompleteProfileHint,
+                            style: const TextStyle(
+                                fontSize: 12, color: Color(0xFFF57C00))),
                         ],
                       ),
                     ),
-                    Icon(Icons.arrow_back_ios_rounded, size: 14, color: Color(0xFFF57C00)),
+                    const Icon(Icons.arrow_back_ios_rounded,
+                        size: 14, color: Color(0xFFF57C00)),
                   ],
                 ),
               ),
@@ -382,54 +435,81 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
           const SizedBox(height: 16),
         ],
 
-        // ── Menus ───────────────────────────────────────────
-        _MenuSection(title: 'الحساب والملف الشخصي', items: [
+        // ── Menus ─────────────────────────────────────────────
+        _MenuSection(title: l.profileSectionAccount, items: [
           _MenuItem(
             icon: Icons.badge_outlined,
-            label: hasProfile ? 'تعديل الملف الشخصي' : 'توثيق الحساب',
-            trailing: !hasProfile ? const _WarningBadge() : null,
+            label: hasProfile ? l.profileEditProfile : l.teacherOnboardingMenuItem,
+            trailing: !hasProfile
+                ? _WarningBadge(label: l.teacherBadgeRequired)
+                : null,
             onTap: () => context.push('/teacher/onboarding'),
           ),
           _MenuItem(
             icon: Icons.lock_outline_rounded,
-            label: 'تغيير كلمة المرور',
+            label: l.profileChangePassword,
             onTap: () => context.push('/change-password'),
           ),
           _MenuItem(
             icon: Icons.schedule_rounded,
-            label: 'إدارة الأوقات المتاحة',
+            label: l.availTitle,
             onTap: () => context.push('/teacher/availability'),
           ),
           _MenuItem(
             icon: Icons.notifications_outlined,
-            label: 'الإشعارات',
+            label: l.notifTitle,
             onTap: () => context.go('/teacher/notifications'),
           ),
           _MenuItem(
             icon: Icons.star_outline_rounded,
-            label: 'التقييمات',
-            onTap: () {},
+            label: l.profileMyRatings,
+            onTap: () => context.push('/teacher/ratings'),
           ),
         ]),
         const SizedBox(height: 16),
 
-        _MenuSection(title: 'الأرباح والمدفوعات', items: [
+        _MenuSection(title: l.profileSectionEarnings, items: [
           _MenuItem(
             icon: Icons.account_balance_wallet_outlined,
-            label: 'سجل الأرباح',
+            label: l.teacherMenuEarnings,
             onTap: () => context.go('/teacher/earnings'),
           ),
         ]),
         const SizedBox(height: 16),
 
-        _MenuSection(title: 'الدعم', items: [
-          _MenuItem(icon: Icons.help_outline_rounded,  label: 'مركز المساعدة',   onTap: () {}),
-          _MenuItem(icon: Icons.privacy_tip_outlined,  label: 'سياسة الخصوصية', onTap: () {}),
-          _MenuItem(icon: Icons.gavel_rounded,         label: 'شروط الاستخدام',  onTap: () {}),
+        _MenuSection(title: l.profileSectionSupport, items: [
+          _MenuItem(
+            icon: Icons.help_outline_rounded,
+            label: l.profileMenuHelp,
+            onTap: () => context.push('/help-center')),
+          _MenuItem(
+            icon: Icons.privacy_tip_outlined,
+            label: l.profileMenuPrivacy,
+            onTap: () => context.push('/help-center?tab=privacy')),
+          _MenuItem(
+            icon: Icons.gavel_rounded,
+            label: l.profileMenuTerms,
+            onTap: () => context.push('/help-center?tab=terms')),
         ]),
+        const SizedBox(height: 16),
+
+        // ── Language switcher ─────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l.langSwitcher,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                  color: AppColors.textHint, letterSpacing: 0.5)),
+              const SizedBox(height: 10),
+              _LanguageSwitcher(),
+            ],
+          ),
+        ),
         const SizedBox(height: 24),
 
-        // ── Logout ──────────────────────────────────────────
+        // ── Logout ────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 22),
           child: GestureDetector(
@@ -440,18 +520,26 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
               decoration: BoxDecoration(
                 color: AppColors.statusRejectedBg,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.statusRejected.withValues(alpha: 0.3)),
+                border: Border.all(
+                    color: AppColors.statusRejected.withValues(alpha: 0.3)),
               ),
               child: _loggingOut
-                  ? const Center(child: SizedBox(width: 20, height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error)))
-                  : const Row(
+                  ? const Center(
+                      child: SizedBox(
+                        width: 20, height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.error),
+                      ))
+                  : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.logout_rounded, color: AppColors.error, size: 18),
-                        SizedBox(width: 8),
-                        Text('تسجيل الخروج',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.error)),
+                        const Icon(Icons.logout_rounded,
+                            color: AppColors.error, size: 18),
+                        const SizedBox(width: 8),
+                        Text(l.profileLogout,
+                          style: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w700,
+                              color: AppColors.error)),
                       ],
                     ),
             ),
@@ -459,14 +547,14 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
         ),
         const SizedBox(height: 12),
 
-        // ── Delete account ──────────────────────────────────
+        // ── Delete account link ───────────────────────────────
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 22),
           child: GestureDetector(
             onTap: _deleteAccount,
             child: Center(
               child: Text(
-                'حذف الحساب نهائياً',
+                l.profileDeleteAccountLink,
                 style: TextStyle(
                   fontSize: 13,
                   color: AppColors.error.withValues(alpha: 0.7),
@@ -478,9 +566,9 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
           ),
         ),
         const SizedBox(height: 16),
-        const Center(
-          child: Text('سولني · الإصدار 1.0.0',
-            style: TextStyle(fontSize: 11, color: AppColors.textHint)),
+        Center(
+          child: Text(l.profileAppVersion,
+              style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
         ),
         const SizedBox(height: 40),
       ],
@@ -503,9 +591,14 @@ class _StatCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          Text(value,
+              style: const TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary)),
           const SizedBox(height: 3),
-          Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textHint), textAlign: TextAlign.center),
+          Text(label,
+              style: const TextStyle(fontSize: 10, color: AppColors.textHint),
+              textAlign: TextAlign.center),
         ],
       ),
     ),
@@ -513,12 +606,18 @@ class _StatCard extends StatelessWidget {
 }
 
 class _WarningBadge extends StatelessWidget {
-  const _WarningBadge();
+  final String label;
+  const _WarningBadge({required this.label});
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(color: const Color(0xFFFFF3E0), borderRadius: BorderRadius.circular(999)),
-    child: const Text('مطلوب', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFF57C00))),
+    decoration: BoxDecoration(
+        color: const Color(0xFFFFF3E0),
+        borderRadius: BorderRadius.circular(999)),
+    child: Text(label,
+        style: const TextStyle(
+            fontSize: 10, fontWeight: FontWeight.w700,
+            color: Color(0xFFF57C00))),
   );
 }
 
@@ -532,7 +631,10 @@ class _MenuSection extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textHint)),
+        Text(title,
+            style: const TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w700,
+                color: AppColors.textHint)),
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
@@ -549,20 +651,31 @@ class _MenuSection extends StatelessWidget {
                     onTap: e.value.onTap,
                     borderRadius: BorderRadius.circular(16),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
                       child: Row(
                         children: [
-                          Icon(e.value.icon, size: 20, color: AppColors.textSecondary),
+                          Icon(e.value.icon, size: 20,
+                              color: AppColors.textSecondary),
                           const SizedBox(width: 12),
-                          Expanded(child: Text(e.value.label,
-                            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary))),
-                          if (e.value.trailing != null) ...[e.value.trailing!, const SizedBox(width: 8)],
-                          const Icon(Icons.arrow_back_ios_rounded, size: 14, color: AppColors.textHint),
+                          Expanded(
+                            child: Text(e.value.label,
+                                style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textPrimary))),
+                          if (e.value.trailing != null) ...[
+                            e.value.trailing!,
+                            const SizedBox(width: 8),
+                          ],
+                          const Icon(Icons.arrow_back_ios_rounded,
+                              size: 14, color: AppColors.textHint),
                         ],
                       ),
                     ),
                   ),
-                  if (!isLast) const Divider(height: 1, indent: 48, color: AppColors.border),
+                  if (!isLast)
+                    const Divider(
+                        height: 1, indent: 48, color: AppColors.border),
                 ],
               );
             }).toList(),
@@ -578,5 +691,71 @@ class _MenuItem {
   final String label;
   final Widget? trailing;
   final VoidCallback onTap;
-  const _MenuItem({required this.icon, required this.label, required this.onTap, this.trailing});
+  const _MenuItem({
+      required this.icon,
+      required this.label,
+      required this.onTap,
+      this.trailing});
+}
+
+class _LanguageSwitcher extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
+    final isAr   = locale.languageCode == 'ar';
+    final l      = context.l10n;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      padding: const EdgeInsets.all(6),
+      child: Row(
+        children: [
+          _LangOption(
+            label: l.langArabic,
+            selected: isAr,
+            onTap: () => ref.read(localeProvider.notifier).state = const Locale('ar'),
+          ),
+          const SizedBox(width: 6),
+          _LangOption(
+            label: l.langFrench,
+            selected: !isAr,
+            onTap: () => ref.read(localeProvider.notifier).state = const Locale('fr'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LangOption extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _LangOption({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        alignment: Alignment.center,
+        child: Text(label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: selected ? Colors.white : AppColors.textHint,
+          )),
+      ),
+    ),
+  );
 }

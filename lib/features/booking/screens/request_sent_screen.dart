@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/session_states.dart';
+import '../../../core/extensions/l10n_extension.dart';
+import '../../../core/providers/sessions_provider.dart';
+import '../../../core/services/session_service.dart';
 import '../../../shared/widgets/app_button.dart';
 
-class RequestSentScreen extends StatefulWidget {
+class RequestSentScreen extends ConsumerStatefulWidget {
   final String sessionId;
   const RequestSentScreen({super.key, required this.sessionId});
   @override
-  State<RequestSentScreen> createState() => _RequestSentScreenState();
+  ConsumerState<RequestSentScreen> createState() => _RequestSentScreenState();
 }
 
-class _RequestSentScreenState extends State<RequestSentScreen>
+class _RequestSentScreenState extends ConsumerState<RequestSentScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulse;
+  bool _cancelling = false;
 
   @override
   void initState() {
@@ -27,6 +32,7 @@ class _RequestSentScreenState extends State<RequestSentScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final state = SessionState.requested;
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -51,8 +57,8 @@ class _RequestSentScreenState extends State<RequestSentScreen>
                     ),
                   ),
                   const Spacer(),
-                  const Text('حالة الطلب',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  Text(l.requestSentTitle,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                   const Spacer(),
                   const SizedBox(width: 40),
                 ],
@@ -97,20 +103,20 @@ class _RequestSentScreenState extends State<RequestSentScreen>
                       color: state.bgColor,
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: Text('REQUESTED · بانتظار الموافقة',
+                    child: Text(l.requestSentBadge,
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: state.color)),
                   ),
                   const SizedBox(height: 18),
 
-                  const Text('تم إرسال طلبك',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  Text(l.requestSentHeadline,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                   const SizedBox(height: 8),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 40),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
                     child: Text(
-                      'سيراجع د. محمد الأمين طلبك ويردّ عادةً خلال ساعتين. سنُعلمك فور الموافقة لتنتقل إلى الدفع.',
+                      l.requestSentBody,
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 14, height: 1.7, color: AppColors.textSecondary),
+                      style: const TextStyle(fontSize: 14, height: 1.7, color: AppColors.textSecondary),
                     ),
                   ),
                   const SizedBox(height: 28),
@@ -137,13 +143,13 @@ class _RequestSentScreenState extends State<RequestSentScreen>
                             child: Text('أ', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: state.color)),
                           ),
                           const SizedBox(width: 12),
-                          const Column(
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('المسؤول الآن',
-                                style: TextStyle(fontSize: 11, color: AppColors.textHint)),
-                              Text('الأستاذ — مراجعة الطلب',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                              Text(l.teacherNowResponsible,
+                                style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
+                              Text(l.respTeacherReview,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                             ],
                           ),
                         ],
@@ -161,16 +167,17 @@ class _RequestSentScreenState extends State<RequestSentScreen>
                 children: [
                   Expanded(
                     child: AppButton(
-                      label: 'إلغاء الطلب',
+                      label: l.requestSentCancelBtn,
                       isOutlined: true,
                       isDanger: true,
-                      onTap: () => _showCancelDialog(context),
+                      isLoading: _cancelling,
+                      onTap: _cancelling ? null : () => _showCancelDialog(context),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: AppButton(
-                      label: 'تتبّع الحالة',
+                      label: l.requestSentTrackBtn,
                       color: AppColors.primaryDark,
                       onTap: () => context.push('/session/${widget.sessionId}'),
                     ),
@@ -184,26 +191,43 @@ class _RequestSentScreenState extends State<RequestSentScreen>
     );
   }
 
-  void _showCancelDialog(BuildContext context) {
-    showDialog(
-      context: context,
+  Future<void> _showCancelDialog(BuildContext ctx) async {
+    final l = ctx.l10n;
+    final confirmed = await showDialog<bool>(
+      context: ctx,
       builder: (_) => AlertDialog(
-        title: const Text('إلغاء الطلب'),
-        content: const Text('هل أنت متأكد من رغبتك في إلغاء هذا الطلب؟'),
+        title: Text(l.requestSentCancelBtn),
+        content: Text(l.requestSentCancelConfirm),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('تراجع'),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.dialogBack2),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              context.go('/home');
-            },
-            child: const Text('نعم، إلغاء', style: TextStyle(color: AppColors.error)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.requestSentCancelYes, style: const TextStyle(color: AppColors.error)),
           ),
         ],
       ),
     );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _cancelling = true);
+    try {
+      await SessionService.cancelSession(widget.sessionId);
+      ref.invalidate(studentSessionsProvider);
+      if (mounted) context.go('/home');
+    } catch (e) {
+      if (mounted) {
+        setState(() => _cancelling = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 }

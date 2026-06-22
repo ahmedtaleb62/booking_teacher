@@ -29,7 +29,7 @@ class TeacherCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Avatar(initial: teacher.initial, isOnline: teacher.isOnline),
+            _Avatar(initial: teacher.initial, isOnline: teacher.isOnline, avatarUrl: teacher.avatarUrl),
             const SizedBox(width: 13),
             Expanded(
               child: Column(
@@ -126,8 +126,9 @@ class TeacherCard extends StatelessWidget {
 class _Avatar extends StatelessWidget {
   final String initial;
   final bool isOnline;
+  final String? avatarUrl;
 
-  const _Avatar({required this.initial, required this.isOnline});
+  const _Avatar({required this.initial, required this.isOnline, this.avatarUrl});
 
   static const List<Color> _avatarColors = [
     Color(0xFF1B6B7A), Color(0xFF7B61FF), Color(0xFF2D6CDF),
@@ -138,19 +139,38 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 54, height: 54,
-      decoration: BoxDecoration(
-        color: _color,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        initial,
-        style: const TextStyle(
-          color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700,
+    return Stack(
+      children: [
+        Container(
+          width: 54, height: 54,
+          decoration: BoxDecoration(
+            color: _color,
+            borderRadius: BorderRadius.circular(14),
+            image: avatarUrl != null
+                ? DecorationImage(image: NetworkImage(avatarUrl!), fit: BoxFit.cover)
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: avatarUrl == null
+              ? Text(initial,
+                  style: const TextStyle(
+                    color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700,
+                  ))
+              : null,
         ),
-      ),
+        if (isOnline)
+          Positioned(
+            bottom: 2, right: 2,
+            child: Container(
+              width: 11, height: 11,
+              decoration: BoxDecoration(
+                color: AppColors.online,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

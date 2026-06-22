@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/payment_methods_provider.dart';
 import '../../../core/services/course_service.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -30,7 +31,7 @@ class SubscriptionScreen extends ConsumerStatefulWidget {
 
 class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   int _selectedMethod = 0;
-  String _selectedPlan = 'monthly'; // 'monthly' or 'yearly'
+  String _selectedPlan = 'monthly';
   File? _proofImage;
   bool _loading = false;
   String? _error;
@@ -47,8 +48,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   }
 
   Future<void> _submit(String methodKey) async {
+    final l = context.l10n;
     if (_proofImage == null) {
-      setState(() => _error = 'يرجى رفع صورة إثبات الدفع أولاً');
+      setState(() => _error = l.subscriptionErrNoProof);
       return;
     }
     setState(() { _loading = true; _error = null; });
@@ -63,7 +65,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       );
       if (mounted) context.pushReplacement('/subscription-pending/$subId');
     } catch (e) {
-      setState(() => _error = 'حدث خطأ: $e');
+      if (mounted) setState(() => _error = l.subscriptionErrGeneral(e.toString()));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -71,6 +73,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final methodsAsync = ref.watch(paymentMethodsProvider);
 
     return Scaffold(
@@ -90,26 +93,26 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           ),
           onPressed: () => context.pop(),
         ),
-        title: const Text('الاشتراك'),
+        title: Text(l.subscriptionTitle),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildItemCard(),
+            _buildItemCard(l),
             if (widget.priceYearly != null) ...[
               const SizedBox(height: 16),
-              _buildPlanSelector(),
+              _buildPlanSelector(l),
             ],
             const SizedBox(height: 20),
             methodsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (_, __) => const SizedBox.shrink(),
-              data: (methods) => _buildPaymentMethods(methods),
+              data: (methods) => _buildPaymentMethods(l, methods),
             ),
             const SizedBox(height: 20),
-            _buildProofUpload(),
+            _buildProofUpload(l),
             if (_error != null) ...[
               const SizedBox(height: 12),
               Container(
@@ -134,7 +137,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               data: (methods) {
                 final method = methods.isNotEmpty ? methods[_selectedMethod] : null;
                 return AppButton(
-                  label: _loading ? 'جاري الإرسال...' : 'تأكيد الاشتراك',
+                  label: _loading ? l.subscriptionSubmitting : l.subscriptionConfirm,
                   isLoading: _loading,
                   onTap: (method == null)
                       ? null
@@ -143,10 +146,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               },
             ),
             const SizedBox(height: 12),
-            const Text(
-              'سيُراجَع إثبات الدفع من قِبل الإدارة خلال 24 ساعة',
+            Text(
+              l.subscriptionReviewNote,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 11, color: AppColors.textHint),
+              style: const TextStyle(fontSize: 11, color: AppColors.textHint),
             ),
           ],
         ),
@@ -154,28 +157,28 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     );
   }
 
-  Widget _buildPlanSelector() {
+  Widget _buildPlanSelector(dynamic l) {
     final monthly = widget.priceMonthly;
     final yearly  = widget.priceYearly!;
     final saving  = ((monthly * 12 - yearly) / (monthly * 12) * 100).round();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('اختر الخطة',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+        Text(l.subscriptionChoosePlan,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
         const SizedBox(height: 10),
         Row(children: [
-          Expanded(child: _planOption(
-            label: 'شهري',
-            price: '${monthly.toStringAsFixed(0)} أوقية',
-            sub: 'كل شهر',
+          Expanded(child: _planOption(l,
+            label: l.subscriptionPlanMonthly,
+            price: '${monthly.toStringAsFixed(0)} ${l.dashOugiya}',
+            sub: l.subscriptionPerMonthLabel,
             plan: 'monthly',
           )),
           const SizedBox(width: 10),
-          Expanded(child: _planOption(
-            label: 'سنوي',
-            price: '${yearly.toStringAsFixed(0)} أوقية',
-            sub: 'وفّر $saving%',
+          Expanded(child: _planOption(l,
+            label: l.subscriptionPlanYearly,
+            price: '${yearly.toStringAsFixed(0)} ${l.dashOugiya}',
+            sub: l.subscriptionSavePct(saving),
             plan: 'yearly',
             highlight: true,
           )),
@@ -184,7 +187,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     );
   }
 
-  Widget _planOption({
+  Widget _planOption(dynamic l, {
     required String label,
     required String price,
     required String sub,
@@ -246,7 +249,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     );
   }
 
-  Widget _buildItemCard() {
+  Widget _buildItemCard(dynamic l) {
     final isPackage = widget.type == 'package';
     return Container(
       padding: const EdgeInsets.all(18),
@@ -274,7 +277,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isPackage ? 'باقة' : 'درس',
+                  isPackage ? l.subscriptionTypePackage : l.subscriptionTypeCourse,
                   style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.75)),
                 ),
                 Text(widget.title,
@@ -289,7 +292,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               Text(_amount.toStringAsFixed(0),
                   style: const TextStyle(
                       fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
-              Text(_selectedPlan == 'yearly' ? 'أوقية/سنة' : 'أوقية/شهر',
+              Text(_selectedPlan == 'yearly' ? l.subscriptionPerYear : l.subscriptionPerMonth,
                   style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.75))),
             ],
           ),
@@ -298,7 +301,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     );
   }
 
-  Widget _buildPaymentMethods(List<PaymentMethod> methods) {
+  Widget _buildPaymentMethods(dynamic l, List<PaymentMethod> methods) {
     if (methods.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -307,15 +310,15 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.border),
         ),
-        child: const Text('لا توجد طرق دفع متاحة حالياً',
-            style: TextStyle(color: AppColors.textHint, fontSize: 13)),
+        child: Text(l.subscriptionNoMethods,
+            style: const TextStyle(color: AppColors.textHint, fontSize: 13)),
       );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('طريقة الدفع',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+        Text(l.subscriptionPaymentMethodLabel,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
         const SizedBox(height: 10),
         ...methods.asMap().entries.map((e) {
           final i = e.key;
@@ -355,10 +358,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                             style: const TextStyle(
                                 fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                         if (m.number.isNotEmpty)
-                          Text('رقم الحساب: ${m.number}',
+                          Text(l.subscriptionAccountNumber(m.number),
                               style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
                         if (m.holder.isNotEmpty)
-                          Text('المستفيد: ${m.holder}',
+                          Text(l.subscriptionHolder(m.holder),
                               style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
                       ],
                     ),
@@ -372,12 +375,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     );
   }
 
-  Widget _buildProofUpload() {
+  Widget _buildProofUpload(dynamic l) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('إثبات الدفع',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+        Text(l.subscriptionProofTitle,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
         const SizedBox(height: 10),
         GestureDetector(
           onTap: _pickImage,
@@ -398,15 +401,15 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                     child: Image.file(_proofImage!, fit: BoxFit.cover,
                         width: double.infinity, height: double.infinity),
                   )
-                : const Column(
+                : Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.upload_rounded, size: 32, color: AppColors.textHint),
-                      SizedBox(height: 8),
-                      Text('اضغط لرفع صورة إثبات الدفع',
-                          style: TextStyle(fontSize: 13, color: AppColors.textHint)),
-                      SizedBox(height: 4),
-                      Text('JPG, PNG, WEBP',
+                      const Icon(Icons.upload_rounded, size: 32, color: AppColors.textHint),
+                      const SizedBox(height: 8),
+                      Text(l.subscriptionProofHint,
+                          style: const TextStyle(fontSize: 13, color: AppColors.textHint)),
+                      const SizedBox(height: 4),
+                      const Text('JPG, PNG, WEBP',
                           style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                     ],
                   ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/levels.dart';
 import '../../../core/constants/subjects.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/teachers_provider.dart';
 import '../../../shared/widgets/app_button.dart';
 
@@ -24,7 +25,6 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
   @override
   void initState() {
     super.initState();
-    // Initialise from current provider state
     _subject    = ref.read(teacherSubjectFilterProvider);
     _level      = ref.read(teacherLevelFilterProvider);
     _minPrice   = ref.read(teacherMinPriceProvider);
@@ -55,6 +55,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
       maxChildSize: 0.96,
@@ -82,8 +83,8 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
               child: Row(
                 children: [
-                  const Text('تصفية النتائج',
-                      style: TextStyle(
+                  Text(l.filterTitle,
+                      style: const TextStyle(
                           fontSize: 19,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
@@ -91,8 +92,8 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                   if (_hasFilters)
                     GestureDetector(
                       onTap: _reset,
-                      child: const Text('إعادة تعيين',
-                          style: TextStyle(
+                      child: Text(l.filterReset,
+                          style: const TextStyle(
                               fontSize: 13,
                               color: AppColors.error,
                               fontWeight: FontWeight.w600)),
@@ -107,7 +108,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                 children: [
 
                   // ── Subject ───────────────────────────────────────
-                  _sectionTitle('المادة الدراسية'),
+                  _sectionTitle(l.filterSubject),
                   const SizedBox(height: 11),
                   Wrap(
                     spacing: 9, runSpacing: 9,
@@ -124,7 +125,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                   const SizedBox(height: 24),
 
                   // ── Level (grouped) ───────────────────────────────
-                  _sectionTitle('المستوى الدراسي'),
+                  _sectionTitle(l.filterLevel),
                   const SizedBox(height: 12),
                   ...AppLevels.groups.map((group) => Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,7 +159,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _sectionTitle('نطاق السعر (أوقية/ساعة)'),
+                      _sectionTitle(l.filterPriceRange),
                       Text(
                         '${_minPrice.toInt()} – ${_maxPrice >= 2000 ? "∞" : _maxPrice.toInt()}',
                         style: const TextStyle(
@@ -192,9 +193,9 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                     ),
                     child: Row(
                       children: [
-                        const Expanded(
-                          child: Text('المتاحون الآن فقط',
-                              style: TextStyle(
+                        Expanded(
+                          child: Text(l.filterOnlineOnly,
+                              style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.textPrimary)),
@@ -214,7 +215,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                   const SizedBox(height: 28),
 
                   AppButton(
-                    label: 'عرض النتائج',
+                    label: l.filterShowResults,
                     onTap: _apply,
                   ),
                   const SizedBox(height: 24),

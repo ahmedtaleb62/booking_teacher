@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/supabase_service.dart';
 
@@ -51,6 +52,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Future<void> _pickAndUploadAvatar() async {
+    final l = context.l10n;
     final picker = ImagePicker();
     final file = await picker.pickImage(
       source: ImageSource.gallery,
@@ -98,14 +100,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _uploadingAvatar = false);
-        _showSnack('فشل رفع الصورة: ${e.toString()}', isError: true);
+        _showSnack(l.editProfileUploadError(e.toString()), isError: true);
       }
     }
   }
 
   Future<void> _save() async {
+    final l = context.l10n;
     if (_nameCtrl.text.trim().isEmpty) {
-      setState(() => _errorMsg = 'الاسم لا يمكن أن يكون فارغاً');
+      setState(() => _errorMsg = l.editProfileNameEmpty);
       return;
     }
     setState(() { _saving = true; _errorMsg = null; });
@@ -116,7 +119,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           .eq('id', SupabaseService.userId!);
       ref.invalidate(currentProfileProvider);
       if (mounted) {
-        _showSnack('تم حفظ التعديلات بنجاح');
+        _showSnack(l.editProfileSaved);
         context.pop();
       }
     } catch (e) {
@@ -137,6 +140,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -147,8 +151,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           onTap: () => context.pop(),
           child: const Icon(Icons.arrow_forward_rounded, color: AppColors.textPrimary),
         ),
-        title: const Text('تعديل الملف الشخصي',
-            style: TextStyle(
+        title: Text(l.profileEditProfile,
+            style: const TextStyle(
                 fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
         centerTitle: true,
         bottom: PreferredSize(
@@ -211,15 +215,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Center(
-                    child: Text('اضغط لتغيير الصورة',
-                        style: TextStyle(fontSize: 12, color: AppColors.textHint)),
+                  Center(
+                    child: Text(l.editProfileChangePhoto,
+                        style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
                   ),
                   const SizedBox(height: 28),
 
                   // Name field
-                  const Text('الاسم الكامل',
-                      style: TextStyle(
+                  Text(l.authFullName,
+                      style: const TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
                   const SizedBox(height: 8),
                   TextField(
@@ -227,7 +231,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     textDirection: TextDirection.rtl,
                     style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
                     decoration: InputDecoration(
-                      hintText: 'أدخل اسمك الكامل',
+                      hintText: l.authFullNameHint,
                       hintStyle: const TextStyle(color: AppColors.textHint, fontSize: 14),
                       filled: true,
                       fillColor: AppColors.surface,
@@ -273,8 +277,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                               width: 20, height: 20,
                               child: CircularProgressIndicator(
                                   strokeWidth: 2, color: Colors.white))
-                          : const Text('حفظ التعديلات',
-                              style: TextStyle(
+                          : Text(l.editProfileSaveBtn,
+                              style: const TextStyle(
                                   fontSize: 15, fontWeight: FontWeight.w700)),
                     ),
                   ),

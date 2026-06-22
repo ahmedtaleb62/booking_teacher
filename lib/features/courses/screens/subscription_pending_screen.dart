@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/courses_provider.dart';
 import '../../../core/services/supabase_service.dart';
 
@@ -47,7 +48,6 @@ class _SubscriptionPendingScreenState
             final status = payload.newRecord['status'] as String?;
             if (!mounted) return;
             if (status == 'active') {
-              // Invalidate so all subscription-dependent providers re-fetch
               ref.invalidate(mySubscriptionsProvider);
               setState(() => _activated = true);
               Future.delayed(const Duration(seconds: 2), () {
@@ -76,6 +76,8 @@ class _SubscriptionPendingScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
+
     if (_activated) {
       return Scaffold(
         backgroundColor: AppColors.background,
@@ -95,18 +97,18 @@ class _SubscriptionPendingScreenState
                       size: 50, color: AppColors.statusConfirmed),
                 ),
                 const SizedBox(height: 24),
-                const Text('تم تفعيل اشتراكك!',
+                Text(l.subPendingActivatedTitle,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                         fontSize: 22, fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary)),
                 const SizedBox(height: 12),
-                const Text('يمكنك الآن الوصول لجميع محتوى الدورة.',
+                Text(l.subPendingActivatedBody,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                    style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
                 const SizedBox(height: 8),
-                const Text('جارٍ التوجيه لدروسك...',
-                    style: TextStyle(fontSize: 12, color: AppColors.textHint)),
+                Text(l.subPendingRedirecting,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
                 const SizedBox(height: 24),
                 const CircularProgressIndicator(color: AppColors.statusConfirmed),
               ],
@@ -141,7 +143,7 @@ class _SubscriptionPendingScreenState
               ),
               const SizedBox(height: 24),
               Text(
-                _rejected ? 'رُفض الاشتراك' : 'اشتراكك قيد المراجعة',
+                _rejected ? l.coursesRejectedLabel : l.subPendingTitle,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                     fontSize: 22, fontWeight: FontWeight.w700,
@@ -149,15 +151,12 @@ class _SubscriptionPendingScreenState
               ),
               const SizedBox(height: 12),
               Text(
-                _rejected
-                    ? 'تعذّر قبول إثبات الدفع. يرجى مراجعة الإدارة أو إعادة المحاولة بصورة صحيحة.'
-                    : 'تم استلام إثبات دفعك وسيتم تفعيل اشتراكك خلال 24 ساعة بعد مراجعة الإدارة.',
+                _rejected ? l.subPendingRejectedBody : l.subPendingPendingBody,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                     fontSize: 14, color: AppColors.textSecondary, height: 1.6),
               ),
 
-              // Show rejection reason if provided by admin
               if (_rejected && _rejectReason != null && _rejectReason!.isNotEmpty) ...[
                 const SizedBox(height: 14),
                 Container(
@@ -191,21 +190,21 @@ class _SubscriptionPendingScreenState
                 _buildStepRow(
                   icon: Icons.check_circle_outline_rounded,
                   color: AppColors.statusConfirmed,
-                  label: 'رُفع إثبات الدفع بنجاح',
+                  label: l.subPendingStep1,
                   done: true,
                 ),
                 const SizedBox(height: 14),
                 _buildStepRow(
                   icon: Icons.admin_panel_settings_outlined,
                   color: const Color(0xFF7B61FF),
-                  label: 'مراجعة الإدارة (حتى 24 ساعة)',
+                  label: l.subPendingStep2,
                   done: false,
                 ),
                 const SizedBox(height: 14),
                 _buildStepRow(
                   icon: Icons.play_circle_outline_rounded,
                   color: AppColors.textHint,
-                  label: 'تفعيل الاشتراك والوصول للمحتوى',
+                  label: l.subPendingStep3,
                   done: false,
                 ),
               ],
@@ -223,7 +222,7 @@ class _SubscriptionPendingScreenState
                     elevation: 0,
                   ),
                   child: Text(
-                    _rejected ? 'العودة لدروسي' : 'عرض دروسي',
+                    _rejected ? l.subPendingBackCourses : l.subPendingViewCourses,
                     style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -234,8 +233,8 @@ class _SubscriptionPendingScreenState
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () => context.go('/home'),
-                child: const Text('العودة للرئيسية',
-                    style: TextStyle(
+                child: Text(l.subPendingBackHome,
+                    style: const TextStyle(
                         color: AppColors.textSecondary, fontSize: 13)),
               ),
             ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/course.dart';
 import '../../../core/providers/courses_provider.dart';
 
@@ -11,6 +12,7 @@ class CourseDetailsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
     final courseAsync    = ref.watch(courseDetailsProvider(courseId));
     final subStatusAsync = ref.watch(courseSubStatusProvider(courseId));
     final activeSubAsync = ref.watch(courseActiveSubscriptionProvider(courseId));
@@ -23,7 +25,7 @@ class CourseDetailsScreen extends ConsumerWidget {
       error: (e, _) => Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(backgroundColor: AppColors.background, elevation: 0),
-        body: Center(child: Text('تعذّر التحميل: $e')),
+        body: Center(child: Text('${l.commonErrorLoading}: $e')),
       ),
       data: (course) {
         final subStatus    = subStatusAsync.valueOrNull;
@@ -34,7 +36,7 @@ class CourseDetailsScreen extends ConsumerWidget {
           body: CustomScrollView(
             slivers: [
               _buildHeader(context, course),
-              SliverToBoxAdapter(child: _buildInfo(course)),
+              SliverToBoxAdapter(child: _buildInfo(context, course)),
               SliverToBoxAdapter(child: _buildLessonsList(context, course, hasSub, subStatus, subscriptionId)),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
@@ -118,10 +120,11 @@ class CourseDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildInfo(Course course) {
+  Widget _buildInfo(BuildContext context, Course course) {
+    final l = context.l10n;
     final hoursStr = course.totalHours == 0
         ? '—'
-        : '${course.totalHours.toStringAsFixed(course.totalHours % 1 == 0 ? 0 : 1)} س';
+        : l.homeHoursAbbrev(course.totalHours.toStringAsFixed(course.totalHours % 1 == 0 ? 0 : 1));
 
     return Container(
       margin: const EdgeInsets.all(20),
@@ -159,7 +162,7 @@ class CourseDetailsScreen extends ConsumerWidget {
             spacing: 14,
             runSpacing: 8,
             children: [
-              _statChip(Icons.play_circle_outline_rounded, '${course.totalLessons} درس'),
+              _statChip(Icons.play_circle_outline_rounded, l.homeLessonCount(course.totalLessons)),
               _statChip(Icons.schedule_rounded, hoursStr),
               _statChip(Icons.book_outlined, course.subject),
             ],
@@ -172,12 +175,11 @@ class CourseDetailsScreen extends ConsumerWidget {
             spacing: 14,
             runSpacing: 8,
             children: [
-              _statChip(Icons.group_outlined,
-                  '${_formatCount(course.subscribersCount)} مشترك'),
+              _statChip(Icons.group_outlined, l.courseSubscribersCount(_formatCount(course.subscribersCount))),
               if (course.ratingsCount > 0) ...[
                 _statChipColored(
                   Icons.star_rounded,
-                  '${course.rating?.toStringAsFixed(1) ?? '—'} (${course.ratingsCount} تقييم)',
+                  '${course.rating?.toStringAsFixed(1) ?? '—'} ${l.courseRatingCount(course.ratingsCount)}',
                   const Color(0xFFF59E0B),
                 ),
               ],
@@ -225,6 +227,8 @@ class CourseDetailsScreen extends ConsumerWidget {
   }
 
   Widget _buildLessonsList(BuildContext context, Course course, bool hasSub, String? subStatus, String? subscriptionId) {
+    final l = context.l10n;
+
     // No lessons at all (course not yet built)
     if (course.lessons.isEmpty && course.totalLessons == 0) {
       return Padding(
@@ -232,8 +236,8 @@ class CourseDetailsScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('الدروس',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            Text(l.courseLessonsTitle,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(24),
@@ -242,9 +246,9 @@ class CourseDetailsScreen extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: AppColors.border),
               ),
-              child: const Center(
-                child: Text('لا توجد دروس متاحة بعد',
-                    style: TextStyle(color: AppColors.textHint, fontSize: 13)),
+              child: Center(
+                child: Text(l.courseNoLessons,
+                    style: const TextStyle(color: AppColors.textHint, fontSize: 13)),
               ),
             ),
           ],
@@ -260,10 +264,10 @@ class CourseDetailsScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              const Text('الدروس',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              Text(l.courseLessonsTitle,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
               const Spacer(),
-              Text('${course.totalLessons} درس',
+              Text(l.homeLessonCount(course.totalLessons),
                   style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
             ]),
             const SizedBox(height: 12),
@@ -287,14 +291,14 @@ class CourseDetailsScreen extends ConsumerWidget {
                         size: 28, color: AppColors.textHint),
                   ),
                   const SizedBox(height: 14),
-                  Text('${course.totalLessons} درس متاح للمشتركين',
+                  Text(l.courseLockedCount(course.totalLessons),
                       style: const TextStyle(
                           fontSize: 15, fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
                   const SizedBox(height: 7),
-                  const Text('اشترك الآن للوصول إلى جميع الدروس والمحتوى',
+                  Text(l.courseLockedBody,
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
@@ -310,8 +314,8 @@ class CourseDetailsScreen extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(vertical: 13),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
                       ),
-                      child: const Text('اشترك الآن',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                      child: Text(l.courseSubscribeNow,
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
                     ),
                   ),
                 ],
@@ -325,7 +329,7 @@ class CourseDetailsScreen extends ConsumerWidget {
     // Group lessons by chapterTitle
     final Map<String, List<CourseLesson>> chapters = {};
     for (final lesson in course.lessons) {
-      final ch = lesson.chapterTitle ?? 'الدروس';
+      final ch = lesson.chapterTitle ?? l.courseLessonsTitle;
       chapters.putIfAbsent(ch, () => []).add(lesson);
     }
 
@@ -338,17 +342,17 @@ class CourseDetailsScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const Text('الدروس',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            Text(l.courseLessonsTitle,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             const Spacer(),
-            Text('${course.lessons.length} درس',
+            Text(l.homeLessonCount(course.lessons.length),
                 style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
           ]),
           const SizedBox(height: 12),
           ...chapters.entries.map((chapter) {
             final chTitle    = chapter.key;
             final chLessons  = chapter.value;
-            final freeCount  = chLessons.where((l) => l.isPreview).length;
+            final freeCount  = chLessons.where((lesson) => lesson.isPreview).length;
 
             return Container(
               margin: const EdgeInsets.only(bottom: 14),
@@ -384,8 +388,9 @@ class CourseDetailsScreen extends ConsumerWidget {
                             style: const TextStyle(
                                 fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                       ),
-                      Text('${chLessons.length} درس${freeCount > 0 ? ' · $freeCount مجاني' : ''}',
-                          style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.6))),
+                      Text(
+                        '${l.homeLessonCount(chLessons.length)}${freeCount > 0 ? ' · $freeCount ${l.courseFreeLabel}' : ''}',
+                        style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.6))),
                     ]),
                   ),
                   // Lessons in this chapter
@@ -450,8 +455,8 @@ class CourseDetailsScreen extends ConsumerWidget {
                                     color: AppColors.statusConfirmedBg,
                                     borderRadius: BorderRadius.circular(999),
                                   ),
-                                  child: const Text('مجاني',
-                                      style: TextStyle(fontSize: 10, color: AppColors.statusConfirmed, fontWeight: FontWeight.w700)),
+                                  child: Text(l.courseFreeLabel,
+                                      style: const TextStyle(fontSize: 10, color: AppColors.statusConfirmed, fontWeight: FontWeight.w700)),
                                 )
                               else if (!canAccess)
                                 const Icon(Icons.lock_outline_rounded, size: 15, color: AppColors.textHint),
@@ -471,6 +476,7 @@ class CourseDetailsScreen extends ConsumerWidget {
   }
 
   Widget _buildBottomBar(BuildContext context, Course course, String? subStatus) {
+    final l = context.l10n;
     return SafeArea(
       top: false,
       child: SizedBox(
@@ -492,7 +498,7 @@ class CourseDetailsScreen extends ConsumerWidget {
                 children: [
                   if (course.originalPrice != null)
                     Text(
-                      '${course.originalPrice!.toStringAsFixed(0)} أوقية',
+                      l.homeOriginalPrice(course.originalPrice!.toStringAsFixed(0)),
                       style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.textHint,
@@ -505,13 +511,13 @@ class CourseDetailsScreen extends ConsumerWidget {
                       Text(course.priceMonthly.toStringAsFixed(0),
                           style: const TextStyle(
                               fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                      const Text(' أوقية/شهر',
-                          style: TextStyle(fontSize: 10, color: AppColors.textHint)),
+                      Text(' ${l.homeOugiyaPerMonth}',
+                          style: const TextStyle(fontSize: 10, color: AppColors.textHint)),
                     ],
                   ),
                   if (course.priceYearly != null)
                     Text(
-                      '${course.priceYearly!.toStringAsFixed(0)} أوقية/سنة',
+                      l.coursePriceYearly(course.priceYearly!.toStringAsFixed(0)),
                       style: const TextStyle(
                           fontSize: 10, color: AppColors.statusConfirmed, fontWeight: FontWeight.w600),
                     ),
@@ -527,6 +533,7 @@ class CourseDetailsScreen extends ConsumerWidget {
   }
 
   Widget _subscribeButton(BuildContext context, Course course, String? subStatus) {
+    final l = context.l10n;
     switch (subStatus) {
       case 'active':
         return Container(
@@ -535,12 +542,13 @@ class CourseDetailsScreen extends ConsumerWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.statusConfirmed.withValues(alpha: 0.3)),
           ),
-          child: const Row(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.check_circle_rounded, color: AppColors.statusConfirmed, size: 18),
-              SizedBox(width: 6),
-              Text('مشترك', style: TextStyle(color: AppColors.statusConfirmed, fontWeight: FontWeight.w700)),
+              const Icon(Icons.check_circle_rounded, color: AppColors.statusConfirmed, size: 18),
+              const SizedBox(width: 6),
+              Text(l.courseSubscribedLabel,
+                  style: const TextStyle(color: AppColors.statusConfirmed, fontWeight: FontWeight.w700)),
             ],
           ),
         );
@@ -551,14 +559,14 @@ class CourseDetailsScreen extends ConsumerWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFFC77A1A).withValues(alpha: 0.4)),
           ),
-          child: const Row(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(width: 14, height: 14,
+              const SizedBox(width: 14, height: 14,
                   child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFC77A1A))),
-              SizedBox(width: 8),
-              Text('قيد المراجعة',
-                  style: TextStyle(color: Color(0xFFC77A1A), fontWeight: FontWeight.w700, fontSize: 13)),
+              const SizedBox(width: 8),
+              Text(l.coursePendingLabel,
+                  style: const TextStyle(color: Color(0xFFC77A1A), fontWeight: FontWeight.w700, fontSize: 13)),
             ],
           ),
         );
@@ -571,9 +579,9 @@ class CourseDetailsScreen extends ConsumerWidget {
               color: const Color(0xFF8A96A3),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Center(
-              child: Text('تجديد الاشتراك',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+            child: Center(
+              child: Text(l.coursesResubscribe,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
             ),
           ),
         );
@@ -586,9 +594,9 @@ class CourseDetailsScreen extends ConsumerWidget {
               color: AppColors.primary,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Center(
-              child: Text('اشترك الآن',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+            child: Center(
+              child: Text(l.courseSubscribeNow,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
             ),
           ),
         );
@@ -596,6 +604,7 @@ class CourseDetailsScreen extends ConsumerWidget {
   }
 
   void _showSubscribePrompt(BuildContext context, Course course, String? subStatus) {
+    final l = context.l10n;
     // If pending — just inform, no subscribe button
     if (subStatus == 'pending') {
       showModalBottomSheet(
@@ -608,12 +617,12 @@ class CourseDetailsScreen extends ConsumerWidget {
               const SizedBox(width: 40, height: 40,
                   child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFFC77A1A))),
               const SizedBox(height: 16),
-              const Text('طلب اشتراكك قيد المراجعة',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              Text(l.courseSubPendingTitle,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
-              const Text('سيتم تفعيل اشتراكك خلال 24 ساعة بعد تأكيد الدفع من الإدارة.',
+              Text(l.courseSubPendingBody,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
               const SizedBox(height: 20),
             ],
           ),
@@ -631,10 +640,10 @@ class CourseDetailsScreen extends ConsumerWidget {
           children: [
             const Icon(Icons.lock_outline_rounded, size: 40, color: AppColors.textHint),
             const SizedBox(height: 12),
-            const Text('هذا الدرس للمشتركين فقط',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            Text(l.courseLessonLockedTitle,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
-            Text('اشترك في "${course.title}" للوصول إلى جميع الدروس',
+            Text(l.courseLessonLockedBody(course.title),
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
             const SizedBox(height: 20),
@@ -651,7 +660,8 @@ class CourseDetailsScreen extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                child: const Text('اشترك الآن', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                child: Text(l.courseSubscribeNow,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
               ),
             ),
           ],

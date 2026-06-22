@@ -174,13 +174,23 @@ export default function Courses({ onNavigate }) {
               )}
             </span>
             <span style={{ textAlign: 'left', display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-              {/* Edit button */}
+              {/* Quick-edit metadata */}
               <button
                 className="btn btn-sm btn-secondary"
-                style={{ padding: '5px 12px', fontSize: 12 }}
+                style={{ padding: '5px 10px', fontSize: 12 }}
                 onClick={() => openEdit(c)}
+                title="تعديل البيانات الأساسية"
               >
-                ✏️ تعديل
+                ✏️
+              </button>
+              {/* Full-edit lessons */}
+              <button
+                className="btn btn-sm btn-secondary"
+                style={{ padding: '5px 10px', fontSize: 12, background: '#EDE9FE', color: '#5B21B6', border: '1px solid #C4B5FD' }}
+                onClick={() => onNavigate('editCourse', { courseId: c.id })}
+                title="تعديل الفصول والدروس"
+              >
+                📚
               </button>
               {/* Delete button */}
               {deleteId === c.id ? (

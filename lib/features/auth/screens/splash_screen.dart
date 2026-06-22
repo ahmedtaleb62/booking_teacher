@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/services/fcm_service.dart';
 import '../../../core/services/supabase_service.dart';
 
@@ -100,18 +101,18 @@ class _SplashScreenState extends State<SplashScreen>
                     ],
                   ),
                   child: const Center(
-                    child: Text('ح', style: TextStyle(fontSize: 44, fontWeight: FontWeight.w700, color: Colors.white)),
+                    child: Text('س', style: TextStyle(fontSize: 44, fontWeight: FontWeight.w700, color: Colors.white)),
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'حجز استاذ',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white),
+                Text(
+                  context.l10n.appName,
+                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'منصة الدروس الخصوصية المباشرة',
-                  style: TextStyle(fontSize: 14, color: Color(0xFF9DB2B8)),
+                Text(
+                  context.l10n.splashTagline,
+                  style: const TextStyle(fontSize: 14, color: Color(0xFF9DB2B8)),
                 ),
                 const SizedBox(height: 48),
                 SizedBox(

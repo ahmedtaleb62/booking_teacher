@@ -1,20 +1,78 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
+import { useToast } from '../components/Toast'
+import ConfirmModal from '../components/ConfirmModal'
+
+const COVERS = ['#1B6B7A', '#7B61FF', '#1B9E77', '#C77A1A', '#2D6CDF']
+
+function CourseSelector({ selected, onChange, courses }) {
+  const toggle = id => onChange(
+    selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]
+  )
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 7, maxHeight: 260, overflowY: 'auto', padding: '2px 2px 2px 0' }}>
+      {courses.length === 0 && (
+        <div style={{ color: 'var(--text3)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>لا توجد دروس منشورة بعد</div>
+      )}
+      {courses.map(c => {
+        const sel = selected.includes(c.id)
+        return (
+          <div
+            key={c.id}
+            onClick={() => toggle(c.id)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 11, padding: '10px 13px',
+              border: '1.5px solid ' + (sel ? 'var(--primary)' : '#E8EDF1'),
+              borderRadius: 11, cursor: 'pointer',
+              background: sel ? 'var(--primary-light)' : '#FAFBFC',
+              transition: 'all .12s',
+            }}
+          >
+            <div style={{
+              width: 20, height: 20, borderRadius: 6, border: '2px solid ' + (sel ? 'var(--primary)' : '#CBD5E0'),
+              background: sel ? 'var(--primary)' : '#fff', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {sel && <span style={{ color: '#fff', fontSize: 12, lineHeight: 1 }}>✓</span>}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: sel ? 'var(--primary)' : 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {c.title}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>
+                {c.subject} · {c.level} · {c.total_lessons || 0} درس
+              </div>
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)', flexShrink: 0 }}>
+              {c.price_monthly?.toLocaleString('ar')} أوقية
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 export default function Packages() {
-  const [packages, setPackages] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [showAdd, setShowAdd] = useState(false)
-  const [form, setForm] = useState({ title: '', priceMonthly: '' })
-  const [saving, setSaving] = useState(false)
+  const toast = useToast()
+  const [packages, setPackages]         = useState([])
+  const [allCourses, setAllCourses]     = useState([])
+  const [loading, setLoading]           = useState(true)
+  const [showAdd, setShowAdd]           = useState(false)
+  const [form, setForm]                 = useState({ title: '', priceMonthly: '', courseIds: [] })
+  const [saving, setSaving]             = useState(false)
+  const [editTarget, setEditTarget]     = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleting, setDeleting]         = useState(false)
 
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
     setLoading(true)
-    const [pkgRes, subRes] = await Promise.all([
+    const [pkgRes, subRes, courseRes] = await Promise.all([
       supabase.from('packages').select('*, courses:package_courses(course_id, courses(title, subject))').order('created_at', { ascending: false }),
       supabase.from('subscriptions').select('package_id').eq('status', 'active'),
+      supabase.from('courses').select('id, title, subject, level, price_monthly, total_lessons').eq('is_active', true).order('title'),
     ])
 
     const pkgs = pkgRes.data || []
@@ -22,13 +80,14 @@ export default function Packages() {
     const subCount = {}
     subs.forEach(s => { if (s.package_id) subCount[s.package_id] = (subCount[s.package_id] || 0) + 1 })
 
-    const covers = ['#1B6B7A', '#7B61FF', '#1B9E77', '#C77A1A', '#2D6CDF']
+    setAllCourses(courseRes.data || [])
     setPackages(pkgs.map((p, i) => ({
       ...p,
-      cover: covers[i % covers.length],
-      subsCount: subCount[p.id] || 0,
-      subjects: [...new Set((p.courses || []).map(c => c.courses?.subject).filter(Boolean))].join(' · '),
+      cover:       COVERS[i % COVERS.length],
+      subsCount:   subCount[p.id] || 0,
+      subjects:    [...new Set((p.courses || []).map(c => c.courses?.subject).filter(Boolean))].join(' · '),
       courseCount: (p.courses || []).length,
+      courseIds:   (p.courses || []).map(c => c.course_id),
     })))
     setLoading(false)
   }
@@ -36,10 +95,71 @@ export default function Packages() {
   async function addPackage() {
     if (!form.title || !form.priceMonthly) return
     setSaving(true)
-    await supabase.from('packages').insert({ title: form.title, price_monthly: parseFloat(form.priceMonthly), is_active: true })
+    const { data: pkg, error } = await supabase.from('packages').insert({
+      title:         form.title,
+      price_monthly: parseFloat(form.priceMonthly),
+      is_active:     true,
+    }).select().single()
+    if (error) { toast('خطأ في الإضافة: ' + error.message, 'error'); setSaving(false); return }
+
+    if (form.courseIds.length > 0) {
+      const rows = form.courseIds.map(cid => ({ package_id: pkg.id, course_id: cid }))
+      const { error: pcErr } = await supabase.from('package_courses').insert(rows)
+      if (pcErr) { toast('تمت إضافة الباقة لكن فشل ربط الدروس: ' + pcErr.message, 'error') }
+    }
+
     setSaving(false)
     setShowAdd(false)
-    setForm({ title: '', priceMonthly: '' })
+    setForm({ title: '', priceMonthly: '', courseIds: [] })
+    toast('تمت إضافة الباقة بنجاح', 'success')
+    await loadData()
+  }
+
+  function openEdit(p) {
+    setEditTarget({
+      id:          p.id,
+      title:       p.title,
+      priceMonthly:String(p.price_monthly),
+      courseIds:   p.courseIds || [],
+    })
+  }
+
+  async function saveEdit() {
+    if (!editTarget.title || !editTarget.priceMonthly) return
+    setSaving(true)
+    const { error: updErr } = await supabase.from('packages').update({
+      title:         editTarget.title,
+      price_monthly: parseFloat(editTarget.priceMonthly),
+    }).eq('id', editTarget.id)
+    if (updErr) { toast('خطأ في التعديل: ' + updErr.message, 'error'); setSaving(false); return }
+
+    // Replace course assignments
+    await supabase.from('package_courses').delete().eq('package_id', editTarget.id)
+    if (editTarget.courseIds.length > 0) {
+      const rows = editTarget.courseIds.map(cid => ({ package_id: editTarget.id, course_id: cid }))
+      const { error: pcErr } = await supabase.from('package_courses').insert(rows)
+      if (pcErr) { toast('تم حفظ الباقة لكن فشل تحديث الدروس: ' + pcErr.message, 'error') }
+    }
+
+    setSaving(false)
+    setEditTarget(null)
+    toast('تم تعديل الباقة بنجاح', 'success')
+    await loadData()
+  }
+
+  async function deletePackage() {
+    setDeleting(true)
+    const { data: active } = await supabase
+      .from('subscriptions').select('id')
+      .eq('package_id', deleteTarget.id).eq('status', 'active').limit(1)
+    if (active?.length) {
+      toast('لا يمكن الحذف — يوجد مشتركون نشطون في هذه الباقة', 'error')
+      setDeleting(false); setDeleteTarget(null); return
+    }
+    const { error } = await supabase.from('packages').delete().eq('id', deleteTarget.id)
+    setDeleting(false); setDeleteTarget(null)
+    if (error) { toast('خطأ في الحذف: ' + error.message, 'error'); return }
+    toast('تم حذف الباقة', 'success')
     await loadData()
   }
 
@@ -48,7 +168,7 @@ export default function Packages() {
   return (
     <div>
       <div className="flex justify-between items-center mb-16">
-        <div />
+        <div style={{ fontSize: 13, color: 'var(--text3)' }}>{packages.length} باقة</div>
         <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ إضافة باقة</button>
       </div>
 
@@ -56,7 +176,9 @@ export default function Packages() {
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text3)' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>📦</div>
           <div style={{ fontSize: 16, fontWeight: 700 }}>لا توجد باقات بعد</div>
-          <div style={{ fontSize: 13, marginTop: 6 }}><span style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 700 }} onClick={() => setShowAdd(true)}>أضف أول باقة</span></div>
+          <div style={{ fontSize: 13, marginTop: 6 }}>
+            <span style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 700 }} onClick={() => setShowAdd(true)}>أضف أول باقة</span>
+          </div>
         </div>
       )}
 
@@ -66,40 +188,144 @@ export default function Packages() {
             <div style={{ background: p.cover, padding: 18, color: '#fff' }}>
               <div className="flex justify-between items-center" style={{ alignItems: 'flex-start' }}>
                 <div style={{ fontSize: 17, fontWeight: 700 }}>{p.title}</div>
-                <span style={{ background: 'rgba(255,255,255,.2)', fontSize: 10.5, fontWeight: 700, padding: '4px 9px', borderRadius: 999 }}>{p.courseCount} دروس</span>
+                <span style={{ background: 'rgba(255,255,255,.2)', fontSize: 10.5, fontWeight: 700, padding: '4px 9px', borderRadius: 999 }}>
+                  {p.courseCount} دروس
+                </span>
               </div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,.82)', marginTop: 8 }}>{p.subjects || 'مواد متعددة'}</div>
             </div>
-            <div style={{ padding: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div><span style={{ fontSize: 19, fontWeight: 700 }}>{p.price_monthly?.toLocaleString('ar')}</span><span style={{ fontSize: 11, color: 'var(--text3)' }}> أوقية/شهر</span></div>
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>{p.subsCount}</div>
-                <div style={{ fontSize: 11, color: 'var(--text3)' }}>مشترك</div>
+            <div style={{ padding: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div>
+                  <span style={{ fontSize: 19, fontWeight: 700 }}>{p.price_monthly?.toLocaleString('ar')}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text3)' }}> أوقية/شهر</span>
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>{p.subsCount}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)' }}>مشترك</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  className="btn btn-sm btn-secondary"
+                  style={{ flex: 1, justifyContent: 'center', fontSize: 12.5 }}
+                  onClick={() => openEdit(p)}
+                >
+                  ✏️ تعديل
+                </button>
+                <button
+                  className="btn btn-sm"
+                  style={{ padding: '6px 12px', fontSize: 12, background: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5' }}
+                  onClick={() => setDeleteTarget({ id: p.id, title: p.title })}
+                >
+                  🗑
+                </button>
               </div>
             </div>
           </div>
         ))}
       </div>
 
+      {/* ── Add modal ───────────────────────────────── */}
       {showAdd && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowAdd(false)}>
-          <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: 420 }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 18 }}>إضافة باقة جديدة</div>
-            <div style={{ marginBottom: 14 }}>
-              <div className="field-label">اسم الباقة</div>
-              <input className="field-input" placeholder="باقة العلوم الشاملة" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20, overflowY: 'auto' }}
+          onClick={() => setShowAdd(false)}
+        >
+          <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: 560, maxWidth: '95vw', margin: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 20 }}>إضافة باقة جديدة</div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
+              <div>
+                <div className="field-label" style={{ marginBottom: 6 }}>اسم الباقة *</div>
+                <input className="field-input" placeholder="باقة العلوم الشاملة" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+              </div>
+              <div>
+                <div className="field-label" style={{ marginBottom: 6 }}>السعر الشهري * (أوقية)</div>
+                <input className="field-input" type="number" placeholder="12000" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} />
+              </div>
             </div>
-            <div style={{ marginBottom: 22 }}>
-              <div className="field-label">سعر/شهر (أوقية)</div>
-              <input className="field-input" type="number" placeholder="12000" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} />
+
+            <div className="field-label" style={{ marginBottom: 10 }}>
+              الدروس المضمّنة في الباقة
+              {form.courseIds.length > 0 && (
+                <span style={{ marginRight: 8, padding: '2px 9px', borderRadius: 999, background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700 }}>
+                  {form.courseIds.length} محدد
+                </span>
+              )}
             </div>
-            <div className="flex gap-10">
-              <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} disabled={saving} onClick={addPackage}>{saving ? '…' : 'إضافة'}</button>
-              <button className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setShowAdd(false)}>إلغاء</button>
+            <CourseSelector
+              selected={form.courseIds}
+              onChange={ids => setForm(f => ({ ...f, courseIds: ids }))}
+              courses={allCourses}
+            />
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} disabled={saving || !form.title || !form.priceMonthly} onClick={addPackage}>
+                {saving ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> : '+ إضافة الباقة'}
+              </button>
+              <button className="btn btn-secondary" onClick={() => setShowAdd(false)}>إلغاء</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ── Edit modal ──────────────────────────────── */}
+      {editTarget && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20, overflowY: 'auto' }}
+          onClick={() => setEditTarget(null)}
+        >
+          <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: 560, maxWidth: '95vw', margin: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 20 }}>تعديل الباقة</div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
+              <div>
+                <div className="field-label" style={{ marginBottom: 6 }}>اسم الباقة *</div>
+                <input className="field-input" value={editTarget.title} onChange={e => setEditTarget(t => ({ ...t, title: e.target.value }))} />
+              </div>
+              <div>
+                <div className="field-label" style={{ marginBottom: 6 }}>السعر الشهري * (أوقية)</div>
+                <input className="field-input" type="number" value={editTarget.priceMonthly} onChange={e => setEditTarget(t => ({ ...t, priceMonthly: e.target.value }))} />
+              </div>
+            </div>
+
+            <div className="field-label" style={{ marginBottom: 10 }}>
+              الدروس المضمّنة في الباقة
+              {editTarget.courseIds.length > 0 && (
+                <span style={{ marginRight: 8, padding: '2px 9px', borderRadius: 999, background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 700 }}>
+                  {editTarget.courseIds.length} محدد
+                </span>
+              )}
+            </div>
+            <CourseSelector
+              selected={editTarget.courseIds}
+              onChange={ids => setEditTarget(t => ({ ...t, courseIds: ids }))}
+              courses={allCourses}
+            />
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} disabled={saving || !editTarget.title || !editTarget.priceMonthly} onClick={saveEdit}>
+                {saving ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> : '💾 حفظ التعديلات'}
+              </button>
+              <button className="btn btn-secondary" onClick={() => setEditTarget(null)}>إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirm */}
+      <ConfirmModal
+        open={!!deleteTarget}
+        danger
+        title={`حذف باقة "${deleteTarget?.title}"`}
+        message="سيتم حذف الباقة نهائياً. لا يمكن حذف باقة يوجد فيها مشتركون نشطون."
+        confirm="حذف الباقة"
+        cancel="إلغاء"
+        loading={deleting}
+        onConfirm={deletePackage}
+        onCancel={() => !deleting && setDeleteTarget(null)}
+      />
     </div>
   )
 }

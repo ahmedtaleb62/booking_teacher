@@ -26,16 +26,20 @@ export default function Accounting() {
     const profMap = Object.fromEntries((profs || []).map(p => [p.id, p]))
     const teachers = (tps || []).map(t => ({ ...t, profiles: profMap[t.id] || {} }))
 
-    const [{ data: sessions }, { data: subs }] = await Promise.all([
+    const [{ data: sessions }, { data: subs }, { data: payouts }] = await Promise.all([
       supabase
         .from('sessions')
         .select('teacher_id, amount, state')
-        .in('state', ['COMPLETED', 'CONFIRMED_BOOKING', 'ACTIVE_SESSION']),
+        .eq('state', 'COMPLETED'),
       supabase
         .from('subscriptions')
         .select('course:course_id(teacher_id), amount')
         .eq('status', 'active')
         .eq('type', 'course'),
+      supabase
+        .from('ledger_entries')
+        .select('teacher_id, net_amount')
+        .eq('type', 'payout_sent'),
     ])
 
     const byTeacher = {}
@@ -50,9 +54,16 @@ export default function Accounting() {
       byTeacher[tid].subs += (s.amount || 0) * 0.85
     })
 
+    // net_amount for payout_sent is stored as negative — sum gives negative total paid out
+    const payoutsByTeacher = {}
+    ;(payouts || []).forEach(p => {
+      payoutsByTeacher[p.teacher_id] = (payoutsByTeacher[p.teacher_id] || 0) + Math.abs(p.net_amount || 0)
+    })
+
     const teacherRows = (teachers || []).map((t, i) => {
       const stats = byTeacher[t.id] || { sessions: 0, subs: 0 }
-      const total = stats.sessions + stats.subs
+      const paidOut = payoutsByTeacher[t.id] || 0
+      const total = Math.max(0, stats.sessions + stats.subs - paidOut)
       const colors = [['#E0E7FF', '#4338CA'], ['#D1FAE5', '#065F46'], ['#EDE9FE', '#5B21B6'], ['#FEF3C7', '#92400E'], ['#DBEAFE', '#1D4ED8']]
       const [bg, fg] = colors[i % colors.length]
       return {
@@ -69,10 +80,11 @@ export default function Accounting() {
       }
     })
 
-    const fromSessions = teacherRows.reduce((s, r) => s + r.sessions, 0)
-    const fromSubs     = teacherRows.reduce((s, r) => s + r.subs, 0)
-    const due = Math.round(fromSessions + fromSubs)
-    setTotals({ due, fromSessions: Math.round(fromSessions), fromSubs: Math.round(fromSubs) })
+    const fromSessions = Math.round(teacherRows.reduce((s, r) => s + r.sessions, 0))
+    const fromSubs     = Math.round(teacherRows.reduce((s, r) => s + r.subs, 0))
+    // due = sum of per-teacher totals (already net of paidOut)
+    const due          = Math.round(teacherRows.reduce((s, r) => s + r.total, 0))
+    setTotals({ due, fromSessions, fromSubs })
     setRows(teacherRows)
     setLoading(false)
   }

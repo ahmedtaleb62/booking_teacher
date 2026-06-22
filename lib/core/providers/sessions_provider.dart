@@ -10,6 +10,7 @@ import 'auth_provider.dart';
 class TeacherDashboardStats {
   final String teacherName;
   final String teacherInitial;
+  final String? teacherAvatarUrl;
   final bool isAvailable;
   final int pendingCount;
   final int todayCount;
@@ -22,6 +23,7 @@ class TeacherDashboardStats {
   const TeacherDashboardStats({
     required this.teacherName,
     required this.teacherInitial,
+    this.teacherAvatarUrl,
     required this.isAvailable,
     required this.pendingCount,
     required this.todayCount,
@@ -77,6 +79,8 @@ final sessionProvider = StreamProvider.autoDispose.family<Session?, String>((ref
 
   final channel = SessionService.subscribeToSession(sessionId, (s) {
     if (!controller.isClosed) controller.add(s);
+    // Keep the sessions list in sync when a single session changes via realtime
+    ref.invalidate(studentSessionsProvider);
   });
 
   ref.onDispose(() {
@@ -101,19 +105,6 @@ final pendingRequestsCountProvider = FutureProvider.autoDispose<int>((ref) async
   return (data as List).length;
 });
 
-// ── Notifications ───────────────────────────────────────────
-final notificationsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  final uid = SupabaseService.userId;
-  if (uid == null) return [];
-  final data = await SupabaseService.client
-      .from('notifications')
-      .select()
-      .eq('user_id', uid)
-      .order('created_at', ascending: false)
-      .limit(50);
-  return List<Map<String, dynamic>>.from(data as List);
-});
-
 // ── Teacher profile ─────────────────────────────────────────
 final teacherProfileProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((ref) async {
   final session = ref.watch(currentSessionProvider);
@@ -122,7 +113,7 @@ final teacherProfileProvider = FutureProvider.autoDispose<Map<String, dynamic>?>
   if (uid == null) return null;
   final data = await SupabaseService.client
       .from('teacher_profiles')
-      .select('*, profile:profiles(full_name, is_active)')
+      .select('*, profile:profiles(full_name, is_active, avatar_url)')
       .eq('id', uid)
       .maybeSingle();
   return data != null ? Map<String, dynamic>.from(data as Map) : null;
@@ -157,7 +148,7 @@ final teacherDashboardProvider = FutureProvider.autoDispose<TeacherDashboardStat
   final results = await Future.wait([
     SupabaseService.client
         .from('teacher_profiles')
-        .select('attendance_rate, profile:profiles(full_name, is_active)')
+        .select('attendance_rate, profile:profiles(full_name, is_active, avatar_url)')
         .eq('id', uid)
         .maybeSingle(),
     SupabaseService.client
@@ -170,7 +161,7 @@ final teacherDashboardProvider = FutureProvider.autoDispose<TeacherDashboardStat
         .from('sessions')
         .select('id, scheduled_at, duration_minutes, subject, state, student:student_id(full_name)')
         .eq('teacher_id', uid)
-        .eq('state', SessionState.confirmedBooking.englishKey)
+        .inFilter('state', [SessionState.confirmedBooking.englishKey, SessionState.activeSession.englishKey])
         .gte('scheduled_at', now.toIso8601String())
         .order('scheduled_at')
         .limit(5),
@@ -199,6 +190,7 @@ final teacherDashboardProvider = FutureProvider.autoDispose<TeacherDashboardStat
   final fullName = (profileInner['full_name'] as String?) ?? '';
   final isAvailable = (profileInner['is_active'] as bool?) ?? false;
   final attendanceRate = (profileMap['attendance_rate'] as num?)?.toDouble() ?? 100.0;
+  final avatarUrl = profileInner['avatar_url'] as String?;
 
   final pendingList = (results[1] as List).cast<Map<String, dynamic>>();
   final upcomingList = (results[2] as List).cast<Map<String, dynamic>>();
@@ -206,12 +198,16 @@ final teacherDashboardProvider = FutureProvider.autoDispose<TeacherDashboardStat
   final weekLedger = (results[4] as List);
   final completedList = (results[5] as List);
 
-  final weekEarnings = weekLedger.fold<double>(
-    0, (sum, e) => sum + ((e as Map)['net_amount'] as num? ?? 0).toDouble());
+  final weekEarnings = weekLedger.fold<double>(0, (sum, e) {
+    final type = (e as Map)['type'] as String? ?? '';
+    if (type == 'payout_sent') return sum;
+    return sum + ((e)['net_amount'] as num? ?? 0).toDouble();
+  });
 
   return TeacherDashboardStats(
     teacherName: fullName,
     teacherInitial: fullName.isNotEmpty ? fullName[0] : '؟',
+    teacherAvatarUrl: avatarUrl,
     isAvailable: isAvailable,
     pendingCount: pendingList.length,
     todayCount: todayList.length,
@@ -392,17 +388,23 @@ final teacherEarningsProvider = FutureProvider.autoDispose<TeacherEarningsData>(
 
   final entries = List<Map<String, dynamic>>.from(data as List);
 
-  double total = 0, week = 0, month = 0, courseTot = 0, sessionTot = 0;
+  double earned = 0, week = 0, month = 0, courseTot = 0, sessionTot = 0, payouts = 0;
   for (final e in entries) {
     final amt      = (e['net_amount'] as num?)?.toDouble() ?? 0;
     final type     = e['type'] as String? ?? '';
     final created  = DateTime.tryParse(e['created_at'] as String? ?? '') ?? DateTime(2000);
-    total += amt;
+    // payout_sent appears in the ledger list but does NOT count toward displayed earnings
+    if (type == 'payout_sent') {
+      payouts += amt; // negative value
+      continue;
+    }
+    earned += amt;
     if (created.isAfter(weekStart))  { week  += amt; }
     if (created.isAfter(monthStart)) { month += amt; }
-    if (type == 'course_subscription')      { courseTot  += amt; }
-    else if (type == 'session_payment')     { sessionTot += amt; }
+    if (type == 'course_subscription') { courseTot  += amt; }
+    else if (type == 'session_payment') { sessionTot += amt; }
   }
+  final total = earned + payouts; // payouts is negative, so subtracts
 
   return TeacherEarningsData(
     totalBalance:    total,

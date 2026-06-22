@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/app_button.dart';
 
@@ -11,8 +12,8 @@ class TeacherOnboardingScreen extends StatefulWidget {
 }
 
 class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _bioCtrl   = TextEditingController();
+  final _formKey  = GlobalKey<FormState>();
+  final _bioCtrl  = TextEditingController();
   final _priceCtrl = TextEditingController();
   int _yearsExp = 1;
   final Set<String> _selectedSubjects = {};
@@ -34,13 +35,14 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
   }
 
   Future<void> _save() async {
+    final l = context.l10n;
     if (!_formKey.currentState!.validate()) return;
     if (_selectedSubjects.isEmpty) {
-      setState(() => _error = 'اختر مادة واحدة على الأقل');
+      setState(() => _error = l.onboardingErrNoSubject);
       return;
     }
     if (_selectedSubjects.length > _maxSubjects) {
-      setState(() => _error = 'لا يمكن اختيار أكثر من $_maxSubjects مواد');
+      setState(() => _error = l.onboardingErrMaxSubjects(_maxSubjects));
       return;
     }
     setState(() { _loading = true; _error = null; });
@@ -56,7 +58,7 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
       });
       if (mounted) context.go('/teacher/home');
     } catch (e) {
-      setState(() => _error = 'حدث خطأ أثناء الحفظ، حاول مرة أخرى');
+      setState(() => _error = context.l10n.onboardingErrSave);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -64,6 +66,7 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -74,12 +77,13 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
-                const Text('مرحباً بك كأستاذ',
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                Text(l.onboardingWelcomeTitle,
+                  style: const TextStyle(
+                    fontSize: 26, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                 const SizedBox(height: 8),
-                const Text('أكمل ملفك الشخصي لتبدأ استقبال الطلاب. سيراجع الفريق طلبك خلال 24 ساعة.',
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.6)),
+                Text(l.onboardingWelcomeBody,
+                  style: const TextStyle(
+                    fontSize: 13, color: AppColors.textSecondary, height: 1.6)),
                 const SizedBox(height: 28),
 
                 if (_error != null) ...[
@@ -95,43 +99,38 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
                   const SizedBox(height: 16),
                 ],
 
-                // Bio
-                _label('نبذة عنك'),
+                _label(l.onboardingBioLabel),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _bioCtrl,
                   maxLines: 4,
-                  decoration: const InputDecoration(
-                    hintText: 'صف خبرتك وأسلوبك في التدريس…',
-                  ),
+                  decoration: InputDecoration(hintText: l.onboardingBioHint),
                   validator: (v) => (v == null || v.trim().length < 20)
-                      ? 'اكتب نبذة لا تقل عن 20 حرفاً'
+                      ? l.onboardingBioTooShort
                       : null,
                 ),
                 const SizedBox(height: 20),
 
-                // Price
-                _label('السعر بالساعة (أوقية)'),
+                _label(l.onboardingPriceLabel),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _priceCtrl,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   textDirection: TextDirection.ltr,
-                  decoration: const InputDecoration(
-                    hintText: 'مثال: 500',
-                    suffixText: 'أوقية',
+                  decoration: InputDecoration(
+                    hintText: l.onboardingPriceHint,
+                    suffixText: l.dashOugiya,
                   ),
                   validator: (v) {
-                    if (v == null || v.isEmpty) return 'أدخل السعر';
+                    if (v == null || v.isEmpty) return l.onboardingPriceRequired;
                     final n = double.tryParse(v);
-                    if (n == null || n <= 0) return 'أدخل سعراً صحيحاً';
+                    if (n == null || n <= 0) return l.onboardingPriceInvalid;
                     return null;
                   },
                 ),
                 const SizedBox(height: 20),
 
-                // Years of experience
-                _label('سنوات الخبرة'),
+                _label(l.onboardingYearsExp),
                 const SizedBox(height: 10),
                 Row(
                   children: List.generate(5, (i) {
@@ -166,11 +165,10 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Subjects
-                _label('المواد التي تدرّسها'),
+                _label(l.onboardingSubjectsLabel),
                 const SizedBox(height: 4),
                 Text(
-                  'اختر مادة أو مادتين كحد أقصى (${_selectedSubjects.length}/$_maxSubjects)',
+                  l.onboardingSubjectsHint(_selectedSubjects.length, _maxSubjects),
                   style: TextStyle(
                     fontSize: 12,
                     color: _selectedSubjects.length >= _maxSubjects
@@ -227,15 +225,15 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
                     color: AppColors.accentLight,
                     borderRadius: BorderRadius.circular(13),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 18),
-                      SizedBox(width: 10),
+                      const Icon(Icons.info_outline_rounded,
+                          color: AppColors.primary, size: 18),
+                      const SizedBox(width: 10),
                       Expanded(
-                        child: Text(
-                          'بعد إرسال طلبك، سيتحقق الفريق من بياناتك ويُفعّل حسابك خلال 24 ساعة.',
-                          style: TextStyle(fontSize: 12, color: AppColors.primary, height: 1.5),
-                        ),
+                        child: Text(l.onboardingInfoNote,
+                          style: const TextStyle(
+                            fontSize: 12, color: AppColors.primary, height: 1.5)),
                       ),
                     ],
                   ),
@@ -243,7 +241,7 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
                 const SizedBox(height: 20),
 
                 AppButton(
-                  label: 'إرسال الطلب للمراجعة',
+                  label: l.onboardingSubmitBtn,
                   isLoading: _loading,
                   onTap: _save,
                 ),
@@ -251,10 +249,8 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
                 Center(
                   child: TextButton(
                     onPressed: _loading ? null : () => context.go('/teacher/home'),
-                    child: const Text(
-                      'تخطي — سأكمل لاحقاً',
-                      style: TextStyle(fontSize: 13, color: AppColors.textHint),
-                    ),
+                    child: Text(l.onboardingSkipBtn,
+                      style: const TextStyle(fontSize: 13, color: AppColors.textHint)),
                   ),
                 ),
               ],
@@ -266,5 +262,6 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
   }
 
   Widget _label(String text) => Text(text,
-    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary));
+    style: const TextStyle(
+      fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary));
 }

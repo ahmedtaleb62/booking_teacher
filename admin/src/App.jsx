@@ -27,14 +27,15 @@ const PAGE_META = {
   subscriptions:{ title: 'الاشتراكات',            sub: 'اشتراكات الطلاب في الدروس والباقات' },
   courses:      { title: 'الدروس',               sub: 'إدارة الدروس والمحتوى التعليمي' },
   addCourse:    { title: 'إضافة درس جديد',        sub: 'أنشئ درساً جديداً وانشره للطلاب' },
+  editCourse:   { title: 'تعديل الدرس',           sub: 'تعديل محتوى الدرس وإدارة فصوله' },
   packages:     { title: 'الباقات',              sub: 'إدارة باقات الدروس المجمّعة' },
   teachers:     { title: 'اعتماد الأساتذة',       sub: 'مراجعة طلبات الانضمام والاعتماد' },
   ratings:      { title: 'التقييمات',            sub: 'تقييمات الطلاب للأساتذة' },
   disputes:     { title: 'النزاعات',             sub: 'إدارة النزاعات والشكاوى' },
   users:        { title: 'المستخدمون',           sub: 'إدارة حسابات الطلاب والأساتذة' },
   policy:       { title: 'السياسات والعمولات',    sub: 'ضبط عمولات المنصة وسياسات التشغيل' },
-  methods:       { title: 'طرق الدفع',            sub: 'إدارة طرق الدفع المتاحة للطلاب' },
-  notifications: { title: 'الإشعارات',           sub: 'الإشعارات الواردة وإرسال إشعارات للمستخدمين' },
+  methods:      { title: 'طرق الدفع',            sub: 'إدارة طرق الدفع المتاحة للطلاب' },
+  notifications:{ title: 'الإشعارات',           sub: 'الإشعارات الواردة وإرسال إشعارات للمستخدمين' },
 }
 
 const PAGES = {
@@ -45,27 +46,48 @@ const PAGES = {
   subscriptions:Subscriptions,
   courses:      Courses,
   addCourse:    AddCourse,
+  editCourse:   AddCourse,   // same component, different mode via courseId prop
   packages:     Packages,
   teachers:     Teachers,
   ratings:      Ratings,
   disputes:     Disputes,
   users:        Users,
   policy:       Policy,
-  methods:       Methods,
-  notifications: Notifications,
+  methods:      Methods,
+  notifications:Notifications,
 }
 
 export default function App() {
-  const [session, setSession] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState('overview')
+  const [session, setSession]     = useState(null)
+  const [userRole, setUserRole]   = useState(null)
+  const [loading, setLoading]     = useState(true)
+  const [page, setPage]           = useState('overview')
+  const [navParams, setNavParams] = useState({})
+
+  async function fetchRole(userId) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single()
+    setUserRole(data?.role ?? null)
+  }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
+    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+      setSession(s)
+      if (s) await fetchRole(s.user.id)
       setLoading(false)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_e, s) => {
+      setSession(s)
+      if (s) {
+        await fetchRole(s.user.id)
+      } else {
+        setUserRole(null)
+      }
+    })
     return () => subscription.unsubscribe()
   }, [])
 
@@ -75,17 +97,21 @@ export default function App() {
     </div>
   )
 
-  if (!session) return <Login />
+  // Only users with role 'admin' may enter
+  if (!session || userRole !== 'admin') return <Login />
 
   const meta = PAGE_META[page] || PAGE_META.overview
   const PageComponent = PAGES[page] || Overview
 
-  const goTo = (p) => setPage(p)
+  const goTo = (p, params = {}) => {
+    setPage(p)
+    setNavParams(params)
+  }
 
   return (
     <ToastProvider>
       <Layout page={page} onNavigate={goTo} meta={meta}>
-        <PageComponent onNavigate={goTo} adminId={session.user.id} />
+        <PageComponent onNavigate={goTo} adminId={session.user.id} {...navParams} />
       </Layout>
     </ToastProvider>
   )

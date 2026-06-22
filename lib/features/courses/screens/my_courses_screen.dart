@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/course.dart';
 import '../../../core/providers/courses_provider.dart';
 
@@ -10,6 +11,7 @@ class MyCoursesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
     final subsAsync = ref.watch(mySubscriptionsProvider);
 
     return Scaffold(
@@ -23,8 +25,8 @@ class MyCoursesScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(22, 16, 22, 16),
               child: Row(
                 children: [
-                  const Text('دروسي',
-                      style: TextStyle(
+                  Text(l.navCourses,
+                      style: const TextStyle(
                           fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                   const Spacer(),
                   subsAsync.when(
@@ -37,7 +39,7 @@ class MyCoursesScreen extends ConsumerWidget {
                           color: AppColors.statusConfirmedBg,
                           borderRadius: BorderRadius.circular(999),
                         ),
-                        child: Text('$active نشط',
+                        child: Text(l.coursesActiveCount(active),
                             style: const TextStyle(
                                 fontSize: 11, color: AppColors.statusConfirmed, fontWeight: FontWeight.w700)),
                       );
@@ -57,12 +59,12 @@ class MyCoursesScreen extends ConsumerWidget {
                     children: [
                       const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
                       const SizedBox(height: 12),
-                      Text('تعذّر التحميل: $e',
+                      Text('${l.commonErrorLoading}: $e',
                           style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                       const SizedBox(height: 12),
                       TextButton(
                         onPressed: () => ref.invalidate(mySubscriptionsProvider),
-                        child: const Text('إعادة المحاولة'),
+                        child: Text(l.commonRetry),
                       ),
                     ],
                   ),
@@ -87,6 +89,7 @@ class MyCoursesScreen extends ConsumerWidget {
   }
 
   Widget _buildEmpty(BuildContext context) {
+    final l = context.l10n;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -101,12 +104,12 @@ class MyCoursesScreen extends ConsumerWidget {
             child: const Icon(Icons.school_outlined, size: 38, color: AppColors.primary),
           ),
           const SizedBox(height: 18),
-          const Text('لا توجد اشتراكات بعد',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          Text(l.coursesEmpty,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           const SizedBox(height: 8),
-          const Text('استعرض الدروس والباقات المتاحة\nوابدأ رحلتك التعليمية',
+          Text(l.coursesEmptyHint,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.5)),
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.5)),
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: () => context.go('/home'),
@@ -116,8 +119,8 @@ class MyCoursesScreen extends ConsumerWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               elevation: 0,
             ),
-            child: const Text('استعرض الدروس',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+            child: Text(l.coursesBrowse,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -125,6 +128,7 @@ class MyCoursesScreen extends ConsumerWidget {
   }
 
   Widget _buildCard(BuildContext context, Subscription sub) {
+    final l = context.l10n;
     final isActive = sub.status == SubscriptionStatus.active;
     final isPending = sub.status == SubscriptionStatus.pending;
     final isPackage = sub.type == 'package';
@@ -219,7 +223,7 @@ class MyCoursesScreen extends ConsumerWidget {
                     const SizedBox(height: 14),
                     Row(
                       children: [
-                        Text('${sub.completedLessons}/${sub.totalLessons} درس',
+                        Text(l.coursesLessonProgress(sub.completedLessons, sub.totalLessons),
                             style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
                         const Spacer(),
                         Text(
@@ -254,13 +258,13 @@ class MyCoursesScreen extends ConsumerWidget {
                         color: const Color(0xFFF0EDFF),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.info_outline_rounded, color: Color(0xFF7B61FF), size: 16),
-                          SizedBox(width: 8),
+                          const Icon(Icons.info_outline_rounded, color: Color(0xFF7B61FF), size: 16),
+                          const SizedBox(width: 8),
                           Expanded(
-                            child: Text('إثبات الدفع قيد المراجعة — خلال 24 ساعة',
-                                style: TextStyle(fontSize: 11, color: Color(0xFF7B61FF))),
+                            child: Text(l.coursesPendingInfo,
+                                style: const TextStyle(fontSize: 11, color: Color(0xFF7B61FF))),
                           ),
                         ],
                       ),
@@ -279,11 +283,12 @@ class MyCoursesScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             children: [
-                              Icon(Icons.cancel_outlined, color: AppColors.error, size: 16),
-                              SizedBox(width: 8),
-                              Text('رُفض الاشتراك', style: TextStyle(fontSize: 11, color: AppColors.error, fontWeight: FontWeight.w700)),
+                              const Icon(Icons.cancel_outlined, color: AppColors.error, size: 16),
+                              const SizedBox(width: 8),
+                              Text(l.coursesRejectedLabel,
+                                  style: const TextStyle(fontSize: 11, color: AppColors.error, fontWeight: FontWeight.w700)),
                             ],
                           ),
                           if (sub.rejectReason != null) ...[
@@ -314,7 +319,7 @@ class MyCoursesScreen extends ConsumerWidget {
                           elevation: 0,
                           textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                         ),
-                        child: const Text('إعادة الاشتراك'),
+                        child: Text(l.coursesResub),
                       ),
                     ),
                   ],
@@ -327,7 +332,7 @@ class MyCoursesScreen extends ConsumerWidget {
                         const Icon(Icons.calendar_today_outlined, size: 12, color: AppColors.textHint),
                         const SizedBox(width: 5),
                         Text(
-                          'ينتهي في ${_formatDate(sub.expiresAt!)}',
+                          l.coursesExpiresOn(_formatDate(sub.expiresAt!)),
                           style: const TextStyle(fontSize: 11, color: AppColors.textHint),
                         ),
                       ],
@@ -356,7 +361,7 @@ class MyCoursesScreen extends ConsumerWidget {
                           elevation: 0,
                           textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                         ),
-                        child: const Text('تجديد الاشتراك'),
+                        child: Text(l.coursesResubscribe),
                       ),
                     ),
                   ],
@@ -369,11 +374,5 @@ class MyCoursesScreen extends ConsumerWidget {
     );
   }
 
-  String _formatDate(DateTime dt) {
-    const months = [
-      '', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
-    ];
-    return '${dt.day} ${months[dt.month]} ${dt.year}';
-  }
+  String _formatDate(DateTime dt) => '${dt.day}/${dt.month}/${dt.year}';
 }

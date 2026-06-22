@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../l10n/app_localizations.dart';
 
 // ── Model ─────────────────────────────────────────────────────────
 
@@ -34,26 +36,6 @@ class _PayItem {
     this.navPath,
   });
 
-  // Status display helpers
-  String get statusLabel {
-    if (type == _ItemType.session) {
-      switch (status) {
-        case 'submitted': return 'قيد المراجعة';
-        case 'confirmed': return 'تم القبول';
-        case 'rejected':  return 'مرفوض';
-        default:          return 'قيد الانتظار';
-      }
-    } else {
-      switch (status) {
-        case 'pending':  return 'قيد المراجعة';
-        case 'active':   return 'مقبول — نشط';
-        case 'rejected': return 'مرفوض';
-        case 'expired':  return 'منتهي';
-        default:         return status;
-      }
-    }
-  }
-
   Color get statusColor {
     switch (status) {
       case 'submitted':
@@ -77,6 +59,25 @@ class _PayItem {
       default:          return AppColors.surfaceAlt;
     }
   }
+
+  String localizedStatusLabel(AppLocalizations l) {
+    if (type == _ItemType.session) {
+      switch (status) {
+        case 'submitted': return l.payHistStatusPending;
+        case 'confirmed': return l.payHistStatusConfirmed;
+        case 'rejected':  return l.payHistStatusRejected;
+        default:          return l.payHistStatusWaiting;
+      }
+    } else {
+      switch (status) {
+        case 'pending':  return l.payHistStatusPending;
+        case 'active':   return l.payHistStatusActive;
+        case 'rejected': return l.payHistStatusRejected;
+        case 'expired':  return l.payHistStatusExpired;
+        default:         return status;
+      }
+    }
+  }
 }
 
 // ── Provider ──────────────────────────────────────────────────────
@@ -88,13 +89,11 @@ final _paymentHistoryProvider =
   if (uid == null) return [];
 
   final results = await Future.wait([
-    // Session payments — fetch session fields without nested teacher join
     SupabaseService.client
         .from('payments')
         .select('*, session:session_id(id, subject, teacher_id, scheduled_at)')
         .eq('student_id', uid)
         .order('created_at', ascending: false),
-    // Subscription payments
     SupabaseService.client
         .from('subscriptions')
         .select('*, course:course_id(id, title, subject), package:package_id(id, title, subjects)')
@@ -102,7 +101,6 @@ final _paymentHistoryProvider =
         .order('created_at', ascending: false),
   ]);
 
-  // Resolve teacher names for session payments in a separate query
   final paymentsList = results[0] as List;
   final teacherIds = paymentsList
       .map((p) => ((p as Map)['session'] as Map?)?['teacher_id'])
@@ -124,7 +122,6 @@ final _paymentHistoryProvider =
 
   final items = <_PayItem>[];
 
-  // Session payments
   for (final p in paymentsList) {
     final m = Map<String, dynamic>.from(p as Map);
     final session = m['session'] as Map<String, dynamic>?;
@@ -134,7 +131,7 @@ final _paymentHistoryProvider =
     items.add(_PayItem(
       id: m['id'] as String,
       type: _ItemType.session,
-      title: (teacherId != null ? teacherNames[teacherId] : null) ?? 'أستاذ',
+      title: (teacherId != null ? teacherNames[teacherId] : null) ?? '—',
       subtitle: session?['subject'] as String? ?? '',
       amount: (m['amount'] as num).toDouble(),
       status: m['status'] as String? ?? 'pending',
@@ -145,7 +142,6 @@ final _paymentHistoryProvider =
     ));
   }
 
-  // Subscription payments
   for (final s in results[1] as List) {
     final m = Map<String, dynamic>.from(s as Map);
     final course = m['course'] as Map<String, dynamic>?;
@@ -173,8 +169,7 @@ final _paymentHistoryProvider =
       type: _ItemType.subscription,
       title: course?['title'] as String? ?? package?['title'] as String? ?? '—',
       subtitle: course?['subject'] as String? ??
-          package?['subjects'] as String? ??
-          'اشتراك',
+          package?['subjects'] as String? ?? '',
       amount: (m['amount'] as num).toDouble(),
       status: status,
       rejectReason: m['reject_reason'] as String?,
@@ -198,7 +193,7 @@ class PaymentHistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
-  int _filterIndex = 0; // 0=all, 1=session, 2=subscription
+  int _filterIndex = 0;
 
   List<_PayItem> _applyFilter(List<_PayItem> all) {
     if (_filterIndex == 1) return all.where((i) => i.type == _ItemType.session).toList();
@@ -208,6 +203,7 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final histAsync = ref.watch(_paymentHistoryProvider);
 
     return Scaffold(
@@ -221,8 +217,8 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
           child: const Icon(Icons.arrow_forward_rounded,
               color: AppColors.textPrimary),
         ),
-        title: const Text('سجل المدفوعات',
-            style: TextStyle(
+        title: Text(l.profilePaymentHistory,
+            style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary)),
@@ -235,7 +231,7 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
       body: histAsync.when(
         loading: () =>
             const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-        error: (e, _) => _buildError(e),
+        error: (e, _) => _buildError(l, e),
         data: (all) {
           final items = _applyFilter(all);
           return RefreshIndicator(
@@ -243,21 +239,19 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
             onRefresh: () => ref.refresh(_paymentHistoryProvider.future),
             child: CustomScrollView(
               slivers: [
-                // Summary + filters
                 SliverToBoxAdapter(
-                  child: _buildHeader(all, items),
+                  child: _buildHeader(l, all, items),
                 ),
-                // List
                 if (items.isEmpty)
                   SliverFillRemaining(
-                    child: _buildEmpty(),
+                    child: _buildEmpty(l),
                   )
                 else
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (_, i) => _buildCard(context, items[i]),
+                        (_, i) => _buildCard(context, l, items[i]),
                         childCount: items.length,
                       ),
                     ),
@@ -270,8 +264,7 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
     );
   }
 
-  Widget _buildHeader(List<_PayItem> all, List<_PayItem> filtered) {
-    // Stats
+  Widget _buildHeader(AppLocalizations l, List<_PayItem> all, List<_PayItem> filtered) {
     final totalConfirmed = all
         .where((i) =>
             i.status == 'confirmed' ||
@@ -288,7 +281,6 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Summary card
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -308,11 +300,11 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('إجمالي المدفوع',
-                    style: TextStyle(fontSize: 12, color: Colors.white60)),
+                Text(l.payHistTotalPaid,
+                    style: const TextStyle(fontSize: 12, color: Colors.white60)),
                 const SizedBox(height: 4),
                 Text(
-                  '${totalConfirmed.toStringAsFixed(0)} أوقية',
+                  '${totalConfirmed.toStringAsFixed(0)} ${l.dashOugiya}',
                   style: const TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
@@ -322,19 +314,19 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
                 Row(
                   children: [
                     _StatChip(
-                      label: 'إجمالي المعاملات',
+                      label: l.payHistTotalTransactions,
                       value: '${all.length}',
                       icon: Icons.receipt_long_rounded,
                     ),
                     const SizedBox(width: 10),
                     _StatChip(
-                      label: 'قيد المراجعة',
+                      label: l.payHistStatPending,
                       value: '$pendingCount',
                       icon: Icons.hourglass_top_rounded,
                     ),
                     const SizedBox(width: 10),
                     _StatChip(
-                      label: 'مرفوض',
+                      label: l.payHistStatRejected,
                       value: '$rejectedCount',
                       icon: Icons.cancel_outlined,
                     ),
@@ -346,25 +338,24 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
 
           const SizedBox(height: 18),
 
-          // Filter chips
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
                 _FilterChip(
-                    label: 'الكل',
+                    label: l.payHistFilterAll,
                     count: all.length,
                     selected: _filterIndex == 0,
                     onTap: () => setState(() => _filterIndex = 0)),
                 const SizedBox(width: 8),
                 _FilterChip(
-                    label: 'الجلسات',
+                    label: l.payHistFilterSessions,
                     count: all.where((i) => i.type == _ItemType.session).length,
                     selected: _filterIndex == 1,
                     onTap: () => setState(() => _filterIndex = 1)),
                 const SizedBox(width: 8),
                 _FilterChip(
-                    label: 'الاشتراكات',
+                    label: l.payHistFilterSubscriptions,
                     count: all.where((i) => i.type == _ItemType.subscription).length,
                     selected: _filterIndex == 2,
                     onTap: () => setState(() => _filterIndex = 2)),
@@ -377,7 +368,7 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
     );
   }
 
-  Widget _buildCard(BuildContext context, _PayItem item) {
+  Widget _buildCard(BuildContext context, AppLocalizations l, _PayItem item) {
     final isSession = item.type == _ItemType.session;
 
     return GestureDetector(
@@ -404,11 +395,9 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header row
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Type icon
                       Container(
                         width: 42, height: 42,
                         decoration: BoxDecoration(
@@ -429,7 +418,6 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // Title + subtitle
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -454,7 +442,7 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    isSession ? 'جلسة' : 'اشتراك',
+                                    isSession ? l.payHistTypeSession : l.payHistTypeSubscription,
                                     style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w600,
@@ -465,12 +453,14 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
                                 ),
                                 if (item.subtitle.isNotEmpty) ...[
                                   const SizedBox(width: 6),
-                                  Text(item.subtitle,
-                                      style: const TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.textHint),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis),
+                                  Expanded(
+                                    child: Text(item.subtitle,
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textHint),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis),
+                                  ),
                                 ],
                               ],
                             ),
@@ -478,7 +468,6 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // Amount
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
@@ -489,8 +478,8 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.textPrimary),
                           ),
-                          const Text('أوقية',
-                              style: TextStyle(
+                          Text(l.dashOugiya,
+                              style: const TextStyle(
                                   fontSize: 10, color: AppColors.textHint)),
                         ],
                       ),
@@ -499,10 +488,8 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
 
                   const SizedBox(height: 12),
 
-                  // Status + Date row
                   Row(
                     children: [
-                      // Status badge
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
@@ -520,7 +507,7 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
                                   shape: BoxShape.circle),
                             ),
                             const SizedBox(width: 5),
-                            Text(item.statusLabel,
+                            Text(item.localizedStatusLabel(l),
                                 style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
@@ -529,14 +516,12 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
                         ),
                       ),
                       const Spacer(),
-                      // Date
-                      Text(_formatDate(item.date),
+                      Text(_formatDate(l, item.date),
                           style: const TextStyle(
                               fontSize: 11, color: AppColors.textHint)),
                     ],
                   ),
 
-                  // Reference (session payments only)
                   if (item.reference != null && item.reference!.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Row(
@@ -553,7 +538,6 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
                     ),
                   ],
 
-                  // Reject reason
                   if (item.status == 'rejected' &&
                       item.rejectReason != null &&
                       item.rejectReason!.isNotEmpty) ...[
@@ -584,7 +568,6 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
                 ],
               ),
             ),
-            // Tap hint for navigable items
             if (item.navPath != null)
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 9),
@@ -597,7 +580,7 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      isSession ? 'عرض تفاصيل الجلسة' : 'عرض الدورة',
+                      isSession ? l.payHistViewSession : l.payHistViewCourse,
                       style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.primary,
@@ -615,7 +598,15 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
     );
   }
 
-  Widget _buildEmpty() {
+  Widget _buildEmpty(AppLocalizations l) {
+    String hint;
+    if (_filterIndex == 1) {
+      hint = l.payHistEmptySessions;
+    } else if (_filterIndex == 2) {
+      hint = l.payHistEmptySubscriptions;
+    } else {
+      hint = l.payHistEmptyAll;
+    }
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -631,18 +622,14 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
                 size: 34, color: AppColors.primary),
           ),
           const SizedBox(height: 16),
-          const Text('لا توجد مدفوعات بعد',
-              style: TextStyle(
+          Text(l.payHistEmpty,
+              style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary)),
           const SizedBox(height: 8),
           Text(
-            _filterIndex == 0
-                ? 'ستظهر هنا جميع مدفوعاتك للجلسات والاشتراكات'
-                : _filterIndex == 1
-                    ? 'لا توجد مدفوعات جلسات'
-                    : 'لا توجد مدفوعات اشتراكات',
+            hint,
             textAlign: TextAlign.center,
             style: const TextStyle(
                 fontSize: 13, color: AppColors.textSecondary, height: 1.5),
@@ -652,7 +639,7 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
     );
   }
 
-  Widget _buildError(Object e) {
+  Widget _buildError(AppLocalizations l, Object e) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -661,8 +648,8 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
           children: [
             const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
             const SizedBox(height: 12),
-            const Text('تعذّر تحميل سجل المدفوعات',
-                style: TextStyle(
+            Text(l.payHistLoadError,
+                style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary)),
@@ -674,7 +661,7 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
             ElevatedButton.icon(
               onPressed: () => ref.invalidate(_paymentHistoryProvider),
               icon: const Icon(Icons.refresh_rounded, size: 16),
-              label: const Text('إعادة المحاولة'),
+              label: Text(l.commonRetry),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -689,19 +676,14 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
     );
   }
 
-  String _formatDate(DateTime dt) {
-    const months = [
-      '',
-      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
-    ];
+  String _formatDate(AppLocalizations l, DateTime dt) {
     final now = DateTime.now();
     final diff = now.difference(dt);
-    if (diff.inMinutes < 60) return 'منذ ${diff.inMinutes} دقيقة';
-    if (diff.inHours < 24) return 'منذ ${diff.inHours} ساعة';
-    if (diff.inDays == 1) return 'أمس';
-    if (diff.inDays < 7) return 'منذ ${diff.inDays} أيام';
-    return '${dt.day} ${months[dt.month]} ${dt.year}';
+    if (diff.inMinutes < 60) return l.timeMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return l.timeHoursAgo(diff.inHours);
+    if (diff.inDays == 1) return l.timeYesterday;
+    if (diff.inDays < 7) return l.timeDaysAgo(diff.inDays);
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 }
 

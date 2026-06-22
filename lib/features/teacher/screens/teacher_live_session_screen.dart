@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/services/session_service.dart';
 
@@ -53,6 +54,7 @@ class _TeacherLiveSessionScreenState extends ConsumerState<TeacherLiveSessionScr
   }
 
   Future<void> _startSession() async {
+    final l = context.l10n;
     setState(() => _starting = true);
     try {
       final url = await SessionService.startSession(widget.sessionId);
@@ -61,7 +63,7 @@ class _TeacherLiveSessionScreenState extends ConsumerState<TeacherLiveSessionScr
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء بدء الجلسة')));
+          SnackBar(content: Text(l.liveSessionErrStart)));
       }
     } finally {
       if (mounted) setState(() => _starting = false);
@@ -69,6 +71,7 @@ class _TeacherLiveSessionScreenState extends ConsumerState<TeacherLiveSessionScr
   }
 
   Future<void> _endSession() async {
+    final l = context.l10n;
     setState(() => _ending = true);
     try {
       await SessionService.endSession(widget.sessionId);
@@ -76,7 +79,7 @@ class _TeacherLiveSessionScreenState extends ConsumerState<TeacherLiveSessionScr
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء إنهاء الجلسة')));
+          SnackBar(content: Text(l.liveSessionErrEnd)));
         setState(() => _ending = false);
       }
     }
@@ -87,6 +90,7 @@ class _TeacherLiveSessionScreenState extends ConsumerState<TeacherLiveSessionScr
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final sessionAsync = ref.watch(sessionProvider(widget.sessionId));
 
     return sessionAsync.when(
@@ -96,24 +100,28 @@ class _TeacherLiveSessionScreenState extends ConsumerState<TeacherLiveSessionScr
       ),
       error: (e, _) => Scaffold(
         backgroundColor: const Color(0xFF10171E),
-        body: Center(child: Text('خطأ: $e', style: const TextStyle(color: Colors.white))),
+        body: Center(child: Text('$e', style: const TextStyle(color: Colors.white))),
       ),
       data: (session) {
         if (session == null) {
-          return const Scaffold(
-            backgroundColor: Color(0xFF10171E),
-            body: Center(child: Text('الجلسة غير موجودة', style: TextStyle(color: Colors.white))),
+          return Scaffold(
+            backgroundColor: const Color(0xFF10171E),
+            body: Center(child: Text(l.liveSessionNotFound,
+                style: const TextStyle(color: Colors.white))),
           );
         }
 
         final roomUrl = session.roomUrl;
         if (roomUrl != null) _initWebView(roomUrl);
 
+        final studentName = session.studentName.isNotEmpty
+            ? session.studentName
+            : l.liveSessionStudentFallback;
+
         return Scaffold(
           backgroundColor: const Color(0xFF10171E),
           body: Stack(
             children: [
-              // Main: WebView or waiting screen
               roomUrl != null && _webCtrl != null
                   ? Stack(
                       children: [
@@ -143,17 +151,17 @@ class _TeacherLiveSessionScreenState extends ConsumerState<TeacherLiveSessionScr
                               decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
                               alignment: Alignment.center,
                               child: Text(
-                                session.studentName.isNotEmpty ? session.studentName[0] : 'ط',
+                                studentName.isNotEmpty ? studentName[0] : 'ط',
                                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 44)),
                             ),
                             const SizedBox(height: 16),
-                            Text(session.studentName.isNotEmpty ? session.studentName : 'طالب',
+                            Text(studentName,
                               style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
                             const SizedBox(height: 2),
                             Text(session.subject,
                               style: const TextStyle(color: Colors.white54, fontSize: 13)),
                             const SizedBox(height: 6),
-                            Text('${session.durationMinutes} دقيقة · ${session.amount.toInt()} أوقية',
+                            Text('${session.durationMinutes} ${l.unitMinFull} · ${session.amount.toInt()} ${l.dashOugiya}',
                               style: const TextStyle(color: Colors.white54, fontSize: 13)),
                             const SizedBox(height: 32),
                             GestureDetector(
@@ -171,8 +179,8 @@ class _TeacherLiveSessionScreenState extends ConsumerState<TeacherLiveSessionScr
                                 child: _starting
                                     ? const SizedBox(width: 24, height: 24,
                                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                                    : const Text('بدء الجلسة الآن',
-                                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+                                    : Text(l.liveSessionStartBtn,
+                                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
                               ),
                             ),
                           ],
@@ -180,7 +188,6 @@ class _TeacherLiveSessionScreenState extends ConsumerState<TeacherLiveSessionScr
                       ),
                     ),
 
-              // Top bar overlay (always shown)
               Positioned(
                 top: 0, left: 0, right: 0,
                 child: SafeArea(
@@ -201,7 +208,7 @@ class _TeacherLiveSessionScreenState extends ConsumerState<TeacherLiveSessionScr
                               const SizedBox(width: 7),
                               ValueListenableBuilder<int>(
                                 valueListenable: _elapsed,
-                                builder: (_, s, __) => Text('مباشر · ${_formatTime(s)}',
+                                builder: (_, s, __) => Text('${l.liveSessionLive} · ${_formatTime(s)}',
                                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
                               ),
                             ],
@@ -219,8 +226,8 @@ class _TeacherLiveSessionScreenState extends ConsumerState<TeacherLiveSessionScr
                             child: _ending
                                 ? const SizedBox(width: 18, height: 18,
                                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                : const Text('إنهاء الجلسة',
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                                : Text(l.liveSessionEndBtn,
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
                           ),
                         ),
                       ],
@@ -236,25 +243,27 @@ class _TeacherLiveSessionScreenState extends ConsumerState<TeacherLiveSessionScr
   }
 
   void _showEndDialog(BuildContext context) {
+    final l = context.l10n;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A2330),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('إنهاء الجلسة؟',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-        content: const Text('هل أنت متأكد من إنهاء الجلسة؟ سيُعلَم الطالب.',
-          style: TextStyle(color: Color(0xFF9DB2B8))),
+        title: Text(l.liveSessionEndTitle,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+        content: Text(l.liveSessionEndBody,
+          style: const TextStyle(color: Color(0xFF9DB2B8))),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('متابعة', style: TextStyle(color: Color(0xFF7BE0C0))),
+            child: Text(l.liveSessionEndContinue,
+                style: const TextStyle(color: Color(0xFF7BE0C0))),
           ),
           ElevatedButton(
             onPressed: () { Navigator.pop(ctx); _endSession(); },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFE03E3E), foregroundColor: Colors.white),
-            child: const Text('إنهاء'),
+            child: Text(l.liveSessionEndConfirm),
           ),
         ],
       ),

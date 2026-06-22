@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/supabase_service.dart';
 
@@ -68,6 +69,7 @@ class MyRatingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
     final ratingsAsync = ref.watch(_myRatingsProvider);
 
     return Scaffold(
@@ -80,8 +82,8 @@ class MyRatingsScreen extends ConsumerWidget {
           onTap: () => context.pop(),
           child: const Icon(Icons.arrow_forward_rounded, color: AppColors.textPrimary),
         ),
-        title: const Text('تقييماتي',
-            style: TextStyle(
+        title: Text(l.profileMyRatings,
+            style: const TextStyle(
                 fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
         centerTitle: true,
         bottom: PreferredSize(
@@ -98,14 +100,14 @@ class MyRatingsScreen extends ConsumerWidget {
             children: [
               const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
               const SizedBox(height: 12),
-              const Text('تعذّر تحميل التقييمات',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+              Text(l.myRatingsLoadError,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary)),
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: () => ref.invalidate(_myRatingsProvider),
                 icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: const Text('إعادة المحاولة'),
+                label: Text(l.commonRetry),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -118,7 +120,7 @@ class MyRatingsScreen extends ConsumerWidget {
           ),
         ),
         data: (items) => items.isEmpty
-            ? _buildEmpty(context)
+            ? _buildEmpty(context, l)
             : RefreshIndicator(
                 color: AppColors.primary,
                 onRefresh: () => ref.refresh(_myRatingsProvider.future),
@@ -148,7 +150,6 @@ class MyRatingsScreen extends ConsumerWidget {
         ),
         child: Column(
           children: [
-            // Color strip
             Container(
               height: 6,
               decoration: BoxDecoration(
@@ -162,7 +163,6 @@ class MyRatingsScreen extends ConsumerWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Course icon
                   Container(
                     width: 44, height: 44,
                     decoration: BoxDecoration(
@@ -174,7 +174,6 @@ class MyRatingsScreen extends ConsumerWidget {
                         color: courseColor, size: 22),
                   ),
                   const SizedBox(width: 12),
-                  // Info
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,7 +190,6 @@ class MyRatingsScreen extends ConsumerWidget {
                             style: const TextStyle(
                                 fontSize: 12, color: AppColors.textHint)),
                         const SizedBox(height: 10),
-                        // Stars
                         Row(
                           children: List.generate(5, (si) {
                             return Icon(
@@ -208,7 +206,6 @@ class MyRatingsScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  // Date
                   Text(_formatDate(item.createdAt),
                       style: const TextStyle(
                           fontSize: 11, color: AppColors.textHint)),
@@ -221,7 +218,7 @@ class MyRatingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmpty(BuildContext context) {
+  Widget _buildEmpty(BuildContext context, dynamic l) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -237,15 +234,15 @@ class MyRatingsScreen extends ConsumerWidget {
                 size: 34, color: Color(0xFFF59E0B)),
           ),
           const SizedBox(height: 16),
-          const Text('لا توجد تقييمات بعد',
-              style: TextStyle(
+          Text(l.myRatingsEmpty,
+              style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary)),
           const SizedBox(height: 8),
-          const Text('بعد الانتهاء من أي درس سيُطلب منك تقييمه',
+          Text(l.myRatingsEmptyHint,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: () => context.go('/my-courses'),
@@ -257,8 +254,8 @@ class MyRatingsScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(12)),
               elevation: 0,
             ),
-            child: const Text('عرض دروسي',
-                style: TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(l.subPendingViewCourses,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -266,10 +263,6 @@ class MyRatingsScreen extends ConsumerWidget {
   }
 
   String _formatDate(DateTime dt) {
-    const months = [
-      '', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
-    ];
-    return '${dt.day} ${months[dt.month]} ${dt.year}';
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 }

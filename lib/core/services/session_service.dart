@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 import '../models/session.dart';
 import '../constants/session_states.dart';
@@ -190,6 +190,18 @@ class SessionService {
     return roomUrl;
   }
 
+  // ── Student: record join timestamp ───────────────────────────────────────────
+  // Called when the student's WebView finishes loading the Jitsi room.
+  // Sets sessions.student_joined_at → prevents the cron job from firing
+  // STUDENT_NO_SHOW for this session.
+  static Future<void> markStudentJoined(String sessionId) async {
+    await _db.from('sessions').update({
+      'student_joined_at': DateTime.now().toIso8601String(),
+    }).eq('id', sessionId)
+      .eq('student_id', SupabaseService.userId!)
+      .eq('state', SessionState.activeSession.englishKey); // no-op if already not active
+  }
+
   // ── Teacher: end session ──────────────────────────────────────────────────────
   // Guard: only allowed from ACTIVE_SESSION.
   static Future<void> endSession(String sessionId) async {
@@ -208,10 +220,15 @@ class SessionService {
 
   // ── Student: report teacher no-show ──────────────────────────────────────────
   static Future<void> reportTeacherNoShow(String sessionId) async {
-    await _db.from('sessions').update({
+    final updated = await _db.from('sessions').update({
       'state':      SessionState.teacherNoShow.englishKey,
       'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', sessionId);
+    }).eq('id', sessionId)
+      .eq('state', SessionState.confirmedBooking.englishKey) // guard: only from CONFIRMED_BOOKING
+      .select();
+    if ((updated as List).isEmpty) {
+      throw Exception('لا يمكن الإبلاغ عن غياب إلا في جلسة مؤكّدة');
+    }
     // Trigger logs TEACHER_NO_SHOW + notifies student (re-scheduling message)
   }
 
@@ -335,22 +352,26 @@ class SessionService {
   static Future<void> uploadAndSubmitPayment({
     required String sessionId,
     required String method,
-    required String localFilePath,
+    required Uint8List imageBytes,
+    required String imageExt,
   }) async {
     final uid         = SupabaseService.userId!;
-    final ext         = localFilePath.contains('.') ? localFilePath.split('.').last.toLowerCase() : 'jpg';
+    final ext         = imageExt.toLowerCase();
     final contentType = ext == 'png' ? 'image/png' : (ext == 'webp' ? 'image/webp' : 'image/jpeg');
     final fileName    = '$uid/${sessionId}_${DateTime.now().millisecondsSinceEpoch}.$ext';
 
-    final bytes = await File(localFilePath).readAsBytes();
     await SupabaseService.client.storage
         .from('payment-proofs')
-        .uploadBinary(fileName, bytes, fileOptions: FileOptions(contentType: contentType));
+        .uploadBinary(fileName, imageBytes, fileOptions: FileOptions(contentType: contentType));
+
+    final publicUrl = SupabaseService.client.storage
+        .from('payment-proofs')
+        .getPublicUrl(fileName);
 
     await submitPaymentProof(
       sessionId:     sessionId,
       method:        method,
-      proofImageUrl: fileName,
+      proofImageUrl: publicUrl,
     );
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/services/session_service.dart';
 
@@ -21,6 +22,12 @@ class _TeacherNoShowScreenState extends ConsumerState<TeacherNoShowScreen> {
   @override
   void initState() {
     super.initState();
+    // Seed wait time from actual scheduled time so the display is accurate
+    SessionService.getSession(widget.sessionId).then((s) {
+      if (!mounted) return;
+      final diff = DateTime.now().difference(s.scheduledAt).inSeconds;
+      if (diff > 0) _waitSeconds.value = diff;
+    });
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _waitSeconds.value++);
   }
 
@@ -38,6 +45,7 @@ class _TeacherNoShowScreenState extends ConsumerState<TeacherNoShowScreen> {
   }
 
   Future<void> _recordAbsence() async {
+    final l = context.l10n;
     setState(() => _recording = true);
     try {
       await SessionService.reportStudentNoShow(widget.sessionId);
@@ -48,9 +56,9 @@ class _TeacherNoShowScreenState extends ConsumerState<TeacherNoShowScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تم تسجيل غياب الطالب — أجرك محفوظ'),
-          backgroundColor: Color(0xFF1B9E77),
+        SnackBar(
+          content: Text(l.noShowSuccessMsg),
+          backgroundColor: const Color(0xFF1B9E77),
         ),
       );
       if (!mounted) return;
@@ -59,26 +67,26 @@ class _TeacherNoShowScreenState extends ConsumerState<TeacherNoShowScreen> {
       if (!mounted) return;
       setState(() => _recording = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ: $e')),
+        SnackBar(content: Text(l.noShowErrGeneral(e.toString()))),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final sessionAsync = ref.watch(sessionProvider(widget.sessionId));
 
     final studentName = sessionAsync.when(
-      data: (s) => s?.studentName ?? 'الطالب',
-      loading: () => 'الطالب',
-      error: (_, __) => 'الطالب',
+      data: (s) => s?.studentName ?? l.noShowStudentDefault,
+      loading: () => l.noShowStudentDefault,
+      error: (_, __) => l.noShowStudentDefault,
     );
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // AppBar
           Container(
             color: AppColors.surface,
             padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
@@ -97,8 +105,8 @@ class _TeacherNoShowScreenState extends ConsumerState<TeacherNoShowScreen> {
                     child: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.textPrimary),
                   ),
                 ),
-                const Text('غياب الطالب',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                Text(l.noShowTitle,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
               ],
             ),
           ),
@@ -121,24 +129,16 @@ class _TeacherNoShowScreenState extends ConsumerState<TeacherNoShowScreen> {
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFC77A1A))),
                   ),
                   const SizedBox(height: 16),
-                  const Text('لم ينضم الطالب',
-                    style: TextStyle(fontSize: 21, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                  Text(l.noShowHeadline,
+                    style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                     textAlign: TextAlign.center),
                   const SizedBox(height: 8),
-                  RichText(
+                  Text(
+                    l.noShowBodyText(studentName),
                     textAlign: TextAlign.center,
-                    text: TextSpan(
-                      style: const TextStyle(
-                        fontFamily: 'IBM Plex Sans Arabic',
-                        fontSize: 14, color: AppColors.textSecondary, height: 1.7),
-                      children: [
-                        const TextSpan(text: 'لم يحضر '),
-                        TextSpan(text: studentName,
-                          style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                        const TextSpan(
-                          text: '. يمكنك إنهاء الجلسة وتسجيل الغياب — يُحتسب لك الأجر وفق سياسة الحضور.'),
-                      ],
-                    ),
+                    style: const TextStyle(
+                      fontFamily: 'IBM Plex Sans Arabic',
+                      fontSize: 14, color: AppColors.textSecondary, height: 1.7),
                   ),
                   const SizedBox(height: 22),
                   Container(
@@ -154,8 +154,8 @@ class _TeacherNoShowScreenState extends ConsumerState<TeacherNoShowScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('وقت الانتظار',
-                              style: TextStyle(fontSize: 12, color: AppColors.textHint)),
+                            Text(l.noShowWaitTime,
+                              style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
                             ValueListenableBuilder<int>(
                               valueListenable: _waitSeconds,
                               builder: (_, s, __) => Text(_fmt(s),
@@ -169,9 +169,9 @@ class _TeacherNoShowScreenState extends ConsumerState<TeacherNoShowScreen> {
                           data: (s) => Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('أجرك المحفوظ',
-                                style: TextStyle(fontSize: 12, color: AppColors.textHint)),
-                              Text('${s?.amount.toInt() ?? 0} أوقية',
+                              Text(l.noShowYourEarnings,
+                                style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
+                              Text('${s?.amount.toInt() ?? 0} ${l.dashOugiya}',
                                 style: const TextStyle(
                                   fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1B9E77))),
                             ],
@@ -204,8 +204,8 @@ class _TeacherNoShowScreenState extends ConsumerState<TeacherNoShowScreen> {
                       side: const BorderSide(color: AppColors.borderStrong),
                       foregroundColor: AppColors.textSecondary,
                     ),
-                    child: const Text('الانتظار أكثر',
-                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+                    child: Text(l.noShowWaitMore,
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
                   ),
                 ),
                 const SizedBox(width: 11),
@@ -221,8 +221,8 @@ class _TeacherNoShowScreenState extends ConsumerState<TeacherNoShowScreen> {
                     child: _recording
                         ? const SizedBox(width: 20, height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('تسجيل الغياب وإنهاء',
-                            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+                        : Text(l.noShowRecordAndEnd,
+                            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
                   ),
                 ),
               ],

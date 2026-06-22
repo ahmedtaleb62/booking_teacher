@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/levels.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/providers/teachers_provider.dart';
 import '../../../core/services/session_service.dart';
@@ -27,7 +28,6 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
 
   static const _durations = [30, 60, 90];
 
-  // 7 days starting from today
   List<DateTime> get _days {
     final today = DateTime.now();
     return List.generate(7, (i) =>
@@ -35,18 +35,22 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
   }
 
   String _dayName(DateTime d) {
-    const names = ['الأح', 'الإث', 'الثل', 'الأر', 'الخم', 'الجم', 'السب'];
-    return names[d.weekday % 7];
+    final l = context.l10n;
+    final idx = d.weekday % 7;
+    return [
+      l.weekdayShortSun, l.weekdayShortMon, l.weekdayShortTue, l.weekdayShortWed,
+      l.weekdayShortThu, l.weekdayShortFri, l.weekdayShortSat,
+    ][idx];
   }
 
-  // Generate hourly slots for a day. bookedTimes marks already-taken slots as unselectable.
   List<Map<String, dynamic>> _slotsForDay(
     DateTime day,
     List<Map<String, dynamic>> availability,
     int durationMinutes,
     List<DateTime> bookedTimes,
   ) {
-    final dayOfWeek = day.weekday % 7; // Dart: 1=Mon..7=Sun → 0=Sun..6=Sat
+    final l = context.l10n;
+    final dayOfWeek = day.weekday % 7;
     final now = DateTime.now();
     final isToday = day.year == now.year &&
         day.month == now.month &&
@@ -70,7 +74,6 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
         final slotEndMin = h * 60 + m + durationMinutes;
         if (slotEndMin > eH * 60 + eM) break;
 
-        // skip past slots for today (need at least 30 min buffer)
         if (isToday) {
           final slotDt = DateTime(day.year, day.month, day.day, h, m);
           if (slotDt.isBefore(now.add(const Duration(minutes: 30)))) {
@@ -79,17 +82,13 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
           }
         }
 
-        // Check if this slot overlaps any existing confirmed/pending session.
-        // A slot at (h, m) is blocked if any booked session starts within
-        // [slotStart - existingDuration, slotStart + durationMinutes).
-        // Simple check: any booked session that starts at the same hour:minute.
         final slotStart = DateTime(day.year, day.month, day.day, h, m);
         final isBooked = bookedTimes.any((bt) {
           final diff = bt.difference(slotStart).inMinutes.abs();
           return diff < durationMinutes;
         });
 
-        final period = h >= 12 ? 'م' : 'ص';
+        final period = h >= 12 ? l.timePmAbbrev : l.timeAmAbbrev;
         final h12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
         slots.add({
           'h':      h,
@@ -110,6 +109,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
   void dispose() { _noteCtrl.dispose(); super.dispose(); }
 
   Future<void> _pickLevel(BuildContext context) async {
+    final l = context.l10n;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -133,12 +133,12 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                   borderRadius: BorderRadius.circular(3),
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(22, 0, 22, 14),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 0, 22, 14),
                 child: Align(
                   alignment: AlignmentDirectional.centerStart,
-                  child: Text('اختر مستواك الدراسي',
-                      style: TextStyle(
+                  child: Text(l.reqSessionChooseLevel,
+                      style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
@@ -218,16 +218,17 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
 
   Future<void> _send(double pricePerHour, String subject,
       List<Map<String, dynamic>> slots) async {
+    final l = context.l10n;
     if (_selectedSlotIdx == null || _selectedSlotIdx! >= slots.length) {
-      setState(() => _error = 'يرجى اختيار وقت متاح');
+      setState(() => _error = l.reqSessionErrNoSlot);
       return;
     }
     if (slots[_selectedSlotIdx!]['booked'] == true) {
-      setState(() => _error = 'هذا الوقت محجوز مسبقاً، اختر وقتاً آخر');
+      setState(() => _error = l.reqSessionErrBooked);
       return;
     }
     if (_selectedLevel == null) {
-      setState(() => _error = 'يرجى تحديد مستواك الدراسي');
+      setState(() => _error = l.reqSessionErrNoLevel);
       return;
     }
     setState(() { _loading = true; _error = null; });
@@ -255,8 +256,8 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
     } catch (e) {
       final msg = e.toString();
       setState(() => _error = msg.contains('double-booking') || msg.contains('conflict')
-          ? 'هذا الوقت محجوز مسبقاً، اختر وقتاً آخر'
-          : 'حدث خطأ أثناء إرسال الطلب، حاول مرة أخرى');
+          ? context.l10n.reqSessionErrBooked
+          : context.l10n.reqSessionErrGeneral);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -264,6 +265,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final teacherAsync     = ref.watch(teacherProvider(widget.teacherId));
     final availabilityAsync = ref.watch(teacherAvailabilityProvider(widget.teacherId));
 
@@ -284,7 +286,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
           ),
           onPressed: () => context.pop(),
         ),
-        title: const Text('طلب جلسة'),
+        title: Text(l.reqSessionTitle),
       ),
       body: teacherAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -292,16 +294,16 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('تعذّر تحميل بيانات الأستاذ'),
+              Text(l.reqSessionErrLoadTeacher),
               TextButton(
                 onPressed: () => ref.invalidate(teacherProvider(widget.teacherId)),
-                child: const Text('إعادة المحاولة'),
+                child: Text(l.commonRetry),
               ),
             ],
           ),
         ),
         data: (teacher) {
-          if (teacher == null) return const Center(child: Text('الأستاذ غير موجود'));
+          if (teacher == null) return Center(child: Text(l.reqSessionTeacherNotFound));
 
           final days = _days;
           final selectedDay     = days[_selectedDay];
@@ -361,7 +363,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                                 Text(teacher.name,
                                   style: const TextStyle(fontSize: 14,
                                     fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                                Text('${teacher.subject} · ${teacher.pricePerHour.toInt()} أوقية/ساعة',
+                                Text('${teacher.subject} · ${teacher.pricePerHour.toInt()} ${l.unitOugiyaPerHour}',
                                   style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                               ],
                             ),
@@ -371,7 +373,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                       const SizedBox(height: 20),
 
                       // ── Day picker ──────────────────────────────
-                      _sectionTitle('اختر اليوم'),
+                      _sectionTitle(l.reqSessionSelectDay),
                       const SizedBox(height: 10),
                       SizedBox(
                         height: 66,
@@ -382,7 +384,6 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                             final sel = i == _selectedDay;
                             final d   = days[i];
                             final isToday = i == 0;
-                            // Check if teacher has any availability this weekday
                             final dowSlots = allAvailability
                                 .where((a) => a['day_of_week'] == d.weekday % 7)
                                 .toList();
@@ -416,7 +417,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(isToday ? 'اليوم' : _dayName(d),
+                                    Text(isToday ? l.reqSessionToday : _dayName(d),
                                       style: TextStyle(
                                         fontSize: 10,
                                         color: sel
@@ -452,12 +453,12 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text('الأيام الباهتة غير متاحة للأستاذ',
+                      Text(l.reqSessionUnavailableHint,
                         style: const TextStyle(fontSize: 10.5, color: AppColors.textHint)),
                       const SizedBox(height: 20),
 
-                      // ── Duration (before time so slots recalculate) ──
-                      _sectionTitle('المدة'),
+                      // ── Duration ────────────────────────────────
+                      _sectionTitle(l.reqSessionDuration),
                       const SizedBox(height: 10),
                       Row(
                         children: List.generate(_durations.length, (i) {
@@ -479,7 +480,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                                       color: sel ? AppColors.primary : AppColors.border,
                                       width: sel ? 1.5 : 1),
                                   ),
-                                  child: Text('${_durations[i]} د',
+                                  child: Text('${_durations[i]} ${l.unitMinAbbrev}',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 13, fontWeight: FontWeight.w700,
@@ -493,7 +494,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                       const SizedBox(height: 20),
 
                       // ── Time slots ──────────────────────────────
-                      _sectionTitle('اختر الوقت'),
+                      _sectionTitle(l.reqSessionSelectTime),
                       const SizedBox(height: 10),
 
                       if (availabilityAsync.isLoading)
@@ -520,8 +521,8 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                               Text(
                                 allAvailability.any(
                                   (a) => a['day_of_week'] == days[_selectedDay].weekday % 7)
-                                  ? 'لا توجد أوقات متاحة لهذا اليوم بعد الآن'
-                                  : 'الأستاذ غير متاح هذا اليوم',
+                                  ? l.reqSessionNoSlotsLeft
+                                  : l.reqSessionTeacherUnavailable,
                                 style: const TextStyle(
                                   fontSize: 13, color: AppColors.textHint)),
                             ],
@@ -565,7 +566,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                       const SizedBox(height: 20),
 
                       // ── Level picker ────────────────────────────
-                      _sectionTitle('مستواك الدراسي *'),
+                      _sectionTitle(l.reqSessionYourLevel),
                       const SizedBox(height: 10),
                       GestureDetector(
                         onTap: () => _pickLevel(context),
@@ -595,7 +596,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  _selectedLevel ?? 'اختر مستواك الدراسي…',
+                                  _selectedLevel ?? l.reqSessionChooseLevelHint,
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: _selectedLevel != null
@@ -616,12 +617,12 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                       const SizedBox(height: 20),
 
                       // Note
-                      _sectionTitle('وصف الطلب (اختياري)'),
+                      _sectionTitle(l.reqSessionNoteLabel),
                       const SizedBox(height: 10),
                       TextField(
                         controller: _noteCtrl,
                         maxLines: 3,
-                        decoration: const InputDecoration(hintText: 'صف ما تحتاج الاستعانة به…'),
+                        decoration: InputDecoration(hintText: l.reqSessionNoteHint),
                       ),
                       const SizedBox(height: 24),
                     ],
@@ -642,19 +643,18 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('الإجمالي المتوقع',
-                          style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                        Text('${total.toInt()} أوقية',
+                        Text(l.reqSessionTotal,
+                          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                        Text('${total.toInt()} ${l.dashOugiya}',
                           style: const TextStyle(fontSize: 15,
                             fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                       ],
                     ),
                     const SizedBox(height: 10),
-                    const InfoBanner(
-                      text: 'الدفع يبدأ بعد موافقة الأستاذ. لن يُطلب منك الدفع الآن.'),
+                    InfoBanner(text: l.reqSessionPaymentNote),
                     const SizedBox(height: 12),
                     AppButton(
-                      label: 'إرسال الطلب',
+                      label: l.reqSessionSubmit,
                       isLoading: _loading,
                       onTap: slots.isNotEmpty
                           ? () => _send(teacher.pricePerHour, teacher.subject, slots)

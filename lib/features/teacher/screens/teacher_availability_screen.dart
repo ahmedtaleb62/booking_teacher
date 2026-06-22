@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/services/supabase_service.dart';
 
 // ── Provider ─────────────────────────────────────────────────
@@ -24,27 +25,32 @@ class TeacherAvailabilityScreen extends ConsumerStatefulWidget {
 }
 
 class _TeacherAvailabilityScreenState extends ConsumerState<TeacherAvailabilityScreen> {
-  static const _days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
   bool _saving = false;
 
+  List<String> _weekdays(dynamic l) => [
+    l.weekdaySun, l.weekdayMon, l.weekdayTue, l.weekdayWed,
+    l.weekdayThu, l.weekdayFri, l.weekdaySat,
+  ];
+
   Future<void> _addSlot(int dayOfWeek) async {
+    final l = context.l10n;
     TimeOfDay? start = await showTimePicker(
       context: context,
       initialTime: const TimeOfDay(hour: 9, minute: 0),
-      helpText: 'وقت البداية',
+      helpText: l.availStartTime,
     );
     if (start == null || !mounted) return;
 
     TimeOfDay? end = await showTimePicker(
       context: context,
       initialTime: TimeOfDay(hour: start.hour + 1, minute: start.minute),
-      helpText: 'وقت النهاية',
+      helpText: l.availEndTime,
     );
     if (end == null || !mounted) return;
 
     if (_toMinutes(end) <= _toMinutes(start)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('وقت النهاية يجب أن يكون بعد وقت البداية')),
+        SnackBar(content: Text(l.availErrEndBeforeStart)),
       );
       return;
     }
@@ -63,7 +69,7 @@ class _TeacherAvailabilityScreenState extends ConsumerState<TeacherAvailabilityS
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e')),
+          SnackBar(content: Text(l.availErrGeneral(e.toString()))),
         );
       }
     } finally {
@@ -72,6 +78,7 @@ class _TeacherAvailabilityScreenState extends ConsumerState<TeacherAvailabilityS
   }
 
   Future<void> _deleteSlot(String slotId) async {
+    final l = context.l10n;
     setState(() => _saving = true);
     try {
       await SupabaseService.client
@@ -82,7 +89,7 @@ class _TeacherAvailabilityScreenState extends ConsumerState<TeacherAvailabilityS
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e')),
+          SnackBar(content: Text(l.availErrGeneral(e.toString()))),
         );
       }
     } finally {
@@ -93,34 +100,36 @@ class _TeacherAvailabilityScreenState extends ConsumerState<TeacherAvailabilityS
   int _toMinutes(TimeOfDay t) => t.hour * 60 + t.minute;
 
   String _formatTime(String t) {
-    // t = "HH:MM:SS"
+    final l = context.l10n;
     final parts = t.split(':');
     final h = int.parse(parts[0]);
     final m = parts[1];
-    final period = h >= 12 ? 'م' : 'ص';
+    final period = h >= 12 ? l.timePmAbbrev : l.timeAmAbbrev;
     final h12 = h > 12 ? h - 12 : (h == 0 ? 12 : h);
     return '$h12:$m $period';
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final availAsync = ref.watch(_teacherAvailProvider);
+    final days = _weekdays(l);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
-        title: const Text('إدارة الأوقات المتاحة',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+        title: Text(l.availTitle,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
         centerTitle: true,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       body: availAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-        error: (e, _) => Center(child: Text('خطأ: $e', style: const TextStyle(color: AppColors.error))),
+        error: (e, _) => Center(child: Text(l.availErrGeneral(e.toString()),
+            style: const TextStyle(color: AppColors.error))),
         data: (slots) {
-          // Group slots by day
           final Map<int, List<Map<String, dynamic>>> byDay = {};
           for (final s in slots) {
             final d = s['day_of_week'] as int;
@@ -138,14 +147,14 @@ class _TeacherAvailabilityScreenState extends ConsumerState<TeacherAvailabilityS
                       color: AppColors.accentLight,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 18),
-                        SizedBox(width: 10),
+                        const Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 18),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'حدّد الأيام والساعات التي تكون متاحاً فيها. سيتمكن الطلاب من حجز جلسات في هذه الأوقات.',
-                            style: TextStyle(fontSize: 12, color: AppColors.primary, height: 1.5),
+                            l.availInfoText,
+                            style: const TextStyle(fontSize: 12, color: AppColors.primary, height: 1.5),
                           ),
                         ),
                       ],
@@ -154,11 +163,13 @@ class _TeacherAvailabilityScreenState extends ConsumerState<TeacherAvailabilityS
                   ...List.generate(7, (i) {
                     final daySlots = byDay[i] ?? [];
                     return _DayCard(
-                      day: _days[i],
+                      day: days[i],
                       slots: daySlots,
                       onAdd: _saving ? null : () => _addSlot(i),
                       onDelete: _saving ? null : (id) => _deleteSlot(id),
                       formatTime: _formatTime,
+                      addSlotLabel: l.availAddSlotBtn,
+                      noSlotsLabel: l.availNoSlots,
                     );
                   }),
                 ],
@@ -184,6 +195,8 @@ class _DayCard extends StatelessWidget {
   final VoidCallback? onAdd;
   final void Function(String id)? onDelete;
   final String Function(String) formatTime;
+  final String addSlotLabel;
+  final String noSlotsLabel;
 
   const _DayCard({
     required this.day,
@@ -191,6 +204,8 @@ class _DayCard extends StatelessWidget {
     required this.onAdd,
     required this.onDelete,
     required this.formatTime,
+    required this.addSlotLabel,
+    required this.noSlotsLabel,
   });
 
   @override
@@ -208,7 +223,6 @@ class _DayCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Day header
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
             child: Row(
@@ -230,7 +244,7 @@ class _DayCard extends StatelessWidget {
                 TextButton.icon(
                   onPressed: onAdd,
                   icon: const Icon(Icons.add_rounded, size: 16),
-                  label: const Text('إضافة وقت', style: TextStyle(fontSize: 12)),
+                  label: Text(addSlotLabel, style: const TextStyle(fontSize: 12)),
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -250,7 +264,7 @@ class _DayCard extends StatelessWidget {
           ] else
             Padding(
               padding: const EdgeInsets.fromLTRB(30, 4, 14, 12),
-              child: Text('لا توجد أوقات محددة',
+              child: Text(noSlotsLabel,
                 style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
             ),
         ],

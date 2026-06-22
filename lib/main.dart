@@ -4,8 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:teacher_booking/l10n/app_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/constants/app_colors.dart';
+import 'core/providers/locale_provider.dart';
 import 'core/providers/notifications_provider.dart';
 import 'core/services/fcm_service.dart';
 import 'core/services/supabase_service.dart';
@@ -177,16 +179,15 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
+    final locale = ref.watch(localeProvider);
     return MaterialApp.router(
-      title: 'حجز استاذ',
+      title: 'سولني',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       routerConfig: router,
-      locale: const Locale('ar'),
-      builder: (context, child) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: child!,
-      ),
+      locale: locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
     );
   }
 }

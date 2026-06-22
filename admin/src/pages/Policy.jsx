@@ -1,22 +1,94 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { supabase } from '../supabase'
+import { useToast } from '../components/Toast'
+
+const SETTING_META = {
+  payment_timeout_minutes: {
+    label: 'مهلة الدفع',
+    unit: 'دقيقة',
+    desc: 'بعد قبول الطلب، ينتهي فيها وقت إرسال إثبات الدفع وإلا يُلغى',
+    displayFn: v => `${Math.round(v / 60)} ساعة`,
+  },
+  no_show_timeout_minutes: {
+    label: 'مهلة الغياب',
+    unit: 'دقيقة',
+    desc: 'بعد وقت الجلسة، يُسجَّل غياب الأستاذ أو الطالب تلقائياً',
+    displayFn: v => `${v} دقيقة`,
+  },
+  cancellation_window_hours: {
+    label: 'نافذة الإلغاء',
+    unit: 'ساعة',
+    desc: 'يحق للطالب الإلغاء قبل الموعد بهذه المدة بدون غرامة',
+    displayFn: v => `${v} ساعة`,
+  },
+  teacher_response_hours: {
+    label: 'وقت رد الأستاذ',
+    unit: 'ساعة',
+    desc: 'أقصى مهلة لقبول أو رفض الطلب الجديد',
+    displayFn: v => `${v} ساعة`,
+  },
+  min_session_price: {
+    label: 'الحد الأدنى للسعر',
+    unit: 'أوقية',
+    desc: 'أقل سعر مسموح به للجلسة الواحدة',
+    displayFn: v => `${v} أوقية`,
+  },
+}
+
+const DEFAULTS = {
+  payment_timeout_minutes:   2880,
+  no_show_timeout_minutes:   15,
+  cancellation_window_hours: 24,
+  teacher_response_hours:    24,
+  min_session_price:         200,
+}
 
 export default function Policy() {
-  const [saved, setSaved] = useState(false)
-  const [policies] = useState([
-    { title: 'نافذة الإلغاء', value: '24 ساعة', desc: 'يحق للطالب الإلغاء قبل الموعد بـ 24 ساعة بدون غرامة' },
-    { title: 'مهلة الدفع', value: '48 ساعة', desc: 'بعد قبول الطلب ينتهي بها وقت الدفع وإلا يُلغى' },
-    { title: 'وقت رد الأستاذ', value: '24 ساعة', desc: 'أقصى مهلة لقبول أو رفض الطلب الجديد' },
-    { title: 'الحد الأدنى للسعر', value: '200 أوقية', desc: 'أقل سعر مسموح به للجلسة الواحدة' },
-  ])
+  const toast = useToast()
+  const [values, setValues]   = useState(DEFAULTS)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving]   = useState(false)
 
-  function handleSave() {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+  useEffect(() => { loadSettings() }, [])
+
+  async function loadSettings() {
+    setLoading(true)
+    const { data } = await supabase.from('system_settings').select('key, value')
+    if (data) {
+      const overrides = Object.fromEntries(
+        data
+          .filter(r => DEFAULTS[r.key] !== undefined)
+          .map(r => [r.key, parseFloat(r.value)])
+      )
+      setValues(v => ({ ...v, ...overrides }))
+    }
+    setLoading(false)
   }
+
+  async function handleSave() {
+    setSaving(true)
+    const entries = Object.entries(values).map(([key, value]) => ({
+      key, value: String(value),
+    }))
+    for (const entry of entries) {
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert(entry, { onConflict: 'key' })
+      if (error) {
+        toast('خطأ في الحفظ: ' + error.message, 'error')
+        setSaving(false)
+        return
+      }
+    }
+    setSaving(false)
+    toast('تم حفظ السياسات بنجاح ✓', 'success')
+  }
+
+  if (loading) return <div className="loading-center"><div className="spinner" /></div>
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, maxWidth: 1000 }}>
-      {/* Session commission */}
+      {/* Session commission — display only */}
       <div className="card">
         <div className="flex items-center gap-10 mb-14" style={{ marginBottom: 6 }}>
           <span style={{ width: 36, height: 36, borderRadius: 10, background: '#E0E7FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>💼</span>
@@ -36,7 +108,7 @@ export default function Policy() {
         </div>
       </div>
 
-      {/* Subscription commission */}
+      {/* Subscription commission — display only */}
       <div className="card">
         <div className="flex items-center gap-10 mb-14" style={{ marginBottom: 6 }}>
           <span style={{ width: 36, height: 36, borderRadius: 10, background: '#EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📚</span>
@@ -56,23 +128,49 @@ export default function Policy() {
         </div>
       </div>
 
-      {/* Operational policies */}
+      {/* Editable operational settings */}
       <div className="card" style={{ gridColumn: '1/3' }}>
-        <div className="card-title" style={{ marginBottom: 16 }}>سياسات التشغيل</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
-          {policies.map((p, i) => (
-            <div key={i} style={{ border: '1px solid var(--border-table)', borderRadius: 12, padding: 15 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>{p.title}</div>
-              <div style={{ fontSize: 19, fontWeight: 700, color: 'var(--primary)' }}>{p.value}</div>
-              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, lineHeight: 1.5 }}>{p.desc}</div>
+        <div className="card-title" style={{ marginBottom: 20 }}>سياسات التشغيل</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 16, marginBottom: 24 }}>
+          {Object.entries(SETTING_META).map(([key, meta]) => (
+            <div key={key} style={{ border: '1px solid var(--border-table)', borderRadius: 12, padding: 16 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4, color: 'var(--text)' }}>{meta.label}</div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 12, lineHeight: 1.5 }}>{meta.desc}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="number"
+                  min="0"
+                  value={values[key]}
+                  onChange={e => setValues(v => ({ ...v, [key]: parseFloat(e.target.value) || 0 }))}
+                  style={{
+                    flex: 1, minWidth: 0,
+                    padding: '8px 10px',
+                    border: '1.5px solid var(--border)',
+                    borderRadius: 8,
+                    fontSize: 15,
+                    fontWeight: 700,
+                    fontFamily: 'inherit',
+                    color: 'var(--primary)',
+                  }}
+                />
+                <span style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{meta.unit}</span>
+              </div>
+              <div style={{ marginTop: 8, fontSize: 11.5, color: '#059669', fontWeight: 700 }}>
+                ← {meta.displayFn(values[key])}
+              </div>
             </div>
           ))}
         </div>
-        <div style={{ marginTop: 18 }}>
-          <button className="btn btn-primary" style={{ padding: '12px 28px', fontSize: 13.5 }} onClick={handleSave}>
-            {saved ? '✓ تم الحفظ' : 'حفظ السياسات'}
-          </button>
-        </div>
+        <button
+          className="btn btn-primary"
+          style={{ padding: '12px 32px', fontSize: 13.5 }}
+          disabled={saving}
+          onClick={handleSave}
+        >
+          {saving
+            ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2, borderColor: 'rgba(255,255,255,.3)', borderTopColor: '#fff' }} />
+            : '💾 حفظ السياسات'}
+        </button>
       </div>
     </div>
   )

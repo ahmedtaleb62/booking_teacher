@@ -7,6 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/constants/session_states.dart';
+import '../../../core/extensions/l10n_extension.dart';
+import '../../../core/providers/locale_provider.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/services/supabase_service.dart';
 
@@ -35,6 +37,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (file == null || !mounted) return;
 
     setState(() => _uploadingAvatar = true);
+    final l = context.l10n;
     try {
       final uid   = SupabaseService.userId!;
       final bytes = await File(file.path).readAsBytes();
@@ -64,7 +67,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('فشل رفع الصورة: ${e.toString()}'),
+            content: Text('${l.profileAvatarUploadError}: ${e.toString()}'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -79,19 +82,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   // ── Logout ────────────────────────────────────────────────────
 
   Future<void> _logout() async {
+    final l = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('تسجيل الخروج'),
-        content: const Text('هل أنت متأكد من رغبتك في تسجيل الخروج؟'),
+        title: Text(l.profileLogout),
+        content: Text(l.profileLogoutConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('إلغاء'),
+            child: Text(l.commonCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('خروج', style: TextStyle(color: AppColors.error)),
+            child: Text(l.profileLogoutBtn,
+              style: const TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -111,51 +116,49 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   // ── Delete account ────────────────────────────────────────────
 
   Future<void> _deleteAccount() async {
-    // Step 1: first confirmation
+    final l = context.l10n;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('حذف الحساب', style: TextStyle(color: AppColors.error)),
-        content: const Text(
-          'هذا الإجراء لا يمكن التراجع عنه.\nسيتم حذف جميع بياناتك بشكل نهائي.',
-          style: TextStyle(height: 1.5),
-        ),
+        title: Text(l.profileDeleteTitle,
+          style: const TextStyle(color: AppColors.error)),
+        content: Text(l.profileDeleteContent,
+          style: const TextStyle(height: 1.5)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('إلغاء'),
+            child: Text(l.commonCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('حذف',
-                style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
+            child: Text(l.commonDelete,
+              style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
     );
     if (confirmed != true || !mounted) return;
 
-    // Step 2: type confirmation
     final confirmCtrl = TextEditingController();
+    final phrase      = l.profileDeletePhrase;
     final input = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('تأكيد الحذف النهائي'),
+        title: Text(l.profileDeleteFinalTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('اكتب "احذف حسابي" للتأكيد:',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            Text(l.profileDeleteTypeHint(phrase),
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
             const SizedBox(height: 10),
             TextField(
               controller: confirmCtrl,
               textDirection: TextDirection.rtl,
               decoration: InputDecoration(
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 10),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               ),
             ),
           ],
@@ -163,19 +166,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, null),
-            child: const Text('إلغاء'),
+            child: Text(l.commonCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, confirmCtrl.text),
-            child: const Text('تأكيد',
-                style: TextStyle(
-                    color: AppColors.error, fontWeight: FontWeight.w700)),
+            child: Text(l.commonConfirm,
+              style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
     ).whenComplete(confirmCtrl.dispose);
 
-    if (input != 'احذف حسابي' || !mounted) return;
+    if (input != phrase || !mounted) return;
 
     setState(() => _deletingAccount = true);
     try {
@@ -187,7 +189,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         setState(() => _deletingAccount = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('فشل حذف الحساب: ${e.toString()}'),
+            content: Text('${l.profileDeleteAccountError}: ${e.toString()}'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -199,13 +201,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l             = context.l10n;
     final profileAsync  = ref.watch(currentProfileProvider);
     final sessionsAsync = ref.watch(studentSessionsProvider);
 
     final name = profileAsync.when(
-      data: (p) => p?['full_name'] as String? ?? 'مستخدم',
+      data: (p) => p?['full_name'] as String? ?? l.profileUserFallback,
       loading: () => '...',
-      error: (_, __) => 'مستخدم',
+      error: (_, __) => l.profileUserFallback,
     );
     final avatarUrl = profileAsync.when(
       data: (p) => p?['avatar_url'] as String?,
@@ -218,9 +221,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     int totalSessions = 0, completedSessions = 0;
     double totalAmount = 0;
     sessionsAsync.whenData((sessions) {
-      totalSessions    = sessions.length;
+      totalSessions     = sessions.length;
       completedSessions = sessions.where((s) => s.state == SessionState.completed).length;
-      totalAmount      = sessions.fold(0.0, (sum, s) => sum + s.amount);
+      totalAmount       = sessions.fold(0.0, (sum, s) => sum + s.amount);
     });
 
     return Scaffold(
@@ -229,7 +232,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: const Text('حسابي'),
+        title: Text(l.navProfile),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(22, 0, 22, 100),
@@ -246,7 +249,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               child: Column(
                 children: [
-                  // Avatar with upload
                   GestureDetector(
                     onTap: _uploadingAvatar ? null : _pickAndUploadAvatar,
                     child: Stack(
@@ -265,14 +267,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                           alignment: Alignment.center,
                           child: _uploadingAvatar
-                              ? const CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2)
+                              ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
                               : avatarUrl == null
                                   ? Text(initial,
-                                      style: const TextStyle(
-                                          fontSize: 32,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white))
+                                      style: const TextStyle(fontSize: 32,
+                                        fontWeight: FontWeight.w700, color: Colors.white))
                                   : null,
                         ),
                         Positioned(
@@ -285,8 +284,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               border: Border.all(color: Colors.white, width: 2),
                             ),
                             alignment: Alignment.center,
-                            child: const Icon(Icons.camera_alt_rounded,
-                                size: 12, color: Colors.white),
+                            child: const Icon(Icons.camera_alt_rounded, size: 12, color: Colors.white),
                           ),
                         ),
                       ],
@@ -294,25 +292,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(name,
-                      style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
                   const SizedBox(height: 4),
                   Text(email,
-                      style: const TextStyle(
-                          fontSize: 13, color: AppColors.textHint)),
+                    style: const TextStyle(fontSize: 13, color: AppColors.textHint)),
                   const SizedBox(height: 14),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _StatItem(value: '$totalSessions', label: 'إجمالي الجلسات'),
+                      _StatItem(value: '$totalSessions', label: l.profileTotalSessions),
                       Container(width: 1, height: 32, color: AppColors.border),
-                      _StatItem(value: '$completedSessions', label: 'مكتملة'),
+                      _StatItem(value: '$completedSessions', label: l.profileCompletedStat),
                       Container(width: 1, height: 32, color: AppColors.border),
                       _StatItem(
-                          value: '${totalAmount.toInt()} أوقية',
-                          label: 'إجمالي الدفع'),
+                        value: l.sessionOugiya('${totalAmount.toInt()}'),
+                        label: l.profileTotalPayment),
                     ],
                   ),
                 ],
@@ -322,44 +317,48 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
             // ── Account section ───────────────────────────────
             _SectionCard(
-              title: 'الحساب',
+              title: l.profileSectionAccount,
               items: [
                 _MenuItem(
                   icon: Icons.person_outline_rounded,
-                  label: 'تعديل الملف الشخصي',
+                  label: l.profileEditProfile,
                   onTap: () => context.push('/edit-profile'),
                 ),
                 _MenuItem(
                   icon: Icons.lock_outline_rounded,
-                  label: 'تغيير كلمة المرور',
+                  label: l.profileChangePassword,
                   onTap: () => context.push('/change-password'),
                 ),
                 _MenuItem(
                   icon: Icons.notifications_outlined,
-                  label: 'إعدادات الإشعارات',
+                  label: l.profileNotifSettings,
                   onTap: () {},
                 ),
               ],
             ),
             const SizedBox(height: 14),
 
+            // ── Language switcher ─────────────────────────────
+            _LanguageSwitcher(),
+            const SizedBox(height: 14),
+
             // ── Sessions & payments ───────────────────────────
             _SectionCard(
-              title: 'الجلسات والمدفوعات',
+              title: l.profileSectionSessions,
               items: [
                 _MenuItem(
                   icon: Icons.history_rounded,
-                  label: 'سجل الجلسات',
+                  label: l.profileSessionHistory,
                   onTap: () => context.go('/sessions'),
                 ),
                 _MenuItem(
                   icon: Icons.receipt_long_outlined,
-                  label: 'سجل المدفوعات',
+                  label: l.profilePaymentHistory,
                   onTap: () => context.push('/payments'),
                 ),
                 _MenuItem(
                   icon: Icons.star_outline_rounded,
-                  label: 'تقييماتي',
+                  label: l.profileMyRatings,
                   onTap: () => context.push('/my-ratings'),
                 ),
               ],
@@ -368,11 +367,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
             // ── Support ───────────────────────────────────────
             _SectionCard(
-              title: 'الدعم',
+              title: l.profileSectionSupport,
               items: [
-                _MenuItem(icon: Icons.help_outline_rounded,  label: 'مركز المساعدة',   onTap: () {}),
-                _MenuItem(icon: Icons.policy_outlined,       label: 'سياسة الخصوصية', onTap: () {}),
-                _MenuItem(icon: Icons.gavel_rounded,         label: 'شروط الاستخدام',  onTap: () {}),
+                _MenuItem(icon: Icons.help_outline_rounded,  label: l.profileHelpCenter,   onTap: () => context.push('/help-center')),
+                _MenuItem(icon: Icons.policy_outlined,       label: l.profilePrivacyPolicy, onTap: () => context.push('/help-center?tab=privacy')),
+                _MenuItem(icon: Icons.gavel_rounded,         label: l.profileTerms,         onTap: () => context.push('/help-center?tab=terms')),
               ],
             ),
             const SizedBox(height: 14),
@@ -386,28 +385,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.statusRejectedBg,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                      color: AppColors.statusRejected.withValues(alpha: 0.3)),
+                  border: Border.all(color: AppColors.statusRejected.withValues(alpha: 0.3)),
                 ),
                 child: _loggingOut
                     ? const Center(
                         child: SizedBox(
                           width: 20, height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: AppColors.error),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error),
                         ),
                       )
-                    : const Row(
+                    : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.logout_rounded,
-                              color: AppColors.error, size: 18),
-                          SizedBox(width: 8),
-                          Text('تسجيل الخروج',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.error)),
+                          const Icon(Icons.logout_rounded, color: AppColors.error, size: 18),
+                          const SizedBox(width: 8),
+                          Text(l.profileLogout,
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+                              color: AppColors.error)),
                         ],
                       ),
               ),
@@ -424,30 +418,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ? const Center(
                         child: SizedBox(
                           width: 18, height: 18,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: AppColors.textHint),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textHint),
                         ),
                       )
-                    : const Row(
+                    : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.delete_forever_rounded,
-                              color: AppColors.textHint, size: 16),
-                          SizedBox(width: 6),
-                          Text('حذف الحساب نهائياً',
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textHint,
-                                  decoration: TextDecoration.underline,
-                                  decorationColor: AppColors.textHint)),
+                          const Icon(Icons.delete_forever_rounded, color: AppColors.textHint, size: 16),
+                          const SizedBox(width: 6),
+                          Text(l.profileDeleteAccountBtn,
+                            style: const TextStyle(fontSize: 13, color: AppColors.textHint,
+                              decoration: TextDecoration.underline,
+                              decorationColor: AppColors.textHint)),
                         ],
                       ),
               ),
             ),
 
             const SizedBox(height: 8),
-            const Text('سولني · الإصدار 1.0.0',
-                style: TextStyle(fontSize: 11, color: AppColors.textHint)),
+            Text('${l.appName} · ${l.profileVersion} 1.0.0',
+              style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
             const SizedBox(height: 16),
           ],
         ),
@@ -457,6 +447,78 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
+
+class _LanguageSwitcher extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
+    final isAr   = locale.languageCode == 'ar';
+    final l      = context.l10n;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8, right: 4),
+          child: Text(l.langSwitcher,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+              color: AppColors.textHint, letterSpacing: 0.5)),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          padding: const EdgeInsets.all(6),
+          child: Row(
+            children: [
+              _LangOption(
+                label: l.langArabic,
+                selected: isAr,
+                onTap: () => ref.read(localeProvider.notifier).state = const Locale('ar'),
+              ),
+              const SizedBox(width: 6),
+              _LangOption(
+                label: l.langFrench,
+                selected: !isAr,
+                onTap: () => ref.read(localeProvider.notifier).state = const Locale('fr'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LangOption extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _LangOption({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          alignment: Alignment.center,
+          child: Text(label,
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+              color: selected ? Colors.white : AppColors.textSecondary)),
+        ),
+      ),
+    );
+  }
+}
 
 class _StatItem extends StatelessWidget {
   final String value;
@@ -468,13 +530,10 @@ class _StatItem extends StatelessWidget {
     return Column(
       children: [
         Text(value,
-            style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary)),
         const SizedBox(height: 2),
-        Text(label,
-            style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
+        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
       ],
     );
   }
@@ -493,11 +552,8 @@ class _SectionCard extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(bottom: 8, right: 4),
           child: Text(title,
-              style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textHint,
-                  letterSpacing: 0.5)),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+              color: AppColors.textHint, letterSpacing: 0.5)),
         ),
         Container(
           decoration: BoxDecoration(
@@ -526,8 +582,7 @@ class _MenuItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  const _MenuItem(
-      {required this.icon, required this.label, required this.onTap});
+  const _MenuItem({required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -541,20 +596,16 @@ class _MenuItem extends StatelessWidget {
             Container(
               width: 34, height: 34,
               decoration: BoxDecoration(
-                  color: AppColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(9)),
+                color: AppColors.surfaceAlt, borderRadius: BorderRadius.circular(9)),
               child: Icon(icon, size: 17, color: AppColors.textSecondary),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(label,
-                  style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary)),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary)),
             ),
-            const Icon(Icons.chevron_left_rounded,
-                size: 18, color: AppColors.textHint),
+            const Icon(Icons.chevron_left_rounded, size: 18, color: AppColors.textHint),
           ],
         ),
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/session_states.dart';
+import '../../core/extensions/l10n_extension.dart';
 
 class SessionStatusBadge extends StatelessWidget {
   final SessionState state;
@@ -19,7 +20,7 @@ class SessionStatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        state.label,
+        state.localizedLabel(context.l10n),
         style: TextStyle(
           fontSize: large ? 12 : 11,
           fontWeight: FontWeight.w700,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/session_states.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/session.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../shared/widgets/session_status_badge.dart';
@@ -28,6 +29,7 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final sessionsAsync = ref.watch(studentSessionsProvider);
 
     return Scaffold(
@@ -35,7 +37,7 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen>
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        title: const Text('جلساتي'),
+        title: Text(l.sessionsTitle),
         automaticallyImplyLeading: false,
         bottom: TabBar(
           controller: _tabs,
@@ -44,10 +46,10 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen>
           indicatorColor: AppColors.primary,
           indicatorWeight: 2.5,
           labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-          tabs: const [
-            Tab(text: 'الجارية'),
-            Tab(text: 'المعلّقة'),
-            Tab(text: 'المنتهية'),
+          tabs: [
+            Tab(text: l.sessionsTabActive),
+            Tab(text: l.sessionsTabPending),
+            Tab(text: l.sessionsTabEnded),
           ],
         ),
       ),
@@ -59,11 +61,11 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen>
             children: [
               const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
               const SizedBox(height: 12),
-              const Text('تعذّر تحميل الجلسات', style: TextStyle(fontSize: 15, color: AppColors.textPrimary)),
+              Text(l.sessionListLoadError, style: const TextStyle(fontSize: 15, color: AppColors.textPrimary)),
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () => ref.invalidate(studentSessionsProvider),
-                child: const Text('إعادة المحاولة'),
+                child: Text(l.commonRetry),
               ),
             ],
           ),
@@ -105,6 +107,7 @@ class _SessionsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     if (sessions.isEmpty) {
       return Center(
         child: Column(
@@ -116,11 +119,11 @@ class _SessionsList extends StatelessWidget {
               child: const Icon(Icons.calendar_today_outlined, color: AppColors.textHint, size: 30),
             ),
             const SizedBox(height: 16),
-            const Text('لا توجد جلسات هنا',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            Text(l.sessionsEmpty,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
             const SizedBox(height: 6),
-            const Text('ابحث عن أستاذ وابدأ رحلتك التعليمية',
-              style: TextStyle(fontSize: 13, color: AppColors.textHint)),
+            Text(l.sessionsEmptyHint,
+              style: const TextStyle(fontSize: 13, color: AppColors.textHint)),
           ],
         ),
       );
@@ -139,15 +142,17 @@ class _SessionCard extends StatelessWidget {
   final Session session;
   const _SessionCard({required this.session});
 
-  String _formatDate(DateTime dt) {
-    const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  String _formatDate(DateTime dt, BuildContext context) {
+    final l = context.l10n;
+    final days = [l.daySun, l.dayMon, l.dayTue, l.dayWed, l.dayThu, l.dayFri, l.daySat];
     final h = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
-    final period = dt.hour >= 12 ? 'م' : 'ص';
+    final period = dt.hour >= 12 ? l.timePM : l.timeAM;
     return '${days[dt.weekday % 7]} $h:${dt.minute.toString().padLeft(2, '0')} $period';
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final s = session;
     return GestureDetector(
       onTap: () {
@@ -206,11 +211,11 @@ class _SessionCard extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                _InfoChip(icon: Icons.calendar_today_rounded, label: _formatDate(s.scheduledAt)),
+                _InfoChip(icon: Icons.calendar_today_rounded, label: _formatDate(s.scheduledAt, context)),
                 const SizedBox(width: 12),
-                _InfoChip(icon: Icons.timer_outlined, label: '${s.durationMinutes} دقيقة'),
+                _InfoChip(icon: Icons.timer_outlined, label: l.sessionMinutes(s.durationMinutes)),
                 const Spacer(),
-                Text('${s.amount.toInt()} أوقية',
+                Text(l.sessionOugiya('${s.amount.toInt()}'),
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primary)),
               ],
             ),
@@ -223,13 +228,13 @@ class _SessionCard extends StatelessWidget {
                   color: AppColors.statusActiveBg,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.videocam_rounded, color: AppColors.statusActive, size: 16),
-                    SizedBox(width: 6),
-                    Text('ادخل الجلسة الآن',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.statusActive)),
+                    const Icon(Icons.videocam_rounded, color: AppColors.statusActive, size: 16),
+                    const SizedBox(width: 6),
+                    Text(l.sessionsEnterNow,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.statusActive)),
                   ],
                 ),
               ),
@@ -244,13 +249,13 @@ class _SessionCard extends StatelessWidget {
                   color: AppColors.statusApprovedBg,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.payment_rounded, color: AppColors.statusApproved, size: 16),
-                    SizedBox(width: 6),
-                    Text('أكمل الدفع الآن',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.statusApproved)),
+                    const Icon(Icons.payment_rounded, color: AppColors.statusApproved, size: 16),
+                    const SizedBox(width: 6),
+                    Text(l.sessionsCompletePayment,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.statusApproved)),
                   ],
                 ),
               ),
@@ -264,13 +269,13 @@ class _SessionCard extends StatelessWidget {
                   color: AppColors.statusRejectedBg,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.upload_file_rounded, color: AppColors.error, size: 16),
-                    SizedBox(width: 6),
-                    Text('رُفض الإثبات — أعد الرفع',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.error)),
+                    const Icon(Icons.upload_file_rounded, color: AppColors.error, size: 16),
+                    const SizedBox(width: 6),
+                    Text(l.sessionsProofRejected,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.error)),
                   ],
                 ),
               ),

@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/session_states.dart';
+import '../../../core/extensions/l10n_extension.dart';
+import '../../../core/providers/sessions_provider.dart';
 import '../../../shared/widgets/app_button.dart';
 
-class PaymentSubmittedScreen extends StatefulWidget {
+class PaymentSubmittedScreen extends ConsumerStatefulWidget {
   final String sessionId;
   const PaymentSubmittedScreen({super.key, required this.sessionId});
   @override
-  State<PaymentSubmittedScreen> createState() => _PaymentSubmittedScreenState();
+  ConsumerState<PaymentSubmittedScreen> createState() => _PaymentSubmittedScreenState();
 }
 
-class _PaymentSubmittedScreenState extends State<PaymentSubmittedScreen>
+class _PaymentSubmittedScreenState extends ConsumerState<PaymentSubmittedScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulse;
 
@@ -27,7 +30,10 @@ class _PaymentSubmittedScreenState extends State<PaymentSubmittedScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final state = SessionState.paymentSubmitted;
+    final sessionAsync = ref.watch(sessionProvider(widget.sessionId));
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -38,8 +44,9 @@ class _PaymentSubmittedScreenState extends State<PaymentSubmittedScreen>
               child: Row(
                 children: [
                   const Spacer(),
-                  const Text('حالة الدفع',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  Text(l.paymentSubmittedTitle,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
                   const Spacer(),
                 ],
               ),
@@ -81,43 +88,60 @@ class _PaymentSubmittedScreenState extends State<PaymentSubmittedScreen>
                       color: state.bgColor,
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: Text('PAYMENT · قيد التحقق',
+                    child: Text(l.paymentSubmittedBadge,
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: state.color)),
                   ),
                   const SizedBox(height: 18),
 
-                  const Text('الإدارة تتحقق من دفعتك',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  Text(l.paymentSubmittedHeadline,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
                   const SizedBox(height: 8),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 40),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
                     child: Text(
-                      'استلمنا إثبات التحويل. يراجعه فريق الإدارة ويؤكّده عادةً خلال 30 دقيقة. سيتحوّل الحجز إلى «مؤكّد» تلقائياً.',
+                      l.paymentSubmittedBody,
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 14, height: 1.7, color: AppColors.textSecondary),
+                      style: const TextStyle(fontSize: 14, height: 1.7, color: AppColors.textSecondary),
                     ),
                   ),
                   const SizedBox(height: 26),
 
-                  // Payment summary
+                  // Payment summary — real data from session
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 22),
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.border),
+                    child: sessionAsync.when(
+                      loading: () => const SizedBox(
+                        height: 80,
+                        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
                       ),
-                      child: Column(
-                        children: [
-                          _row('المبلغ', '500 أوقية'),
-                          const SizedBox(height: 8),
-                          _row('الوسيلة', 'بنكيلي · Bankily'),
-                          const SizedBox(height: 8),
-                          _row('المرجع', '#PAY-20418'),
-                        ],
-                      ),
+                      error: (_, __) => const SizedBox.shrink(),
+                      data: (session) {
+                        final payment = session?.payment;
+                        final amount  = payment?.amount ?? session?.amount ?? 0;
+                        final method  = payment?.method ?? '—';
+                        final ref_    = payment?.reference;
+                        return Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Column(
+                            children: [
+                              _row(l.sessionAmountLabel,
+                                '${amount.toInt()} ${l.dashOugiya}'),
+                              const SizedBox(height: 8),
+                              _row(l.paymentMethodLabel, method),
+                              if (ref_ != null && ref_.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                _row(l.paymentReferenceLabel, ref_),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -141,16 +165,19 @@ class _PaymentSubmittedScreenState extends State<PaymentSubmittedScreen>
                             ),
                             alignment: Alignment.center,
                             child: const Text('إ',
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
+                              style: TextStyle(color: Colors.white,
+                                fontWeight: FontWeight.w700, fontSize: 18)),
                           ),
                           const SizedBox(width: 12),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('المسؤول الآن',
-                                style: TextStyle(fontSize: 11, color: state.color.withValues(alpha: 0.8))),
-                              const Text('الإدارة — تأكيد الدفع',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                              Text(l.teacherNowResponsible,
+                                style: TextStyle(fontSize: 11,
+                                  color: state.color.withValues(alpha: 0.8))),
+                              Text(l.paymentSubmittedResponsibleAdmin,
+                                style: const TextStyle(fontSize: 14,
+                                  fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                             ],
                           ),
                         ],
@@ -164,7 +191,7 @@ class _PaymentSubmittedScreenState extends State<PaymentSubmittedScreen>
             Padding(
               padding: const EdgeInsets.fromLTRB(22, 0, 22, 32),
               child: AppButton(
-                label: 'عرض تفاصيل الجلسة',
+                label: l.paymentSubmittedViewDetails,
                 isOutlined: true,
                 onTap: () => context.push('/session/${widget.sessionId}'),
               ),
@@ -179,7 +206,8 @@ class _PaymentSubmittedScreenState extends State<PaymentSubmittedScreen>
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
       Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
-      Text(value,  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+      Text(value,  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+        color: AppColors.textPrimary)),
     ],
   );
 }

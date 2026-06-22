@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
+import '../../../l10n/app_localizations.dart';
 
 class TeacherRequestsScreen extends ConsumerStatefulWidget {
   const TeacherRequestsScreen({super.key});
@@ -26,24 +28,25 @@ class _TeacherRequestsScreenState extends ConsumerState<TeacherRequestsScreen>
     super.dispose();
   }
 
-  String _fmtDate(String isoStr) {
+  String _fmtDate(String isoStr, AppLocalizations l) {
     final dt = DateTime.tryParse(isoStr);
     if (dt == null) return '';
-    const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    final days = [l.daySun, l.dayMon, l.dayTue, l.dayWed, l.dayThu, l.dayFri, l.daySat];
     final h = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
-    final period = dt.hour >= 12 ? 'م' : 'ص';
+    final period = dt.hour >= 12 ? l.timePM : l.timeAM;
     return '${days[dt.weekday % 7]} $h:${dt.minute.toString().padLeft(2, '0')} $period';
   }
 
   @override
   Widget build(BuildContext context) {
-    final pendingAsync = ref.watch(teacherPendingRequestsProvider);
+    final l = context.l10n;
+    final pendingAsync    = ref.watch(teacherPendingRequestsProvider);
     final inProgressAsync = ref.watch(teacherInProgressSessionsProvider);
-    final rejectedAsync = ref.watch(teacherRejectedSessionsProvider);
+    final rejectedAsync   = ref.watch(teacherRejectedSessionsProvider);
 
-    final pendingCount = pendingAsync.value?.length ?? 0;
+    final pendingCount    = pendingAsync.value?.length    ?? 0;
     final inProgressCount = inProgressAsync.value?.length ?? 0;
-    final rejectedCount = rejectedAsync.value?.length ?? 0;
+    final rejectedCount   = rejectedAsync.value?.length   ?? 0;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -51,10 +54,11 @@ class _TeacherRequestsScreenState extends ConsumerState<TeacherRequestsScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(height: MediaQuery.of(context).padding.top),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(22, 16, 22, 14),
-            child: Text('الطلبات',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 16, 22, 14),
+            child: Text(l.teacherRequestsTitle,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary)),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -70,55 +74,50 @@ class _TeacherRequestsScreenState extends ConsumerState<TeacherRequestsScreen>
             child: TabBarView(
               controller: _tabs,
               children: [
-                // Tab 1 — Pending
                 pendingAsync.when(
                   loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
                   error: (e, _) => _ErrorWidget(onRetry: () => ref.invalidate(teacherPendingRequestsProvider)),
                   data: (list) => list.isEmpty
-                      ? const _EmptyTab(icon: Icons.inbox_outlined, label: 'لا توجد طلبات جديدة')
+                      ? _EmptyTab(icon: Icons.inbox_outlined, label: l.reqEmptyNew)
                       : RefreshIndicator(
                           onRefresh: () async => ref.invalidate(teacherPendingRequestsProvider),
                           child: ListView(
                             padding: const EdgeInsets.symmetric(horizontal: 22),
                             children: list.map((s) => Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: _PendingCard(session: s, fmtDate: _fmtDate),
+                              child: _PendingCard(session: s, fmtDate: (d) => _fmtDate(d, l)),
                             )).toList(),
                           ),
                         ),
                 ),
-
-                // Tab 2 — In Progress
                 inProgressAsync.when(
                   loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
                   error: (e, _) => _ErrorWidget(onRetry: () => ref.invalidate(teacherInProgressSessionsProvider)),
                   data: (list) => list.isEmpty
-                      ? const _EmptyTab(icon: Icons.event_note_outlined, label: 'لا توجد جلسات نشطة')
+                      ? _EmptyTab(icon: Icons.event_note_outlined, label: l.reqEmptyInProgress)
                       : RefreshIndicator(
                           onRefresh: () async => ref.invalidate(teacherInProgressSessionsProvider),
                           child: ListView(
                             padding: const EdgeInsets.symmetric(horizontal: 22),
                             children: list.map((s) => Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: _InProgressCard(session: s, fmtDate: _fmtDate),
+                              child: _InProgressCard(session: s, fmtDate: (d) => _fmtDate(d, l)),
                             )).toList(),
                           ),
                         ),
                 ),
-
-                // Tab 3 — Rejected
                 rejectedAsync.when(
                   loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
                   error: (e, _) => _ErrorWidget(onRetry: () => ref.invalidate(teacherRejectedSessionsProvider)),
                   data: (list) => list.isEmpty
-                      ? const _EmptyTab(icon: Icons.do_not_disturb_alt_rounded, label: 'لا توجد طلبات مرفوضة')
+                      ? _EmptyTab(icon: Icons.do_not_disturb_alt_rounded, label: l.reqEmptyRejected)
                       : RefreshIndicator(
                           onRefresh: () async => ref.invalidate(teacherRejectedSessionsProvider),
                           child: ListView(
                             padding: const EdgeInsets.symmetric(horizontal: 22),
                             children: list.map((s) => Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: _RejectedCard(session: s, fmtDate: _fmtDate),
+                              child: _RejectedCard(session: s, fmtDate: (d) => _fmtDate(d, l)),
                             )).toList(),
                           ),
                         ),
@@ -143,14 +142,15 @@ class _TabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return AnimatedBuilder(
       animation: controller,
       builder: (_, __) => Row(
         children: List.generate(3, (i) {
           final labels = [
-            'جديدة${pendingCount > 0 ? ' ($pendingCount)' : ''}',
-            'جارية${inProgressCount > 0 ? ' ($inProgressCount)' : ''}',
-            'مرفوضة${rejectedCount > 0 ? ' ($rejectedCount)' : ''}',
+            '${l.reqTabNew}${pendingCount > 0 ? ' ($pendingCount)' : ''}',
+            '${l.reqTabInProgress}${inProgressCount > 0 ? ' ($inProgressCount)' : ''}',
+            '${l.reqTabRejected}${rejectedCount > 0 ? ' ($rejectedCount)' : ''}',
           ];
           final sel = controller.index == i;
           return Expanded(
@@ -178,7 +178,19 @@ class _TabBar extends StatelessWidget {
   }
 }
 
-// ── Pending card (REQUESTED state) ───────────────────────────
+// ── In-progress state badge helper ───────────────────────────
+(String, Color, Color) _inProgressBadge(String state, AppLocalizations l) {
+  switch (state) {
+    case 'AWAITING_PAYMENT':  return (l.stateBadgeAwaitingPay,  const Color(0xFF5B43D6), const Color(0xFFF0EDFF));
+    case 'PAYMENT_SUBMITTED': return (l.stateBadgeSubmitted,    const Color(0xFFC77A1A), const Color(0xFFFEF3E2));
+    case 'PAYMENT_CONFIRMED': return (l.stateBadgeConfirmedPay, const Color(0xFF15805F), const Color(0xFFE3F6EF));
+    case 'CONFIRMED_BOOKING': return (l.stateBadgeConfirmed,    const Color(0xFF15805F), const Color(0xFFE3F6EF));
+    case 'ACTIVE_SESSION':    return (l.stateBadgeActive,       const Color(0xFF1B6B7A), const Color(0xFFE0F4F7));
+    default:                  return (state.replaceAll('_', ' '), AppColors.textHint, AppColors.surface);
+  }
+}
+
+// ── Pending card ─────────────────────────────────────────────
 class _PendingCard extends StatelessWidget {
   final Map<String, dynamic> session;
   final String Function(String) fmtDate;
@@ -186,13 +198,14 @@ class _PendingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final id = session['id'] as String;
-    final studentMap = session['student'] as Map? ?? {};
-    final studentName = (studentMap['full_name'] as String?) ?? 'طالب';
-    final subject = (session['subject'] as String?) ?? '';
+    final studentMap  = session['student'] as Map? ?? {};
+    final studentName = (studentMap['full_name'] as String?) ?? l.authStudent;
+    final subject     = (session['subject'] as String?) ?? '';
     final scheduledAt = (session['scheduled_at'] as String?) ?? '';
-    final duration = (session['duration_minutes'] as int?) ?? 60;
-    final initial = studentName.isNotEmpty ? studentName[0] : 'ط';
+    final duration    = (session['duration_minutes'] as int?) ?? 60;
+    final initial     = studentName.isNotEmpty ? studentName[0] : l.authStudent[0];
 
     return Container(
       padding: const EdgeInsets.all(13),
@@ -207,10 +220,12 @@ class _PendingCard extends StatelessWidget {
             children: [
               Container(
                 width: 42, height: 42,
-                decoration: BoxDecoration(color: AppColors.accentLight, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: AppColors.accentLight,
+                  borderRadius: BorderRadius.circular(12)),
                 alignment: Alignment.center,
                 child: Text(initial,
-                  style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 17)),
+                  style: const TextStyle(color: AppColors.primary,
+                    fontWeight: FontWeight.w700, fontSize: 17)),
               ),
               const SizedBox(width: 11),
               Expanded(
@@ -218,17 +233,20 @@ class _PendingCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(studentName,
-                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                    Text('$subject · ${fmtDate(scheduledAt)} · $duration د',
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
+                    Text('$subject · ${fmtDate(scheduledAt)} · ${l.dashMinutesShort(duration)}',
                       style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
                   ],
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: const Color(0xFFFEF3E2), borderRadius: BorderRadius.circular(6)),
-                child: const Text('جديد',
-                  style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: Color(0xFFC77A1A))),
+                decoration: BoxDecoration(color: const Color(0xFFFEF3E2),
+                  borderRadius: BorderRadius.circular(6)),
+                child: Text(l.dashNewBadge,
+                  style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700,
+                    color: Color(0xFFC77A1A))),
               ),
             ],
           ),
@@ -245,8 +263,8 @@ class _PendingCard extends StatelessWidget {
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('مراجعة وقبول',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                  child: Text(l.dashReviewBtn,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                 ),
               ),
             ],
@@ -258,14 +276,6 @@ class _PendingCard extends StatelessWidget {
 }
 
 // ── In-progress card ─────────────────────────────────────────
-const _stateLabels = {
-  'AWAITING_PAYMENT':   ('بانتظار الدفع',  Color(0xFF5B43D6), Color(0xFFF0EDFF)),
-  'PAYMENT_SUBMITTED':  ('بانتظار تأكيد',  Color(0xFFC77A1A), Color(0xFFFEF3E2)),
-  'PAYMENT_CONFIRMED':  ('دفع مؤكّد',      Color(0xFF15805F), Color(0xFFE3F6EF)),
-  'CONFIRMED_BOOKING':  ('مؤكّد',          Color(0xFF15805F), Color(0xFFE3F6EF)),
-  'ACTIVE_SESSION':     ('جارية الآن',     Color(0xFF1B6B7A), Color(0xFFE0F4F7)),
-};
-
 class _InProgressCard extends StatelessWidget {
   final Map<String, dynamic> session;
   final String Function(String) fmtDate;
@@ -273,15 +283,15 @@ class _InProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final id = session['id'] as String;
-    final studentMap = session['student'] as Map? ?? {};
-    final studentName = (studentMap['full_name'] as String?) ?? 'طالب';
-    final subject = (session['subject'] as String?) ?? '';
+    final l = context.l10n;
+    final id          = session['id'] as String;
+    final studentMap  = session['student'] as Map? ?? {};
+    final studentName = (studentMap['full_name'] as String?) ?? l.authStudent;
+    final subject     = (session['subject'] as String?) ?? '';
     final scheduledAt = (session['scheduled_at'] as String?) ?? '';
-    final state = (session['state'] as String?) ?? '';
-    final initial = studentName.isNotEmpty ? studentName[0] : 'ط';
-
-    final stateInfo = _stateLabels[state] ?? (state.replaceAll('_', ' '), AppColors.textHint, AppColors.surface);
+    final state       = (session['state'] as String?) ?? '';
+    final initial     = studentName.isNotEmpty ? studentName[0] : l.authStudent[0];
+    final badgeInfo   = _inProgressBadge(state, l);
 
     return GestureDetector(
       onTap: () => context.push('/teacher/session/$id'),
@@ -296,10 +306,12 @@ class _InProgressCard extends StatelessWidget {
           children: [
             Container(
               width: 42, height: 42,
-              decoration: BoxDecoration(color: AppColors.accentLight, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: AppColors.accentLight,
+                borderRadius: BorderRadius.circular(12)),
               alignment: Alignment.center,
               child: Text(initial,
-                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 17)),
+                style: const TextStyle(color: AppColors.primary,
+                  fontWeight: FontWeight.w700, fontSize: 17)),
             ),
             const SizedBox(width: 11),
             Expanded(
@@ -307,7 +319,8 @@ class _InProgressCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(studentName,
-                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
                   Text('$subject · ${fmtDate(scheduledAt)}',
                     style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
                 ],
@@ -315,9 +328,11 @@ class _InProgressCard extends StatelessWidget {
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-              decoration: BoxDecoration(color: stateInfo.$3, borderRadius: BorderRadius.circular(6)),
-              child: Text(stateInfo.$1,
-                style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: stateInfo.$2)),
+              decoration: BoxDecoration(color: badgeInfo.$3,
+                borderRadius: BorderRadius.circular(6)),
+              child: Text(badgeInfo.$1,
+                style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700,
+                  color: badgeInfo.$2)),
             ),
           ],
         ),
@@ -334,12 +349,13 @@ class _RejectedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final studentMap = session['student'] as Map? ?? {};
-    final studentName = (studentMap['full_name'] as String?) ?? 'طالب';
-    final subject = (session['subject'] as String?) ?? '';
+    final l = context.l10n;
+    final studentMap  = session['student'] as Map? ?? {};
+    final studentName = (studentMap['full_name'] as String?) ?? l.authStudent;
+    final subject     = (session['subject'] as String?) ?? '';
     final scheduledAt = (session['scheduled_at'] as String?) ?? '';
-    final reason = (session['rejection_reason'] as String?);
-    final initial = studentName.isNotEmpty ? studentName[0] : 'ط';
+    final reason      = (session['rejection_reason'] as String?);
+    final initial     = studentName.isNotEmpty ? studentName[0] : l.authStudent[0];
 
     return Container(
       padding: const EdgeInsets.all(13),
@@ -358,8 +374,8 @@ class _RejectedCard extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: Text(initial,
-              style: const TextStyle(color: AppColors.textHint, fontWeight: FontWeight.w700, fontSize: 17),
-            ),
+              style: const TextStyle(color: AppColors.textHint,
+                fontWeight: FontWeight.w700, fontSize: 17)),
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -367,11 +383,12 @@ class _RejectedCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(studentName,
-                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
                 Text('$subject · ${fmtDate(scheduledAt)}',
                   style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
                 if (reason != null && reason.isNotEmpty)
-                  Text('السبب: $reason',
+                  Text(l.reqRejectedReason(reason),
                     style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
               ],
             ),
@@ -379,9 +396,11 @@ class _RejectedCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
             decoration: BoxDecoration(
-              color: const Color(0xFFFDECEC), borderRadius: BorderRadius.circular(6)),
-            child: const Text('مرفوض',
-              style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: Color(0xFFE03E3E))),
+              color: const Color(0xFFFDECEC),
+              borderRadius: BorderRadius.circular(6)),
+            child: Text(l.reqRejectedBadge,
+              style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700,
+                color: Color(0xFFE03E3E))),
           ),
         ],
       ),
@@ -403,12 +422,14 @@ class _EmptyTab extends StatelessWidget {
         children: [
           Container(
             width: 64, height: 64,
-            decoration: BoxDecoration(color: AppColors.surfaceAlt, borderRadius: BorderRadius.circular(18)),
+            decoration: BoxDecoration(color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(18)),
             child: Icon(icon, color: AppColors.textHint, size: 30),
           ),
           const SizedBox(height: 14),
           Text(label,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary)),
         ],
       ),
     );
@@ -421,12 +442,13 @@ class _ErrorWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('تعذّر تحميل البيانات'),
-          TextButton(onPressed: onRetry, child: const Text('إعادة المحاولة')),
+          Text(l.dashLoadError),
+          TextButton(onPressed: onRetry, child: Text(l.commonRetry)),
         ],
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teacher_booking/l10n/app_localizations.dart';
 import 'app_colors.dart';
 
 enum SessionState {
@@ -35,6 +36,25 @@ extension SessionStateX on SessionState {
       case SessionState.studentNoShow:     return 'غياب الطالب';
       case SessionState.dispute:           return 'نزاع إداري';
       case SessionState.cancelled:         return 'ملغاة';
+    }
+  }
+
+  String localizedLabel(AppLocalizations l) {
+    switch (this) {
+      case SessionState.requested:         return l.stateRequested;
+      case SessionState.teacherApproved:   return l.stateTeacherApproved;
+      case SessionState.teacherRejected:   return l.stateTeacherRejected;
+      case SessionState.awaitingPayment:   return l.stateAwaitingPayment;
+      case SessionState.paymentSubmitted:  return l.statePaymentSubmitted;
+      case SessionState.paymentRejected:   return l.statePaymentRejected;
+      case SessionState.paymentConfirmed:  return l.statePaymentConfirmed;
+      case SessionState.confirmedBooking:  return l.stateConfirmedBooking;
+      case SessionState.activeSession:     return l.stateActiveSession;
+      case SessionState.completed:         return l.stateCompleted;
+      case SessionState.teacherNoShow:     return l.stateTeacherNoShow;
+      case SessionState.studentNoShow:     return l.stateStudentNoShow;
+      case SessionState.dispute:           return l.stateDispute;
+      case SessionState.cancelled:         return l.stateCancelled;
     }
   }
 
@@ -107,7 +127,8 @@ extension SessionStateX on SessionState {
         this == SessionState.teacherRejected ||
         this == SessionState.cancelled ||
         this == SessionState.teacherNoShow ||
-        this == SessionState.studentNoShow;
+        this == SessionState.studentNoShow ||
+        this == SessionState.dispute;
   }
 
   static SessionState fromString(String s) {

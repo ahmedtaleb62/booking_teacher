@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/notifications_provider.dart';
 import '../../../core/providers/sessions_provider.dart';
 
@@ -14,7 +15,6 @@ class TeacherShell extends ConsumerWidget {
     if (loc.startsWith('/teacher/requests'))      return 1;
     if (loc.startsWith('/teacher/sessions'))       return 2;
     if (loc.startsWith('/teacher/notifications'))  return 3;
-    if (loc.startsWith('/teacher/earnings'))       return 4;
     if (loc.startsWith('/teacher/profile'))        return 4;
     return 0;
   }
@@ -73,15 +73,18 @@ class _TeacherBottomNav extends StatelessWidget {
         top: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: [
-              _TNavItem(icon: Icons.home_rounded,           label: 'الرئيسية',  selected: currentIndex == 0, onTap: () => onTap(0)),
-              _TNavItem(icon: Icons.task_alt_rounded,       label: 'الطلبات',   selected: currentIndex == 1, badge: requestsBadge, onTap: () => onTap(1)),
-              _TNavItem(icon: Icons.calendar_month_rounded, label: 'الجلسات',   selected: currentIndex == 2, onTap: () => onTap(2)),
-              _TNavItem(icon: Icons.notifications_outlined, label: 'الإشعارات', selected: currentIndex == 3, badge: notificationsBadge, onTap: () => onTap(3)),
-              _TNavItem(icon: Icons.person_rounded,         label: 'حسابي',    selected: currentIndex == 4, onTap: () => onTap(4)),
-            ],
-          ),
+          child: Builder(builder: (context) {
+            final l = context.l10n;
+            return Row(
+              children: [
+                _TNavItem(icon: Icons.home_rounded,           label: l.navHome,              selected: currentIndex == 0, onTap: () => onTap(0)),
+                _TNavItem(icon: Icons.task_alt_rounded,       label: l.teacherRequestsTitle, selected: currentIndex == 1, badge: requestsBadge, onTap: () => onTap(1)),
+                _TNavItem(icon: Icons.calendar_month_rounded, label: l.teacherSessionsTitle, selected: currentIndex == 2, onTap: () => onTap(2)),
+                _TNavItem(icon: Icons.notifications_outlined, label: l.teacherNotifTitle,    selected: currentIndex == 3, badge: notificationsBadge, onTap: () => onTap(3)),
+                _TNavItem(icon: Icons.person_rounded,         label: l.navProfile,           selected: currentIndex == 4, onTap: () => onTap(4)),
+              ],
+            );
+          }),
         ),
       ),
     );

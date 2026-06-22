@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/subjects.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/course.dart';
 import '../../../core/models/teacher.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -23,8 +24,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   final _searchCtrl = TextEditingController();
   late TabController _tabCtrl;
 
-  static const _subjects = ['الكل', ...kSubjects];
-
   @override
   void initState() {
     super.initState();
@@ -40,12 +39,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final profileAsync = ref.watch(currentProfileProvider);
     final userName = profileAsync.when(
-      data: (p) => p?['full_name'] as String? ?? 'طالب',
+      data: (p) => p?['full_name'] as String? ?? l.authStudent,
       loading: () => '',
-      error: (_, __) => 'طالب',
+      error: (_, __) => l.authStudent,
     );
+
+    final subjects = <String?>[null, ...kSubjects];
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -53,15 +55,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         bottom: false,
         child: Column(
           children: [
-            _buildHeader(userName),
-            _buildSearch(),
-            _buildTabBar(),
+            _buildHeader(context, userName),
+            _buildSearch(context),
+            _buildTabBar(context),
             Expanded(
               child: TabBarView(
                 controller: _tabCtrl,
                 children: [
-                  _TeachersTab(subjects: _subjects),
-                  _CoursesTab(subjects: _subjects),
+                  _TeachersTab(subjects: subjects),
+                  _CoursesTab(subjects: subjects),
                   const _PackagesTab(),
                 ],
               ),
@@ -72,7 +74,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _buildHeader(String userName) {
+  Widget _buildHeader(BuildContext context, String userName) {
     final unread    = ref.watch(unreadCountProvider).valueOrNull ?? 0;
     final avatarUrl = ref.watch(currentProfileProvider).valueOrNull?['avatar_url'] as String?;
     final initial   = userName.isNotEmpty ? userName[0] : '؟';
@@ -84,7 +86,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_greeting(),
+                Text(_greeting(context),
                     style: const TextStyle(fontSize: 13, color: AppColors.textHint)),
                 const SizedBox(height: 2),
                 Text(userName.isEmpty ? '' : userName,
@@ -93,7 +95,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ],
             ),
           ),
-          // Bell icon
           GestureDetector(
             onTap: () => context.push('/notifications'),
             child: Stack(
@@ -129,7 +130,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
           ),
           const SizedBox(width: 10),
-          // Avatar
           GestureDetector(
             onTap: () => context.go('/profile'),
             child: Container(
@@ -154,7 +154,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _buildSearch() {
+  Widget _buildSearch(BuildContext context) {
+    final l = context.l10n;
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
       child: Row(
@@ -176,11 +177,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 controller: _searchCtrl,
                 onChanged: (v) =>
                     ref.read(teacherSearchQueryProvider.notifier).state = v,
-                decoration: const InputDecoration(
-                  hintText: 'ابحث عن أستاذ أو مادة…',
-                  prefixIcon: Icon(Icons.search_rounded, color: AppColors.textHint, size: 20),
+                decoration: InputDecoration(
+                  hintText: l.homeSearchHint,
+                  prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textHint, size: 20),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
               ),
             ),
@@ -205,7 +206,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _buildTabBar() {
+  Widget _buildTabBar(BuildContext context) {
+    final l = context.l10n;
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
       child: Container(
@@ -235,10 +237,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
           unselectedLabelStyle:
               const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-          tabs: const [
-            Tab(text: 'أساتذة'),
-            Tab(text: 'دروس'),
-            Tab(text: 'باقات'),
+          tabs: [
+            Tab(text: l.homeTeachersTab),
+            Tab(text: l.homeCoursesTab),
+            Tab(text: l.homePackagesTab),
           ],
         ),
       ),
@@ -254,27 +256,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  String _greeting() {
+  String _greeting(BuildContext context) {
+    final l = context.l10n;
     final h = DateTime.now().hour;
-    if (h < 12) return 'صباح الخير،';
-    if (h < 17) return 'مساء الخير،';
-    return 'مساء النور،';
+    if (h < 12) return l.greetingMorning;
+    if (h < 17) return l.greetingAfternoon;
+    return l.greetingEvening;
   }
 }
 
 // ── Teachers Tab ──────────────────────────────────────────────────
 class _TeachersTab extends ConsumerWidget {
-  final List<String> subjects;
+  final List<String?> subjects;
   const _TeachersTab({required this.subjects});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final teachersAsync = ref.watch(teachersProvider);
-    final selectedSubject = ref.watch(teacherSubjectFilterProvider);
+    final l = context.l10n;
+    final teachersAsync    = ref.watch(teachersProvider);
+    final selectedSubject  = ref.watch(teacherSubjectFilterProvider);
 
     return CustomScrollView(
       slivers: [
-        SliverToBoxAdapter(child: _buildSubjectChips(ref, selectedSubject)),
+        SliverToBoxAdapter(child: _buildSubjectChips(context, ref, selectedSubject)),
         teachersAsync.when(
           loading: () => const SliverToBoxAdapter(
             child: Padding(
@@ -288,37 +292,37 @@ class _TeachersTab extends ConsumerWidget {
               child: Column(children: [
                 const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
                 const SizedBox(height: 12),
-                Text('تعذّر التحميل: $e',
+                Text(l.homeLoadError,
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                 const SizedBox(height: 16),
                 TextButton(
                   onPressed: () => ref.invalidate(teachersProvider),
-                  child: const Text('إعادة المحاولة'),
+                  child: Text(l.commonRetry),
                 ),
               ]),
             ),
           ),
-          data: (teachers) => _buildList(context, teachers),
+          data: (teachers) => _buildList(context, teachers, l),
         ),
       ],
     );
   }
 
-  Widget _buildSubjectChips(WidgetRef ref, String? selectedSubject) {
+  Widget _buildSubjectChips(BuildContext context, WidgetRef ref, String? selectedSubject) {
+    final l = context.l10n;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
       child: Row(
         children: subjects.map((s) {
-          final isAll = s == 'الكل';
+          final isAll    = s == null;
           final selected = isAll ? selectedSubject == null : selectedSubject == s;
           return Padding(
             padding: const EdgeInsets.only(left: 9),
             child: GestureDetector(
               onTap: () =>
-                  ref.read(teacherSubjectFilterProvider.notifier).state =
-                      isAll ? null : s,
+                  ref.read(teacherSubjectFilterProvider.notifier).state = isAll ? null : s,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
                 decoration: BoxDecoration(
@@ -327,11 +331,13 @@ class _TeachersTab extends ConsumerWidget {
                   border: Border.all(
                       color: selected ? AppColors.primary : AppColors.borderStrong),
                 ),
-                child: Text(s,
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: selected ? Colors.white : AppColors.textPrimary)),
+                child: Text(
+                  isAll ? l.homeAllSubjects : s,
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? Colors.white : AppColors.textPrimary),
+                ),
               ),
             ),
           );
@@ -340,14 +346,14 @@ class _TeachersTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildList(BuildContext context, List<Teacher> teachers) {
+  Widget _buildList(BuildContext context, List<Teacher> teachers, dynamic l) {
     if (teachers.isEmpty) {
-      return const SliverToBoxAdapter(
+      return SliverToBoxAdapter(
         child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 60),
+          padding: const EdgeInsets.symmetric(vertical: 60),
           child: Center(
-            child: Text('لا يوجد أساتذة متاحون حالياً',
-                style: TextStyle(color: AppColors.textHint, fontSize: 14)),
+            child: Text(context.l10n.homeNoTeachers,
+                style: const TextStyle(color: AppColors.textHint, fontSize: 14)),
           ),
         ),
       );
@@ -372,17 +378,18 @@ class _TeachersTab extends ConsumerWidget {
 
 // ── Courses Tab ───────────────────────────────────────────────────
 class _CoursesTab extends ConsumerWidget {
-  final List<String> subjects;
+  final List<String?> subjects;
   const _CoursesTab({required this.subjects});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final coursesAsync      = ref.watch(coursesProvider);
-    final selectedSubject   = ref.watch(courseSubjectFilterProvider);
+    final l = context.l10n;
+    final coursesAsync    = ref.watch(coursesProvider);
+    final selectedSubject = ref.watch(courseSubjectFilterProvider);
 
     return CustomScrollView(
       slivers: [
-        SliverToBoxAdapter(child: _buildSubjectChips(ref, selectedSubject)),
+        SliverToBoxAdapter(child: _buildSubjectChips(context, ref, selectedSubject)),
         coursesAsync.when(
           loading: () => const SliverToBoxAdapter(
             child: Padding(
@@ -396,24 +403,24 @@ class _CoursesTab extends ConsumerWidget {
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
                 const SizedBox(height: 12),
-                Text('تعذّر التحميل: $e',
+                Text(l.homeLoadError,
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                 TextButton(
                   onPressed: () => ref.invalidate(coursesProvider),
-                  child: const Text('إعادة المحاولة'),
+                  child: Text(l.commonRetry),
                 ),
               ]),
             ),
           ),
           data: (courses) {
             if (courses.isEmpty) {
-              return const SliverToBoxAdapter(
+              return SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 60),
+                  padding: const EdgeInsets.symmetric(vertical: 60),
                   child: Center(
-                    child: Text('لا توجد دروس متاحة حالياً',
-                        style: TextStyle(color: AppColors.textHint, fontSize: 14)),
+                    child: Text(l.homeNoCoursesAvailable,
+                        style: const TextStyle(color: AppColors.textHint, fontSize: 14)),
                   ),
                 ),
               );
@@ -433,13 +440,14 @@ class _CoursesTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildSubjectChips(WidgetRef ref, String? selectedSubject) {
+  Widget _buildSubjectChips(BuildContext context, WidgetRef ref, String? selectedSubject) {
+    final l = context.l10n;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
       child: Row(
         children: subjects.map((s) {
-          final isAll    = s == 'الكل';
+          final isAll    = s == null;
           final selected = isAll ? selectedSubject == null : selectedSubject == s;
           return Padding(
             padding: const EdgeInsets.only(left: 9),
@@ -455,11 +463,13 @@ class _CoursesTab extends ConsumerWidget {
                   border: Border.all(
                       color: selected ? AppColors.primary : AppColors.borderStrong),
                 ),
-                child: Text(s,
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: selected ? Colors.white : AppColors.textPrimary)),
+                child: Text(
+                  isAll ? l.homeAllSubjects : s,
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? Colors.white : AppColors.textPrimary),
+                ),
               ),
             ),
           );
@@ -475,6 +485,7 @@ class _CourseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return GestureDetector(
       onTap: () => context.push('/course/${course.id}'),
       child: Container(
@@ -489,14 +500,12 @@ class _CourseCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // ── Cover square (right side in RTL) ────────────────────
             ClipRRect(
               borderRadius: const BorderRadius.horizontal(right: Radius.circular(13)),
               child: Container(
                 width: 90, height: 90,
                 color: course.coverColor,
                 child: Stack(children: [
-                  // Level pill — bottom center
                   Positioned(
                     bottom: 7, left: 6, right: 6,
                     child: Center(
@@ -517,8 +526,6 @@ class _CourseCard extends StatelessWidget {
                 ]),
               ),
             ),
-
-            // ── Info (left side in RTL) ──────────────────────────────
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -526,7 +533,6 @@ class _CourseCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Title row + badge
                     Row(children: [
                       Expanded(
                         child: Text(course.title,
@@ -550,10 +556,7 @@ class _CourseCard extends StatelessWidget {
                         ),
                       ],
                     ]),
-
                     const SizedBox(height: 4),
-
-                    // Teacher name + initial avatar
                     if (course.teacherName.isNotEmpty)
                       Row(children: [
                         Container(
@@ -572,14 +575,10 @@ class _CourseCard extends StatelessWidget {
                         Text(course.teacherName,
                             style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                       ]),
-
                     const SizedBox(height: 8),
-
-                    // Stats row + price
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        // Stats
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -588,14 +587,17 @@ class _CourseCard extends StatelessWidget {
                                 const Icon(Icons.play_circle_outline_rounded,
                                     size: 11, color: AppColors.textHint),
                                 const SizedBox(width: 2),
-                                Text('${course.totalLessons} درس',
-                                    style: const TextStyle(fontSize: 10, color: AppColors.textHint)),
+                                Text(
+                                  l.homeLessonCount(course.totalLessons),
+                                  style: const TextStyle(fontSize: 10, color: AppColors.textHint),
+                                ),
                                 const SizedBox(width: 8),
                                 const Icon(Icons.schedule_rounded,
                                     size: 11, color: AppColors.textHint),
                                 const SizedBox(width: 2),
                                 Text(
-                                  '${course.totalHours.toStringAsFixed(course.totalHours % 1 == 0 ? 0 : 1)} س',
+                                  l.homeHoursAbbrev(course.totalHours.toStringAsFixed(
+                                      course.totalHours % 1 == 0 ? 0 : 1)),
                                   style: const TextStyle(fontSize: 10, color: AppColors.textHint),
                                 ),
                                 if (course.rating != null) ...[
@@ -612,27 +614,25 @@ class _CourseCard extends StatelessWidget {
                             ],
                           ),
                         ),
-
-                        // Price
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             if (course.originalPrice != null)
                               Text(
-                                '${course.originalPrice!.toStringAsFixed(0)} أوقية',
+                                l.homeOriginalPrice(course.originalPrice!.toStringAsFixed(0)),
                                 style: const TextStyle(
                                     fontSize: 9, color: AppColors.textHint,
                                     decoration: TextDecoration.lineThrough),
                               ),
                             Text(
-                              '${course.priceMonthly.toStringAsFixed(0)} أوق/شهر',
+                              l.homePricePerMonth(course.priceMonthly.toStringAsFixed(0)),
                               style: const TextStyle(
                                   fontSize: 12.5, fontWeight: FontWeight.w700,
                                   color: AppColors.primary),
                             ),
                             if (course.priceYearly != null)
                               Text(
-                                '${course.priceYearly!.toStringAsFixed(0)} أوق/سنة',
+                                l.homePricePerYear(course.priceYearly!.toStringAsFixed(0)),
                                 style: const TextStyle(
                                     fontSize: 9.5, color: AppColors.statusConfirmed,
                                     fontWeight: FontWeight.w600),
@@ -658,6 +658,7 @@ class _PackagesTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
     final pkgsAsync = ref.watch(packagesProvider);
     return pkgsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -665,19 +666,19 @@ class _PackagesTab extends ConsumerWidget {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
           const SizedBox(height: 12),
-          Text('تعذّر التحميل: $e',
+          Text(l.homeLoadError,
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
           TextButton(
             onPressed: () => ref.invalidate(packagesProvider),
-            child: const Text('إعادة المحاولة'),
+            child: Text(l.commonRetry),
           ),
         ]),
       ),
       data: (packages) {
         if (packages.isEmpty) {
-          return const Center(
-            child: Text('لا توجد باقات متاحة حالياً',
-                style: TextStyle(color: AppColors.textHint, fontSize: 14)),
+          return Center(
+            child: Text(l.homeNoPackagesAvailable,
+                style: const TextStyle(color: AppColors.textHint, fontSize: 14)),
           );
         }
         return ListView.builder(
@@ -696,6 +697,7 @@ class _PackageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return GestureDetector(
       onTap: () => context.push('/package/${package.id}'),
       child: Container(
@@ -748,7 +750,7 @@ class _PackageCard extends StatelessWidget {
                 Text('${package.priceMonthly.toStringAsFixed(0)} ',
                     style: const TextStyle(
                         fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-                Text('أوقية/شهر',
+                Text(l.homeOugiyaPerMonth,
                     style: TextStyle(
                         fontSize: 10, color: Colors.white.withValues(alpha: 0.75))),
                 const Spacer(),
@@ -758,8 +760,8 @@ class _PackageCard extends StatelessWidget {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Text('التفاصيل',
-                      style: TextStyle(
+                  child: Text(l.homeDetails,
+                      style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),

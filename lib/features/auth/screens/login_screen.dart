@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/lang_toggle.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   final _passCtrl  = TextEditingController();
@@ -38,11 +41,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final user = res.user;
       if (user == null) {
-        setState(() => _error = 'تحقق من بريدك الإلكتروني لتأكيد الحساب');
+        setState(() => _error = context.l10n.authErrCheckEmail);
         return;
       }
 
-      // Try to get role — if it fails for any reason, default to student home
       String? role;
       try {
         final profile = await SupabaseService.client
@@ -52,7 +54,6 @@ class _LoginScreenState extends State<LoginScreen> {
             .maybeSingle();
         role = profile?['role'] as String?;
       } catch (_) {
-        // Profile query failed — use metadata fallback
         role = user.userMetadata?['role'] as String?;
       }
 
@@ -72,30 +73,22 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   String _friendlyAuthError(String raw) {
+    final l = context.l10n;
     final msg = raw.toLowerCase();
     if (msg.contains('invalid login') || msg.contains('invalid credentials') || msg.contains('wrong password')) {
-      return 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+      return l.authErrInvalidCredentials;
     }
-    if (msg.contains('email not confirmed')) {
-      return 'لم يتم تأكيد البريد الإلكتروني، تحقق من صندوق الوارد';
-    }
-    if (msg.contains('user not found') || msg.contains('no user')) {
-      return 'لا يوجد حساب بهذا البريد الإلكتروني';
-    }
-    if (msg.contains('rate limit') || msg.contains('too many')) {
-      return 'محاولات كثيرة، انتظر قليلاً ثم أعد المحاولة';
-    }
-    if (msg.contains('network') || msg.contains('connection') || msg.contains('socket')) {
-      return 'تعذّر الاتصال بالخادم، تحقق من الإنترنت';
-    }
-    if (msg.contains('database') || msg.contains('unexpected_failure')) {
-      return 'خطأ في الخادم، أعد المحاولة لاحقاً';
-    }
-    return 'حدث خطأ، حاول مرة أخرى';
+    if (msg.contains('email not confirmed')) return l.authErrEmailNotConfirmed;
+    if (msg.contains('user not found') || msg.contains('no user')) return l.authErrUserNotFound;
+    if (msg.contains('rate limit') || msg.contains('too many')) return l.authErrRateLimit;
+    if (msg.contains('network') || msg.contains('connection') || msg.contains('socket')) return l.authErrNetwork;
+    if (msg.contains('database') || msg.contains('unexpected_failure')) return l.authErrServer;
+    return l.authErrGeneral;
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.primaryDark,
       body: SafeArea(
@@ -104,9 +97,15 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               // Header
               Padding(
-                padding: const EdgeInsets.fromLTRB(28, 48, 28, 36),
+                padding: const EdgeInsets.fromLTRB(28, 32, 28, 28),
                 child: Column(
                   children: [
+                    // Language toggle
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: const LangToggle(),
+                    ),
+                    const SizedBox(height: 20),
                     Container(
                       width: 72, height: 72,
                       decoration: BoxDecoration(
@@ -118,11 +117,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text('أهلاً بك',
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white)),
+                    Text(l.authWelcome,
+                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white)),
                     const SizedBox(height: 6),
-                    const Text('سجّل دخولك للمتابعة',
-                      style: TextStyle(fontSize: 14, color: Color(0xFF9DB2B8))),
+                    Text(l.authLoginSubtitle,
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF9DB2B8))),
                   ],
                 ),
               ),
@@ -153,20 +152,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 16),
                       ],
-                      _label('البريد الإلكتروني'),
+                      _label(l.authEmail),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _emailCtrl,
                         keyboardType: TextInputType.emailAddress,
                         textDirection: TextDirection.ltr,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: 'example@email.com',
-                          prefixIcon: Icon(Icons.email_outlined, color: AppColors.textHint),
+                          prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textHint),
                         ),
-                        validator: (v) => (v == null || v.isEmpty) ? 'أدخل البريد الإلكتروني' : null,
+                        validator: (v) => (v == null || v.isEmpty) ? l.authValidEmail : null,
                       ),
                       const SizedBox(height: 18),
-                      _label('كلمة المرور'),
+                      _label(l.authPassword),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _passCtrl,
@@ -181,29 +180,29 @@ class _LoginScreenState extends State<LoginScreen> {
                             onPressed: () => setState(() => _obscure = !_obscure),
                           ),
                         ),
-                        validator: (v) => (v == null || v.length < 6) ? 'كلمة المرور 6 أحرف على الأقل' : null,
+                        validator: (v) => (v == null || v.length < 6) ? l.authValidPassword : null,
                       ),
                       const SizedBox(height: 8),
                       Align(
                         alignment: AlignmentDirectional.centerEnd,
                         child: TextButton(
                           onPressed: () {},
-                          child: const Text('نسيت كلمة المرور؟',
-                            style: TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                          child: Text(l.authForgotPassword,
+                            style: const TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600)),
                         ),
                       ),
                       const SizedBox(height: 8),
-                      AppButton(label: 'تسجيل الدخول', isLoading: _loading, onTap: _login),
+                      AppButton(label: l.authLoginBtn, isLoading: _loading, onTap: _login),
                       const SizedBox(height: 18),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text('ليس لديك حساب؟  ',
-                            style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                          Text(l.authNoAccount,
+                            style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
                           GestureDetector(
                             onTap: () => context.push('/register'),
-                            child: const Text('أنشئ حساباً',
-                              style: TextStyle(fontSize: 14, color: AppColors.primary, fontWeight: FontWeight.w700)),
+                            child: Text(l.authCreateAccount,
+                              style: const TextStyle(fontSize: 14, color: AppColors.primary, fontWeight: FontWeight.w700)),
                           ),
                         ],
                       ),

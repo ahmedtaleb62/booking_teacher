@@ -3,14 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/app_notification.dart';
-import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/notifications_provider.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/supabase_service.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
-  const NotificationsScreen({super.key});
+  final bool isTeacher;
+  const NotificationsScreen({super.key, this.isTeacher = false});
   @override
   ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
 }
@@ -39,10 +40,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             column: 'user_id',
             value: uid,
           ),
-          callback: (_) {
-            // Refresh provider when any notification row changes
-            ref.invalidate(notificationsProvider);
-          },
+          callback: (_) => ref.invalidate(notificationsProvider),
         )
         .subscribe();
   }
@@ -54,15 +52,16 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   }
 
   String _timeAgo(DateTime dt) {
+    final l = context.l10n;
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1)  return 'الآن';
-    if (diff.inMinutes < 60) return 'منذ ${diff.inMinutes} دقيقة';
-    if (diff.inHours < 24)   return 'منذ ${diff.inHours} ساعة';
-    if (diff.inDays < 7)     return 'منذ ${diff.inDays} يوم';
-    return 'منذ ${(diff.inDays / 7).floor()} أسبوع';
+    if (diff.inMinutes < 1)  return l.timeNow;
+    if (diff.inMinutes < 60) return l.timeMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24)   return l.timeHoursAgo(diff.inHours);
+    if (diff.inDays < 7)     return l.timeDaysAgo(diff.inDays);
+    return l.timeWeeksAgo((diff.inDays / 7).floor());
   }
 
-  Future<void> _markAsRead(AppNotification n, int index) async {
+  Future<void> _markAsRead(AppNotification n) async {
     if (n.isRead) return;
     await NotificationService.markAsRead(n.id);
     ref.invalidate(notificationsProvider);
@@ -70,12 +69,20 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   }
 
   void _onNotificationTap(AppNotification n) {
-    _markAsRead(n, 0);
+    _markAsRead(n);
+
+    if (n.type == 'SUB_PENDING' || n.type == 'SUB_ACTIVE' || n.type == 'SUB_REJECTED') {
+      if (n.subscriptionId != null) {
+        context.push('/subscription-pending/${n.subscriptionId}');
+      }
+      return;
+    }
+
     if (n.sessionId == null) return;
-    final role = ref.read(userRoleProvider);
-    if (role == 'teacher') {
-      // طلبات جديدة تفتح صفحة تفاصيل الطلب، باقي الحالات تفتح حالة الجلسة
-      if (n.type == 'SESSION_REQUESTED') {
+
+    if (widget.isTeacher) {
+      final isNewRequest = n.type == 'SESSION_REQUESTED' || n.type == 'session_requested';
+      if (isNewRequest) {
         context.push('/teacher/request/${n.sessionId}');
       } else {
         context.push('/teacher/session/${n.sessionId}');
@@ -93,6 +100,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final async = ref.watch(notificationsProvider);
 
     return Scaffold(
@@ -105,7 +113,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           final unread = list.where((n) => !n.isRead).length;
           return Row(
             children: [
-              const Text('الإشعارات'),
+              Text(l.notifTitle),
               if (unread > 0) ...[
                 const SizedBox(width: 8),
                 Container(
@@ -120,15 +128,15 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               ],
             ],
           );
-        }).value ?? const Text('الإشعارات'),
+        }).value ?? Text(l.notifTitle),
         actions: [
           async.whenData((list) {
             final unread = list.where((n) => !n.isRead).length;
             if (unread == 0) return const SizedBox.shrink();
             return TextButton(
               onPressed: _markAllRead,
-              child: const Text('تحديد الكل كمقروء',
-                style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600)),
+              child: Text(l.notifMarkAll,
+                style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600)),
             );
           }).value ?? const SizedBox.shrink(),
         ],
@@ -141,26 +149,26 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             children: [
               const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
               const SizedBox(height: 12),
-              const Text('تعذّر تحميل الإشعارات',
-                style: TextStyle(fontSize: 15, color: AppColors.textPrimary)),
+              Text(l.notifLoadError,
+                style: const TextStyle(fontSize: 15, color: AppColors.textPrimary)),
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () => ref.invalidate(notificationsProvider),
-                child: const Text('إعادة المحاولة', style: TextStyle(color: AppColors.primary)),
+                child: Text(l.commonRetry, style: const TextStyle(color: AppColors.primary)),
               ),
             ],
           ),
         ),
         data: (notifications) {
           if (notifications.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.notifications_none_rounded, size: 54, color: AppColors.textHint),
-                  SizedBox(height: 12),
-                  Text('لا توجد إشعارات',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                  const Icon(Icons.notifications_none_rounded, size: 54, color: AppColors.textHint),
+                  const SizedBox(height: 12),
+                  Text(l.notifEmpty,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                 ],
               ),
             );
@@ -234,7 +242,7 @@ class _NotifTile extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(notification.title,
+                        child: Text(notification.localizedTitle(context.l10n),
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: notification.isRead ? FontWeight.w600 : FontWeight.w700,

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/services/course_service.dart';
 
 class LessonPlayerScreen extends ConsumerStatefulWidget {
@@ -126,6 +127,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
 
   // ── Quiz screen ──────────────────────────────────────────────────
   Widget _buildQuizScreen() {
+    final l = context.l10n;
     final questions = widget.quizData!;
     int correct = 0;
     if (_quizSubmitted) {
@@ -159,7 +161,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      widget.title ?? 'تمرين',
+                      widget.title ?? l.lessonQuizFallback,
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
                       maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -239,9 +241,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    _marked
-                                        ? 'تم الانتهاء ✓'
-                                        : 'تم الانتهاء من التمرين',
+                                    _marked ? l.lessonDone : l.lessonQuizDoneLabel,
                                     style: const TextStyle(
                                         fontWeight: FontWeight.w700, fontSize: 14),
                                   ),
@@ -263,8 +263,8 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                         ),
                         child: Text(
                           _answers.length < questions.length
-                              ? 'أجب على جميع الأسئلة (${_answers.length}/${questions.length})'
-                              : 'تسليم الإجابات',
+                              ? l.lessonAnswerAll(_answers.length, questions.length)
+                              : l.lessonSubmitAnswers,
                           style: const TextStyle(
                               fontWeight: FontWeight.w700, fontSize: 14),
                         ),
@@ -400,6 +400,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
   }
 
   Widget _buildScoreCard(int correct, int total) {
+    final l = context.l10n;
     final pct = total > 0 ? (correct / total * 100).round() : 0;
     final passed = pct >= 60;
     return Container(
@@ -422,7 +423,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
         ),
         const SizedBox(height: 10),
         Text(
-          passed ? 'أحسنت! اجتزت التمرين' : 'يمكنك المحاولة مجدداً',
+          passed ? l.lessonQuizPassed : l.lessonQuizFailed,
           style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -430,7 +431,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
         ),
         const SizedBox(height: 6),
         Text(
-          'نتيجتك: $correct/$total صحيح ($pct%)',
+          l.lessonQuizScore(correct, total, pct),
           style: const TextStyle(fontSize: 13, color: Colors.white54),
         ),
         if (!passed) ...[
@@ -442,7 +443,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
               foregroundColor: Colors.white70,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('إعادة المحاولة'),
+            child: Text(l.commonRetry),
           ),
         ],
       ]),
@@ -451,6 +452,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
 
   // ── Video / File screen ──────────────────────────────────────────
   Widget _buildVideoScreen() {
+    final l = context.l10n;
     return Scaffold(
       backgroundColor: Colors.black,
       body: Column(
@@ -504,8 +506,8 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                               const Icon(Icons.videocam_off_outlined,
                                   color: Colors.white38, size: 64),
                               const SizedBox(height: 16),
-                              const Text('لا يوجد فيديو متاح لهذا الدرس',
-                                  style: TextStyle(color: Colors.white54, fontSize: 14)),
+                              Text(l.lessonNoVideo,
+                                  style: const TextStyle(color: Colors.white54, fontSize: 14)),
                             ],
                           ),
                         ),
@@ -545,9 +547,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                             color: Colors.white)),
                   const SizedBox(height: 8),
                   Text(
-                    _hasSubscription
-                        ? 'شاهد الدرس كاملاً ثم اضغط "تم الانتهاء" لتسجيل تقدّمك'
-                        : 'هذا درس مجاني للمعاينة',
+                    _hasSubscription ? l.lessonVideoHint : l.lessonFreePreview,
                     style: const TextStyle(
                         fontSize: 12, color: Colors.white54, height: 1.5),
                   ),
@@ -584,7 +584,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    _marked ? 'تم الانتهاء ✓' : 'تم الانتهاء من الدرس',
+                                    _marked ? l.lessonDone : l.lessonVideoDoneLabel,
                                     style: const TextStyle(
                                         fontWeight: FontWeight.w700, fontSize: 14),
                                   ),
@@ -600,10 +600,10 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                         color: Colors.white10,
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: const Text(
-                        'اشترك في الدورة للوصول لجميع الدروس',
+                      child: Text(
+                        l.lessonSubscribeToAccess,
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white38, fontSize: 13),
+                        style: const TextStyle(color: Colors.white38, fontSize: 13),
                       ),
                     ),
                   const SizedBox(height: 10),
@@ -612,8 +612,8 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                       width: double.infinity,
                       child: TextButton(
                         onPressed: () => context.pop(),
-                        child: const Text('العودة لقائمة الدروس',
-                            style: TextStyle(color: Colors.white54, fontSize: 13)),
+                        child: Text(l.lessonBackToList,
+                            style: const TextStyle(color: Colors.white54, fontSize: 13)),
                       ),
                     ),
                 ],
@@ -642,6 +642,7 @@ class _RatingSheetState extends State<_RatingSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       decoration: BoxDecoration(
@@ -658,12 +659,12 @@ class _RatingSheetState extends State<_RatingSheet> {
                 color: Colors.white24, borderRadius: BorderRadius.circular(2)),
           ),
           const SizedBox(height: 20),
-          const Text('كيف كان الدرس؟',
-              style: TextStyle(
+          Text(l.lessonRatingTitle,
+              style: const TextStyle(
                   fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white)),
           const SizedBox(height: 6),
-          const Text('قيّم هذه الدورة لمساعدة الطلاب الآخرين',
-              style: TextStyle(fontSize: 12, color: Colors.white54)),
+          Text(l.lessonRatingSubtitle,
+              style: const TextStyle(fontSize: 12, color: Colors.white54)),
           const SizedBox(height: 22),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -694,7 +695,7 @@ class _RatingSheetState extends State<_RatingSheet> {
                       borderRadius: BorderRadius.circular(12)),
                   padding: const EdgeInsets.symmetric(vertical: 13),
                 ),
-                child: const Text('لاحقاً'),
+                child: Text(l.lessonRatingLater),
               ),
             ),
             const SizedBox(width: 12),
@@ -715,8 +716,8 @@ class _RatingSheetState extends State<_RatingSheet> {
                         width: 18, height: 18,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: AppColors.primaryDark))
-                    : const Text('إرسال التقييم',
-                        style: TextStyle(fontWeight: FontWeight.w700)),
+                    : Text(l.lessonRatingSubmit,
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
               ),
             ),
           ]),

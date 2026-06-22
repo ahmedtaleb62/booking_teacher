@@ -46,6 +46,8 @@ import '../features/teacher/screens/teacher_no_show_screen.dart';
 import '../features/teacher/screens/teacher_profile_screen.dart' show TeacherSelfProfileScreen;
 import '../features/teacher/screens/teacher_onboarding_screen.dart';
 import '../features/teacher/screens/teacher_availability_screen.dart';
+import '../features/teacher/screens/teacher_ratings_screen.dart';
+import '../features/shared/screens/help_center_screen.dart';
 
 // Global navigator key — lets code outside the widget tree access the correct Overlay
 // (the one inside MaterialApp.router, not above it).
@@ -252,14 +254,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
-              path: '/teacher/earnings',
-              pageBuilder: (_, __) => const NoTransitionPage(child: TeacherEarningsScreen()),
-            ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
               path: '/teacher/notifications',
-              pageBuilder: (_, __) => const NoTransitionPage(child: NotificationsScreen()),
+              pageBuilder: (_, __) => const NoTransitionPage(child: NotificationsScreen(isTeacher: true)),
             ),
           ]),
           StatefulShellBranch(routes: [
@@ -292,12 +288,27 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => TeacherNoShowScreen(sessionId: state.pathParameters['id']!),
       ),
       GoRoute(
+        path: '/teacher/earnings',
+        builder: (_, __) => const TeacherEarningsScreen(),
+      ),
+      GoRoute(
         path: '/teacher/onboarding',
         builder: (_, __) => const TeacherOnboardingScreen(),
       ),
       GoRoute(
         path: '/teacher/availability',
         builder: (_, __) => const TeacherAvailabilityScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/ratings',
+        builder: (_, __) => const TeacherRatingsScreen(),
+      ),
+      GoRoute(
+        path: '/help-center',
+        builder: (_, state) {
+          final tab = state.uri.queryParameters['tab'];
+          return HelpCenterScreen(initialTab: tab);
+        },
       ),
     ],
     errorBuilder: (_, state) => Scaffold(

@@ -78,9 +78,13 @@ export default function Payments({ adminId }) {
     setRejectInput(false)
     setRejectReason('')
     if (row.proof_image_url) {
-      const bucket = type === 'session' ? 'payment-proofs' : 'subscription-proofs'
-      const { data } = await supabase.storage.from(bucket).createSignedUrl(row.proof_image_url, 3600)
-      setProofUrl(data?.signedUrl || null)
+      if (row.proof_image_url.startsWith('http')) {
+        setProofUrl(row.proof_image_url)
+      } else {
+        const bucket = type === 'session' ? 'payment-proofs' : 'subscription-proofs'
+        const { data } = await supabase.storage.from(bucket).createSignedUrl(row.proof_image_url, 3600)
+        setProofUrl(data?.signedUrl || null)
+      }
     }
   }
 

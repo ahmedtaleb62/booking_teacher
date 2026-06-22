@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/services/supabase_service.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
@@ -27,15 +28,16 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   }
 
   Future<void> _submit() async {
+    final l = context.l10n;
     final newPass     = _newCtrl.text.trim();
     final confirmPass = _confirmCtrl.text.trim();
 
     if (newPass.length < 8) {
-      setState(() => _errorMsg = 'كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+      setState(() => _errorMsg = l.changePassErrTooShort);
       return;
     }
     if (newPass != confirmPass) {
-      setState(() => _errorMsg = 'كلمتا المرور غير متطابقتين');
+      setState(() => _errorMsg = l.changePassErrMismatch);
       return;
     }
 
@@ -47,7 +49,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('تم تغيير كلمة المرور بنجاح'),
+            content: Text(l.changePassSuccess),
             backgroundColor: AppColors.statusConfirmed,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -59,7 +61,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       if (mounted) {
         setState(() {
           _saving = false;
-          _errorMsg = 'فشل تغيير كلمة المرور — تأكد من اتصالك أو سجّل دخولك مجدداً';
+          _errorMsg = l.changePassErrFailed;
         });
       }
     }
@@ -67,6 +69,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -77,8 +80,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           onTap: () => context.pop(),
           child: const Icon(Icons.arrow_forward_rounded, color: AppColors.textPrimary),
         ),
-        title: const Text('تغيير كلمة المرور',
-            style: TextStyle(
+        title: Text(l.profileChangePassword,
+            style: const TextStyle(
                 fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
         centerTitle: true,
         bottom: PreferredSize(
@@ -98,15 +101,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 color: AppColors.statusApprovedBg,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.info_outline_rounded,
+                  const Icon(Icons.info_outline_rounded,
                       color: AppColors.statusApproved, size: 18),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'ستحتاج إلى تسجيل الدخول مجدداً بعد تغيير كلمة المرور',
-                      style: TextStyle(
+                      l.changePassInfoBanner,
+                      style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.statusApproved,
                           height: 1.4),
@@ -118,8 +121,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             const SizedBox(height: 28),
 
             // New password
-            const Text('كلمة المرور الجديدة',
-                style: TextStyle(
+            Text(l.changePassNewLabel,
+                style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textSecondary)),
@@ -129,7 +132,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               obscureText: !_showNew,
               style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
               decoration: InputDecoration(
-                hintText: '٨ أحرف على الأقل',
+                hintText: l.changePassNewHint,
                 hintStyle: const TextStyle(color: AppColors.textHint, fontSize: 14),
                 filled: true,
                 fillColor: AppColors.surface,
@@ -161,8 +164,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             const SizedBox(height: 16),
 
             // Confirm password
-            const Text('تأكيد كلمة المرور',
-                style: TextStyle(
+            Text(l.changePassConfirmLabel,
+                style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textSecondary)),
@@ -172,7 +175,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               obscureText: !_showConfirm,
               style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
               decoration: InputDecoration(
-                hintText: 'أعد كتابة كلمة المرور',
+                hintText: l.changePassConfirmHint,
                 hintStyle: const TextStyle(color: AppColors.textHint, fontSize: 14),
                 filled: true,
                 fillColor: AppColors.surface,
@@ -245,8 +248,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                         width: 20, height: 20,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
-                    : const Text('تغيير كلمة المرور',
-                        style: TextStyle(
+                    : Text(l.profileChangePassword,
+                        style: const TextStyle(
                             fontSize: 15, fontWeight: FontWeight.w700)),
               ),
             ),
