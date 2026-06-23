@@ -190,26 +190,75 @@ class SessionService {
     return roomUrl;
   }
 
+  // ── Teacher: activate session (room only — no Jitsi URL) ─────────────────────
+  // Used by SessionRoomScreen. Keeps startSession() intact for legacy screens.
+  static Future<void> activateSession(String sessionId) async {
+    final updated = await _db.from('sessions').update({
+      'state':      SessionState.activeSession.englishKey,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', sessionId)
+      .eq('state', SessionState.confirmedBooking.englishKey)
+      .select('id');
+
+    if ((updated as List).isEmpty) {
+      throw Exception('لا يمكن بدء الجلسة في حالتها الحالية');
+    }
+    // Trigger sets started_at + logs ACTIVE_SESSION + notifies student
+  }
+
+  // ── Either party: initiate a video call via Jitsi ─────────────────────────
+  // Stores a unique room_url in sessions → triggers Realtime on other party's screen.
+  // Returns the Jitsi URL that both parties should load.
+  static Future<String> initiateVideoCall(String sessionId) async {
+    final roomName = 'HajezUstad${sessionId.replaceAll('-', '').substring(0, 12)}';
+    final ts       = DateTime.now().millisecondsSinceEpoch;
+    final roomUrl  = 'https://meet.jit.si/$roomName'
+        '#config.disableDeepLinking=true'
+        '&config.prejoinPageEnabled=false'
+        '&config.startWithAudioMuted=false'
+        '&config.startWithVideoMuted=false'
+        '&ts=$ts';
+
+    final updated = await _db.from('sessions').update({
+      'room_url':   roomUrl,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', sessionId)
+      .eq('state', SessionState.activeSession.englishKey)
+      .select('id');
+
+    if ((updated as List).isEmpty) {
+      throw Exception('لا يمكن بدء المكالمة — الجلسة ليست نشطة');
+    }
+
+    return roomUrl;
+  }
+
   // ── Student: record join timestamp ───────────────────────────────────────────
-  // Called when the student's WebView finishes loading the Jitsi room.
+  // Called when the student enters the session room (initState).
   // Sets sessions.student_joined_at → prevents the cron job from firing
-  // STUDENT_NO_SHOW for this session.
+  // STUDENT_NO_SHOW for this session. Allowed in both confirmedBooking (early
+  // arrival) and activeSession states so early arrivals are not penalised.
   static Future<void> markStudentJoined(String sessionId) async {
     await _db.from('sessions').update({
       'student_joined_at': DateTime.now().toIso8601String(),
     }).eq('id', sessionId)
       .eq('student_id', SupabaseService.userId!)
-      .eq('state', SessionState.activeSession.englishKey); // no-op if already not active
+      .inFilter('state', [
+        SessionState.confirmedBooking.englishKey,
+        SessionState.activeSession.englishKey,
+      ]);
   }
 
   // ── Teacher: end session ──────────────────────────────────────────────────────
+  // Records teacher_left_at so admin can verify attendance duration.
   // Guard: only allowed from ACTIVE_SESSION.
   static Future<void> endSession(String sessionId) async {
     final updated = await _db.from('sessions').update({
-      'state':      SessionState.completed.englishKey,
-      'updated_at': DateTime.now().toIso8601String(),
+      'state':           SessionState.completed.englishKey,
+      'teacher_left_at': DateTime.now().toIso8601String(),
+      'updated_at':      DateTime.now().toIso8601String(),
     }).eq('id', sessionId)
-      .eq('state', SessionState.activeSession.englishKey) // guard: only from ACTIVE_SESSION
+      .eq('state', SessionState.activeSession.englishKey)
       .select('id');
 
     if ((updated as List).isEmpty) {
@@ -218,18 +267,27 @@ class SessionService {
     // Trigger sets ended_at + logs COMPLETED
   }
 
-  // ── Student: report teacher no-show ──────────────────────────────────────────
-  static Future<void> reportTeacherNoShow(String sessionId) async {
+  // ── Student: request refund after teacher no-show ────────────────────────────
+  // Sets refund_status = 'student_requested' so admin can process it.
+  // Dispute is opened automatically by cron — student can only reschedule or refund.
+  static Future<void> requestRefund(String sessionId) async {
     final updated = await _db.from('sessions').update({
-      'state':      SessionState.teacherNoShow.englishKey,
-      'updated_at': DateTime.now().toIso8601String(),
+      'refund_status': 'student_requested',
+      'updated_at':    DateTime.now().toIso8601String(),
     }).eq('id', sessionId)
-      .eq('state', SessionState.confirmedBooking.englishKey) // guard: only from CONFIRMED_BOOKING
-      .select();
+      .eq('state', SessionState.teacherNoShow.englishKey)
+      .isFilter('refund_status', null)
+      .select('id');
+
     if ((updated as List).isEmpty) {
-      throw Exception('لا يمكن الإبلاغ عن غياب إلا في جلسة مؤكّدة');
+      throw Exception('لا يمكن طلب الاسترداد في هذه الحالة');
     }
-    // Trigger logs TEACHER_NO_SHOW + notifies student (re-scheduling message)
+
+    await _db.from('session_events').insert({
+      'session_id': sessionId,
+      'event_type': 'REFUND_REQUESTED',
+      'actor':      'student',
+    });
   }
 
   // ── Teacher: report student no-show ──────────────────────────────────────────

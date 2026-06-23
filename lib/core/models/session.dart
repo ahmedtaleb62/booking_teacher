@@ -17,10 +17,13 @@ class Session {
   final String? parentSessionId;
   final String? roomUrl;
   final DateTime? startedAt;
+  final DateTime? teacherLeftAt;
   final DateTime? studentJoinedAt;
   final DateTime? paymentDeadline;
   final Payment? payment;
   final List<SessionEvent> events;
+  final String? cancellationReason;
+  final String? refundStatus;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -41,23 +44,40 @@ class Session {
     this.parentSessionId,
     this.roomUrl,
     this.startedAt,
+    this.teacherLeftAt,
     this.studentJoinedAt,
     this.paymentDeadline,
     this.payment,
     required this.events,
+    this.cancellationReason,
+    this.refundStatus,
     required this.createdAt,
     required this.updatedAt,
   });
 
   bool get canEnterSession {
+    if (state == SessionState.activeSession) return true;
+    if (state != SessionState.confirmedBooking) return false;
     final now = DateTime.now();
     final diff = scheduledAt.difference(now).inMinutes;
-    return state == SessionState.confirmedBooking && diff <= 10 && diff >= -durationMinutes;
+    return diff <= 10 && diff >= -durationMinutes;
   }
 
   bool get isLive => state == SessionState.activeSession;
 
-  Session copyWith({SessionState? state, String? roomUrl, DateTime? studentJoinedAt, DateTime? paymentDeadline, Payment? payment, List<SessionEvent>? events}) {
+  bool get hasRefundRequested => refundStatus == 'student_requested';
+  bool get hasRefundProcessed => refundStatus == 'admin_processed';
+
+  Session copyWith({
+    SessionState? state,
+    String? roomUrl,
+    DateTime? studentJoinedAt,
+    DateTime? paymentDeadline,
+    Payment? payment,
+    List<SessionEvent>? events,
+    String? cancellationReason,
+    String? refundStatus,
+  }) {
     return Session(
       id: id,
       studentId: studentId,
@@ -74,10 +94,13 @@ class Session {
       parentSessionId: parentSessionId,
       roomUrl: roomUrl ?? this.roomUrl,
       startedAt: startedAt,
+      teacherLeftAt: teacherLeftAt,
       studentJoinedAt: studentJoinedAt ?? this.studentJoinedAt,
       paymentDeadline: paymentDeadline ?? this.paymentDeadline,
       payment: payment ?? this.payment,
       events: events ?? this.events,
+      cancellationReason: cancellationReason ?? this.cancellationReason,
+      refundStatus: refundStatus ?? this.refundStatus,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );
@@ -103,6 +126,7 @@ class Session {
       parentSessionId: json['parent_session_id'] as String?,
       roomUrl: json['room_url'] as String?,
       startedAt: json['started_at'] != null ? DateTime.parse(json['started_at'] as String) : null,
+      teacherLeftAt: json['teacher_left_at'] != null ? DateTime.parse(json['teacher_left_at'] as String) : null,
       studentJoinedAt: json['student_joined_at'] != null ? DateTime.parse(json['student_joined_at'] as String) : null,
       paymentDeadline: json['payment_deadline'] != null ? DateTime.parse(json['payment_deadline'] as String) : null,
       payment: json['payment'] != null
@@ -111,6 +135,8 @@ class Session {
       events: (json['events'] as List<dynamic>? ?? [])
           .map((e) => SessionEvent.fromJson(e as Map<String, dynamic>))
           .toList(),
+      cancellationReason: json['cancellation_reason'] as String?,
+      refundStatus: json['refund_status'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -196,8 +222,10 @@ class SessionEvent {
       case 'STUDENT_NO_SHOW':   return 'سُجّل غيابك';
       case 'DISPUTE_OPENED':    return 'فُتح نزاع';
       case 'CANCELLED':         return 'تم إلغاء الجلسة';
-      case 'RESCHEDULED':       return 'أُعيدت الجدولة';
-      default:                  return eventType;
+      case 'RESCHEDULED':           return 'أُعيدت الجدولة';
+      case 'REFUND_REQUESTED':      return 'طلبت استرداد المبلغ';
+      case 'REFUND_PROCESSED':      return 'تم استرداد مبلغك';
+      default:                      return eventType;
     }
   }
 
@@ -220,8 +248,10 @@ class SessionEvent {
       case 'STUDENT_NO_SHOW':   return 'سجّلت غياب الطالب';
       case 'DISPUTE_OPENED':    return 'فُتح نزاع على الجلسة';
       case 'CANCELLED':         return 'ألغى الطالب الجلسة';
-      case 'RESCHEDULED':       return 'أُعيدت الجدولة';
-      default:                  return eventType;
+      case 'RESCHEDULED':           return 'أُعيدت الجدولة';
+      case 'REFUND_REQUESTED':      return 'طلب الطالب استرداد المبلغ';
+      case 'REFUND_PROCESSED':      return 'تم معالجة الاسترداد';
+      default:                      return eventType;
     }
   }
 

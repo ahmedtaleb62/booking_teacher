@@ -16,7 +16,7 @@ import '../features/booking/screens/request_sent_screen.dart';
 import '../features/booking/screens/payment_screen.dart';
 import '../features/booking/screens/payment_submitted_screen.dart';
 import '../features/booking/screens/session_status_screen.dart';
-import '../features/booking/screens/live_session_screen.dart';
+import '../features/sessions/screens/session_room_screen.dart';
 import '../features/booking/screens/reschedule_session_screen.dart';
 import '../features/sessions/screens/sessions_list_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
@@ -39,7 +39,6 @@ import '../features/teacher/screens/teacher_requests_screen.dart';
 import '../features/teacher/screens/teacher_request_detail_screen.dart';
 import '../features/teacher/screens/teacher_session_status_screen.dart';
 import '../features/teacher/screens/teacher_sessions_screen.dart';
-import '../features/teacher/screens/teacher_live_session_screen.dart';
 import '../features/teacher/screens/teacher_earnings_screen.dart';
 import '../features/teacher/screens/teacher_dispute_screen.dart';
 import '../features/teacher/screens/teacher_no_show_screen.dart';
@@ -158,7 +157,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/live/:id',
-        builder: (_, state) => LiveSessionScreen(sessionId: state.pathParameters['id']!),
+        builder: (_, state) => SessionRoomScreen(sessionId: state.pathParameters['id']!, isTeacher: false),
+      ),
+      GoRoute(
+        path: '/session-history/:id',
+        builder: (_, state) => SessionRoomScreen(
+          sessionId: state.pathParameters['id']!,
+          isTeacher: false,
+          readOnly: true,
+        ),
       ),
       GoRoute(
         path: '/reschedule/:sessionId',
@@ -277,7 +284,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/teacher/live/:id',
-        builder: (_, state) => TeacherLiveSessionScreen(sessionId: state.pathParameters['id']!),
+        builder: (_, state) => SessionRoomScreen(sessionId: state.pathParameters['id']!, isTeacher: true),
       ),
       GoRoute(
         path: '/teacher/dispute/:id',

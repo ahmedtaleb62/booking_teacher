@@ -9,11 +9,20 @@ function Badge({ status }) {
     submitted: ['قيد التأكيد', '#FEF3C7', '#92400E'],
     confirmed: ['مؤكّد',       '#D1FAE5', '#065F46'],
     rejected:  ['مرفوض',       '#FEE2E2', '#991B1B'],
+    refunded:  ['مسترد',       '#EDE9FE', '#5B21B6'],
     pending:   ['قيد المراجعة','#EDE9FE', '#5B21B6'],
     active:    ['نشط',         '#D1FAE5', '#065F46'],
+    cancelled: ['ملغى',        '#FEE2E2', '#991B1B'],
   }
   const [label, bg, fg] = map[status] || ['—', '#F1F5F9', '#475569']
   return <span className="badge" style={{ background: bg, color: fg }}>{label}</span>
+}
+
+const REFUND_REASON_LABELS = {
+  teacher_no_show_refund: 'غياب الأستاذ (طلب طالب)',
+  insufficient_refund:    'مبلغ منقوص (استرداد)',
+  fake_proof:             'إثبات مزيف (انتهاء مهلة)',
+  no_payment_deadline:    'انتهاء مهلة الدفع',
 }
 
 export default function Payments({ adminId }) {
@@ -21,6 +30,7 @@ export default function Payments({ adminId }) {
   const [tab, setTab]           = useState('sessions')
   const [rows, setRows]         = useState([])
   const [subRows, setSubRows]   = useState([])
+  const [refundedRows, setRefundedRows] = useState([])
   const [stats, setStats]       = useState({})
   const [loading, setLoading]   = useState(true)
   const [actionId, setActionId] = useState(null)
@@ -33,17 +43,23 @@ export default function Payments({ adminId }) {
 
   async function loadData() {
     setLoading(true)
-    const [payRes, subPayRes] = await Promise.all([
+    const [payRes, subPayRes, refundedRes] = await Promise.all([
       supabase.from('payments')
-        .select('*, session:session_id(id,subject,student_id,teacher_id,scheduled_at,payment_deadline,state), student:student_id(full_name)')
+        .select('*, session:session_id(id,subject,student_id,teacher_id,scheduled_at,payment_deadline,state,cancellation_reason), student:student_id(full_name)')
         .order('created_at', { ascending: false }),
       supabase.from('subscriptions')
         .select('*, student:student_id(full_name), course:course_id(title, teacher_id), package:package_id(title)')
         .order('created_at', { ascending: false }),
+      // Sessions cancelled with refund (any reason involving a refund)
+      supabase.from('sessions')
+        .select('*, student:student_id(full_name), teacher:teacher_id(full_name)')
+        .in('cancellation_reason', ['teacher_no_show_refund', 'insufficient_refund'])
+        .order('updated_at', { ascending: false }),
     ])
 
     const pays = payRes.data || []
     let subs   = subPayRes.data || []
+    const refunded = refundedRes.data || []
 
     const teacherIds = [...new Set(subs.map(s => s.course?.teacher_id).filter(Boolean))]
     if (teacherIds.length > 0) {
@@ -60,15 +76,19 @@ export default function Payments({ adminId }) {
     const sessionCommToday = confirmedToday.reduce((s, p) => s + (p.amount || 0) * COMMISSION_RATE, 0)
     const activeSubs       = subs.filter(s => s.status === 'active')
     const subCommTotal     = activeSubs.reduce((s, r) => s + (r.platform_commission ?? r.amount * COMMISSION_RATE), 0)
+    const totalRefunded    = refunded.reduce((acc, s) => acc + (s.amount || 0), 0)
 
     setStats({
       pendingSessions:  pays.filter(p => p.status === 'submitted').length,
       pendingSubs:      subs.filter(s => s.status === 'pending').length,
       sessionCommToday: Math.round(sessionCommToday),
       subCommTotal:     Math.round(subCommTotal),
+      totalRefunded:    Math.round(totalRefunded),
+      refundCount:      refunded.length,
     })
     setRows(pays)
     setSubRows(subs)
+    setRefundedRows(refunded)
     setLoading(false)
   }
 
@@ -179,6 +199,64 @@ export default function Payments({ adminId }) {
     }
   }
 
+  // ── Force-activate an expired rejected payment ─────────────────────────────
+  async function forceActivateExpired(paymentId) {
+    setActionId(paymentId)
+    try {
+      const { error } = await supabase.rpc('admin_confirm_payment', {
+        p_payment_id: paymentId,
+        p_admin_id:   adminId,
+      })
+      if (error) throw error
+      closeModal()
+      await loadData()
+      toast('تم تفعيل الجلسة رغم انتهاء المهلة', 'success')
+    } catch (err) {
+      toast('خطأ: ' + (err.message || ''), 'error')
+    } finally {
+      setActionId(null)
+    }
+  }
+
+  // ── Cancel expired rejected payment with refund ─────────────────────────────
+  async function cancelExpiredWithRefund(payment) {
+    setActionId(payment.id)
+    try {
+      const sessionId = payment.session_id || payment.session?.id
+      const { error } = await supabase.from('sessions').update({
+        state:               'CANCELLED',
+        cancellation_reason: 'insufficient_refund',
+        updated_at:          new Date().toISOString(),
+      }).eq('id', sessionId)
+      if (error) throw error
+
+      await supabase.from('payments')
+        .update({ status: 'refunded' }).eq('id', payment.id)
+
+      await supabase.from('session_events').insert({
+        session_id: sessionId,
+        event_type: 'REFUND_PROCESSED',
+        actor:      'admin',
+      })
+
+      await supabase.from('notifications').insert({
+        user_id:    payment.student_id,
+        title:      'تم استرداد مبلغك ✅',
+        body:       'تم إلغاء الجلسة واسترداد المبلغ المدفوع.',
+        type:       'refund_processed',
+        session_id: sessionId,
+      })
+
+      closeModal()
+      await loadData()
+      toast('تم إلغاء الجلسة وتسجيل استرداد المبلغ', 'success')
+    } catch (err) {
+      toast('خطأ: ' + (err.message || ''), 'error')
+    } finally {
+      setActionId(null)
+    }
+  }
+
   if (loading) return <div className="loading-center"><div className="spinner" /></div>
 
   const fmt = n => n?.toLocaleString('ar') ?? '—'
@@ -186,7 +264,7 @@ export default function Payments({ adminId }) {
   return (
     <div>
       {/* ── Stats ─────────────────────────────────────────────── */}
-      <div className="grid-4 mb-18">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 18 }}>
         <div className="card-sm">
           <div className="text-muted" style={{ fontSize: 12 }}>جلسات قيد التأكيد</div>
           <div style={{ fontSize: 21, fontWeight: 700, color: '#D97706', marginTop: 3 }}>{stats.pendingSessions}</div>
@@ -207,17 +285,25 @@ export default function Payments({ adminId }) {
             {fmt(stats.subCommTotal)} <span style={{ fontSize: 11, color: 'var(--text3)' }}>أوقية</span>
           </div>
         </div>
+        <div className="card-sm">
+          <div className="text-muted" style={{ fontSize: 12 }}>إجمالي المُسترد</div>
+          <div style={{ fontSize: 21, fontWeight: 700, color: '#7B61FF', marginTop: 3 }}>
+            {fmt(stats.totalRefunded)} <span style={{ fontSize: 11, color: 'var(--text3)' }}>أوقية</span>
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>{stats.refundCount} استرداد</div>
+        </div>
       </div>
 
       {/* ── Tabs ──────────────────────────────────────────────── */}
-      <div className="flex justify-between items-center mb-14">
-        <div className="tabs">
-          <div className={`tab${tab === 'sessions' ? ' active' : ''}`} onClick={() => setTab('sessions')}>
-            مدفوعات الجلسات {stats.pendingSessions > 0 && <span className="badge" style={{ background: '#FEF3C7', color: '#92400E', marginRight: 5, fontSize: 10 }}>{stats.pendingSessions}</span>}
-          </div>
-          <div className={`tab${tab === 'subs' ? ' active' : ''}`} onClick={() => setTab('subs')}>
-            مدفوعات الاشتراكات {stats.pendingSubs > 0 && <span className="badge" style={{ background: '#EDE9FE', color: '#5B21B6', marginRight: 5, fontSize: 10 }}>{stats.pendingSubs}</span>}
-          </div>
+      <div className="tabs mb-14">
+        <div className={`tab${tab === 'sessions' ? ' active' : ''}`} onClick={() => setTab('sessions')}>
+          مدفوعات الجلسات {stats.pendingSessions > 0 && <span className="badge" style={{ background: '#FEF3C7', color: '#92400E', marginRight: 5, fontSize: 10 }}>{stats.pendingSessions}</span>}
+        </div>
+        <div className={`tab${tab === 'subs' ? ' active' : ''}`} onClick={() => setTab('subs')}>
+          مدفوعات الاشتراكات {stats.pendingSubs > 0 && <span className="badge" style={{ background: '#EDE9FE', color: '#5B21B6', marginRight: 5, fontSize: 10 }}>{stats.pendingSubs}</span>}
+        </div>
+        <div className={`tab${tab === 'refunds' ? ' active' : ''}`} onClick={() => setTab('refunds')}>
+          المبالغ المستردة {stats.refundCount > 0 && <span className="badge" style={{ background: '#EDE9FE', color: '#5B21B6', marginRight: 5, fontSize: 10 }}>{stats.refundCount}</span>}
         </div>
       </div>
 
@@ -374,55 +460,126 @@ export default function Payments({ adminId }) {
             })()}
 
             {/* Actions */}
-            {rejectInput ? (
-              <div>
-                <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 8 }}>سبب الرفض (سيُرسَل للطالب)</div>
-                <textarea
-                  className="field-input"
-                  rows={2}
-                  style={{ marginBottom: 12, resize: 'vertical' }}
-                  placeholder="مثال: الإثبات غير واضح أو لا يطابق المبلغ…"
-                  value={rejectReason}
-                  onChange={e => setRejectReason(e.target.value)}
-                  autoFocus
-                />
+            {(() => {
+              const isExpiredRejection = modal.type === 'session'
+                && modal.row.status === 'rejected'
+                && modal.row.session?.payment_deadline
+                && new Date(modal.row.session.payment_deadline) < new Date()
+
+              if (isExpiredRejection) {
+                return (
+                  <div>
+                    <div style={{ background: '#FEF3C7', borderRadius: 10, padding: '10px 13px', marginBottom: 14, fontSize: 12.5, color: '#92400E' }}>
+                      ⚠ انتهت المهلة بعد الرفض — اختر القرار النهائي:
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <button
+                        className="btn btn-primary"
+                        style={{ justifyContent: 'center' }}
+                        disabled={!!actionId}
+                        onClick={() => forceActivateExpired(modal.row.id)}
+                      >
+                        {actionId ? '…' : '✓ تفعيل الجلسة رغم المهلة'}
+                      </button>
+                      <button
+                        className="btn"
+                        style={{ background: '#EDE9FE', color: '#5B21B6', justifyContent: 'center' }}
+                        disabled={!!actionId}
+                        onClick={() => cancelExpiredWithRefund(modal.row)}
+                      >
+                        {actionId ? '…' : '↩ إلغاء واسترداد المبلغ المدفوع'}
+                      </button>
+                      <button className="btn btn-secondary" style={{ justifyContent: 'center' }} onClick={closeModal}>إغلاق</button>
+                    </div>
+                  </div>
+                )
+              }
+
+              return rejectInput ? (
+                <div>
+                  <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 8 }}>سبب الرفض (سيُرسَل للطالب)</div>
+                  <textarea
+                    className="field-input"
+                    rows={2}
+                    style={{ marginBottom: 12, resize: 'vertical' }}
+                    placeholder="مثال: الإثبات غير واضح أو لا يطابق المبلغ…"
+                    value={rejectReason}
+                    onChange={e => setRejectReason(e.target.value)}
+                    autoFocus
+                  />
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      className="btn btn-danger"
+                      style={{ flex: 1, justifyContent: 'center' }}
+                      disabled={!!actionId || !rejectReason.trim()}
+                      onClick={() => modal.type === 'session'
+                        ? rejectPayment(modal.row.id, rejectReason)
+                        : rejectSub(modal.row.id, rejectReason)
+                      }
+                    >
+                      {actionId ? '…' : 'تأكيد الرفض'}
+                    </button>
+                    <button className="btn btn-secondary" onClick={() => { setRejectInput(false); setRejectReason('') }}>رجوع</button>
+                  </div>
+                </div>
+              ) : (
                 <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    className="btn btn-primary"
+                    style={{ flex: 1, justifyContent: 'center' }}
+                    disabled={!!actionId}
+                    onClick={() => modal.type === 'session' ? confirmPayment(modal.row.id) : confirmSub(modal.row.id)}
+                  >
+                    {actionId
+                      ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2, borderColor: 'rgba(255,255,255,.3)', borderTopColor: '#fff' }} />
+                      : '✓ تأكيد الدفع'}
+                  </button>
                   <button
                     className="btn btn-danger"
                     style={{ flex: 1, justifyContent: 'center' }}
-                    disabled={!!actionId || !rejectReason.trim()}
-                    onClick={() => modal.type === 'session'
-                      ? rejectPayment(modal.row.id, rejectReason)
-                      : rejectSub(modal.row.id, rejectReason)
-                    }
+                    disabled={!!actionId}
+                    onClick={() => setRejectInput(true)}
                   >
-                    {actionId ? '…' : 'تأكيد الرفض'}
+                    ✕ رفض
                   </button>
-                  <button className="btn btn-secondary" onClick={() => { setRejectInput(false); setRejectReason('') }}>رجوع</button>
                 </div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button
-                  className="btn btn-primary"
-                  style={{ flex: 1, justifyContent: 'center' }}
-                  disabled={!!actionId}
-                  onClick={() => modal.type === 'session' ? confirmPayment(modal.row.id) : confirmSub(modal.row.id)}
-                >
-                  {actionId ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2, borderColor: 'rgba(255,255,255,.3)', borderTopColor: '#fff' }} /> : '✓ تأكيد الدفع'}
-                </button>
-                <button
-                  className="btn btn-danger"
-                  style={{ flex: 1, justifyContent: 'center' }}
-                  disabled={!!actionId}
-                  onClick={() => setRejectInput(true)}
-                >
-                  ✕ رفض
-                </button>
-              </div>
-            )}
+              )
+            })()}
           </div>
         </div>
+      )}
+
+      {/* ── Refunds tab ────────────────────────────────────────── */}
+      {tab === 'refunds' && (
+        refundedRows.length === 0
+          ? (
+            <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text3)' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>💰</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text2)' }}>لا توجد مبالغ مستردة</div>
+            </div>
+          )
+          : (
+            <div className="table-wrap">
+              <div className="table-head" style={{ gridTemplateColumns: '1.4fr 1.4fr 1.2fr 0.9fr 1.5fr 0.9fr' }}>
+                <span>الطالب</span><span>الأستاذ</span><span>المادة</span>
+                <span>المبلغ</span><span>السبب</span><span>التاريخ</span>
+              </div>
+              {refundedRows.map(r => (
+                <div key={r.id} className="table-row" style={{ gridTemplateColumns: '1.4fr 1.4fr 1.2fr 0.9fr 1.5fr 0.9fr' }}>
+                  <span className="fw-700">{r.student?.full_name || r.student_id?.slice(0, 8) || '—'}</span>
+                  <span>{r.teacher?.full_name || r.teacher_id?.slice(0, 8) || '—'}</span>
+                  <span className="text-2">{r.subject || '—'}</span>
+                  <span className="fw-700" style={{ color: '#7B61FF' }}>{fmt(r.amount)} أوقية</span>
+                  <span>
+                    <span className="badge" style={{ background: '#EDE9FE', color: '#5B21B6' }}>
+                      {REFUND_REASON_LABELS[r.cancellation_reason] || r.cancellation_reason || '—'}
+                    </span>
+                  </span>
+                  <span className="text-muted" style={{ fontSize: 11 }}>{r.updated_at?.slice(0, 10)}</span>
+                </div>
+              ))}
+            </div>
+          )
       )}
     </div>
   )

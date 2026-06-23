@@ -100,7 +100,6 @@ export default function Accounting() {
       teacher_id: teacherId,
       type: 'payout_sent',
       gross_amount: amount,
-      commission_amount: 0,
       net_amount: -amount,
       notes: 'تسوية من الإدارة — ' + new Date().toLocaleDateString('ar-EG'),
     })

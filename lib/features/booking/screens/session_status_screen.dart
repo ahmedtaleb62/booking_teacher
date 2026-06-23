@@ -10,7 +10,6 @@ import '../../../core/providers/sessions_provider.dart';
 import '../../../core/services/session_service.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/session_stepper.dart';
-import '../../../shared/widgets/session_status_badge.dart';
 
 class SessionStatusScreen extends ConsumerStatefulWidget {
   final String sessionId;
@@ -530,18 +529,34 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
     }
 
     if (s.state == SessionState.completed) {
-      if (_rated) {
-        return _buildInfoBanner(
-          icon: Icons.check_circle_outline_rounded,
-          message: l.sessionRatingThanks,
-          color: AppColors.statusConfirmed,
-          bgColor: AppColors.statusConfirmedBg,
-        );
-      }
-      return AppButton(
-        label: l.actionRateTeacher,
-        color: AppColors.statusConfirmed,
-        onTap: () => _showRatingDialog(context, s),
+      return Column(
+        children: [
+          if (_rated)
+            _buildInfoBanner(
+              icon: Icons.check_circle_outline_rounded,
+              message: l.sessionRatingThanks,
+              color: AppColors.statusConfirmed,
+              bgColor: AppColors.statusConfirmedBg,
+            )
+          else
+            AppButton(
+              label: l.actionRateTeacher,
+              color: AppColors.statusConfirmed,
+              onTap: () => _showRatingDialog(context, s),
+            ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () => context.push('/session-history/${s.id}'),
+            icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
+            label: const Text('عرض المحادثة'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              side: const BorderSide(color: AppColors.primary),
+              foregroundColor: AppColors.primary,
+            ),
+          ),
+        ],
       );
     }
 
@@ -592,18 +607,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
     }
 
     if (s.state == SessionState.cancelled) {
-      return Column(
-        children: [
-          _buildInfoBanner(
-            icon: Icons.cancel_outlined,
-            message: l.sessionCancelledInfo,
-            color: AppColors.error,
-            bgColor: const Color(0xFFFDECEC),
-          ),
-          const SizedBox(height: 12),
-          AppButton(label: l.sessionNewSession, onTap: () => context.go('/home')),
-        ],
-      );
+      return _buildCancelledSection(context, s);
     }
 
     if (s.state == SessionState.studentNoShow) {
@@ -649,37 +653,76 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
     if (s.state == SessionState.teacherNoShow) {
       final alreadyRescheduled = s.events.any((e) => e.eventType == 'RESCHEDULED');
       if (alreadyRescheduled) {
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.statusConfirmedBg,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.check_circle_outline_rounded, color: AppColors.statusConfirmed, size: 18),
-              const SizedBox(width: 8),
-              Text(l.sessionRescheduledSuccess,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-                      color: AppColors.statusConfirmed)),
-            ],
-          ),
+        return _buildInfoBanner(
+          icon: Icons.check_circle_outline_rounded,
+          message: l.sessionRescheduledSuccess,
+          color: AppColors.statusConfirmed,
+          bgColor: AppColors.statusConfirmedBg,
         );
       }
+
+      if (s.hasRefundRequested) {
+        return _buildInfoBanner(
+          icon: Icons.hourglass_top_rounded,
+          message: 'طلبت استرداد المبلغ — بانتظار معالجة الإدارة.',
+          color: const Color(0xFF7B61FF),
+          bgColor: const Color(0xFFF0EDFF),
+        );
+      }
+
       return Column(
         children: [
-          SessionStatusBadge(state: s.state, large: true),
-          const SizedBox(height: 12),
-          Text(
-            l.sessionTeacherNoShowInfo,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, height: 1.6, color: AppColors.textSecondary),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFFCA5A5)),
+            ),
+            child: Column(
+              children: [
+                const Icon(Icons.person_off_rounded, color: AppColors.error, size: 36),
+                const SizedBox(height: 10),
+                Text(
+                  l.sessionTeacherNoShowInfo,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, height: 1.6, color: Color(0xFF7F1D1D)),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 14),
-          AppButton(
-            label: l.actionReschedule,
-            onTap: () => context.push('/reschedule/${s.id}'),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => context.push('/reschedule/${s.id}'),
+                  icon: const Icon(Icons.calendar_today_rounded, size: 16),
+                  label: Text(l.actionReschedule),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    side: const BorderSide(color: AppColors.primary),
+                    foregroundColor: AppColors.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _showRefundDialog(context, s),
+                  icon: const Icon(Icons.account_balance_wallet_outlined, size: 16),
+                  label: const Text('استرداد المبلغ'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    backgroundColor: const Color(0xFF7B61FF),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       );
@@ -688,7 +731,139 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
     return const SizedBox.shrink();
   }
 
+  // ── Cancelled sub-reason section ────────────────────────────────
+
+  Widget _buildCancelledSection(BuildContext context, Session s) {
+    final reason = s.cancellationReason ?? '';
+    final bool withRefund = reason == 'teacher_no_show_refund' || reason == 'insufficient_refund';
+
+    final (IconData icon, String title, String body, Color color, Color bg) = switch (reason) {
+      'no_payment_deadline' => (
+        Icons.timer_off_rounded,
+        'ألغيت — انتهت مهلة الدفع',
+        'لم يُرسَل إثبات الدفع خلال المهلة المحددة فأُلغيت الجلسة تلقائياً.',
+        AppColors.error,
+        const Color(0xFFFDECEC),
+      ),
+      'fake_proof' => (
+        Icons.gpp_bad_rounded,
+        'ألغيت — إثبات دفع مزيف',
+        'رُفض إثبات الدفع لأنه غير صحيح وانتهت المهلة المعطاة للتصحيح.',
+        AppColors.error,
+        const Color(0xFFFDECEC),
+      ),
+      'insufficient_refund' => (
+        Icons.account_balance_wallet_outlined,
+        'ألغيت — مبلغ منقوص (استرداد)',
+        'لم يكتمل المبلغ وانتهت المهلة. سيُعاد إليك المبلغ المدفوع قريباً.',
+        const Color(0xFF7B61FF),
+        const Color(0xFFF0EDFF),
+      ),
+      'teacher_no_show_refund' => (
+        Icons.account_balance_wallet_rounded,
+        'ألغيت — استرداد مبلغك',
+        'غاب الأستاذ وطلبت الاسترداد. ستُحوَّل قيمة الجلسة إليك قريباً.',
+        const Color(0xFF059669),
+        const Color(0xFFD1FAE5),
+      ),
+      _ => (
+        Icons.cancel_outlined,
+        'الجلسة ملغاة',
+        'تم إلغاء الجلسة.',
+        AppColors.error,
+        const Color(0xFFFDECEC),
+      ),
+    };
+
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Icon(icon, color: color, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(title,
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+                ),
+              ]),
+              const SizedBox(height: 8),
+              Text(body,
+                style: TextStyle(fontSize: 12.5, color: color, height: 1.5)),
+              if (withRefund) ...[
+                const SizedBox(height: 10),
+                Row(children: [
+                  Icon(Icons.check_circle_outline_rounded,
+                    color: const Color(0xFF059669), size: 14),
+                  const SizedBox(width: 6),
+                  const Text('سيُودَع المبلغ في حسابك تلقائياً',
+                    style: TextStyle(fontSize: 11.5, color: Color(0xFF059669), fontWeight: FontWeight.w600)),
+                ]),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        AppButton(label: 'حجز جلسة جديدة', onTap: () => context.go('/home')),
+      ],
+    );
+  }
+
   // ── Dialogs ─────────────────────────────────────────────────────
+
+  void _showRefundDialog(BuildContext context, Session s) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.account_balance_wallet_outlined, color: Color(0xFF7B61FF), size: 22),
+          SizedBox(width: 8),
+          Text('طلب استرداد المبلغ',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        ]),
+        content: const Text(
+          'سيتم إرسال طلبك إلى الإدارة لمعالجته.\n\nلن تتمكن من إعادة الجدولة بعد هذا الطلب.',
+          style: TextStyle(fontSize: 13, height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('رجوع'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await SessionService.requestRefund(s.id);
+                ref.invalidate(sessionProvider(s.id));
+                ref.invalidate(studentSessionsProvider);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('$e')));
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF7B61FF),
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+            child: const Text('تأكيد الطلب'),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showCancelDialog(BuildContext context) {
     final l = context.l10n;

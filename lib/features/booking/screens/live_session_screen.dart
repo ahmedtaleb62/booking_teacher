@@ -120,7 +120,8 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen>
         // Session ended externally — navigate away
         if (session.state == SessionState.completed ||
             session.state == SessionState.studentNoShow ||
-            session.state == SessionState.dispute) {
+            session.state == SessionState.dispute ||
+            session.state == SessionState.teacherNoShow) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
               ref.invalidate(studentSessionsProvider);
@@ -157,7 +158,7 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen>
                       child: ValueListenableBuilder<int>(
                         valueListenable: _elapsed,
                         builder: (_, secs, __) {
-                          final canReport = secs >= 900; // 15 min
+                          final over15 = secs >= 900;
                           return Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -176,31 +177,20 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen>
                                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
                               const SizedBox(height: 8),
                               Text(
-                                canReport
+                                over15
                                     ? context.l10n.liveOver15min
                                     : context.l10n.liveWaitingTeacher,
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: canReport ? const Color(0xFFFCA5A5) : Colors.white54,
+                                  color: over15 ? const Color(0xFFFCA5A5) : Colors.white54,
                                 ),
                               ),
-                              if (canReport) ...[
-                                const SizedBox(height: 28),
-                                GestureDetector(
-                                  onTap: () => _reportNoShow(context, session.id),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 13),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFDC2626),
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    child: Text(context.l10n.liveReportNoShow,
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-                                  ),
+                              if (over15) ...[
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'سيتم تسجيل الغياب تلقائياً من قِبَل النظام.',
+                                  style: TextStyle(fontSize: 11, color: Colors.white38),
                                 ),
-                                const SizedBox(height: 10),
-                                Text(context.l10n.liveRescheduleHint,
-                                  style: const TextStyle(fontSize: 11, color: Colors.white38)),
                               ],
                             ],
                           );
@@ -271,33 +261,6 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen>
         );
       },
     );
-  }
-
-  Future<void> _reportNoShow(BuildContext context, String sessionId) async {
-    final router    = GoRouter.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-    final l     = context.l10n;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(l.liveNoShowTitle),
-        content: Text(l.liveNoShowContent),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l.dialogBack)),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l.liveConfirmNoShow, style: const TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
-    );
-    if (confirm != true || !mounted) return;
-    try {
-      await SessionService.reportTeacherNoShow(sessionId);
-      if (mounted) router.go('/sessions');
-    } catch (e) {
-      if (mounted) messenger.showSnackBar(SnackBar(content: Text('${l.commonError}: $e')));
-    }
   }
 
   void _showLeaveDialog(BuildContext context) {

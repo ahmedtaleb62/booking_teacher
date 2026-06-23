@@ -21,7 +21,11 @@ class _SubscriptionPendingScreenState
   RealtimeChannel? _channel;
   bool _activated = false;
   bool _rejected = false;
+  bool _cancelled = false;
   String? _rejectReason;
+  String? _cancellationReason;
+  String? _courseId;
+  String? _packageId;
 
   @override
   void initState() {
@@ -34,25 +38,39 @@ class _SubscriptionPendingScreenState
     try {
       final row = await SupabaseService.client
           .from('subscriptions')
-          .select('status, reject_reason')
+          .select('status, reject_reason, cancellation_reason, course_id, package_id')
           .eq('id', widget.subscriptionId)
           .maybeSingle();
       if (!mounted || row == null) return;
-      final status = row['status'] as String?;
-      if (status == 'active') {
-        ref.invalidate(mySubscriptionsProvider);
-        setState(() => _activated = true);
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) context.go('/my-courses');
-        });
-      } else if (status == 'rejected') {
-        ref.invalidate(mySubscriptionsProvider);
-        setState(() {
-          _rejected = true;
-          _rejectReason = row['reject_reason'] as String?;
-        });
-      }
+      _applyStatus(row);
     } catch (_) {}
+  }
+
+  void _applyStatus(Map<String, dynamic> row) {
+    final status = row['status'] as String?;
+    if (status == 'active') {
+      ref.invalidate(mySubscriptionsProvider);
+      setState(() => _activated = true);
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) context.go('/my-courses');
+      });
+    } else if (status == 'rejected') {
+      ref.invalidate(mySubscriptionsProvider);
+      setState(() {
+        _rejected = true;
+        _rejectReason = row['reject_reason'] as String?;
+        _courseId = row['course_id'] as String?;
+        _packageId = row['package_id'] as String?;
+      });
+    } else if (status == 'cancelled') {
+      ref.invalidate(mySubscriptionsProvider);
+      setState(() {
+        _cancelled = true;
+        _cancellationReason = row['cancellation_reason'] as String?;
+        _courseId = row['course_id'] as String?;
+        _packageId = row['package_id'] as String?;
+      });
+    }
   }
 
   void _subscribeToChanges() {
@@ -71,22 +89,8 @@ class _SubscriptionPendingScreenState
           ),
           callback: (payload) {
             if (payload.newRecord['id'] != widget.subscriptionId) return;
-            final status = payload.newRecord['status'] as String?;
             if (!mounted) return;
-            if (status == 'active') {
-              ref.invalidate(mySubscriptionsProvider);
-              setState(() => _activated = true);
-              Future.delayed(const Duration(seconds: 2), () {
-                if (mounted) context.go('/my-courses');
-              });
-            } else if (status == 'rejected') {
-              ref.invalidate(mySubscriptionsProvider);
-              setState(() {
-                _rejected = true;
-                _rejectReason =
-                    payload.newRecord['reject_reason'] as String?;
-              });
-            }
+            _applyStatus(Map<String, dynamic>.from(payload.newRecord as Map));
           },
         )
         .subscribe();
@@ -103,6 +107,10 @@ class _SubscriptionPendingScreenState
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+
+    if (_cancelled) {
+      return _buildCancelledScreen(context);
+    }
 
     if (_activated) {
       return Scaffold(
@@ -262,6 +270,118 @@ class _SubscriptionPendingScreenState
                 child: Text(l.subPendingBackHome,
                     style: const TextStyle(
                         color: AppColors.textSecondary, fontSize: 13)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCancelledScreen(BuildContext context) {
+    final reason = _cancellationReason ?? '';
+    final bool withRefund = reason == 'insufficient_refund';
+
+    final (String title, String body, IconData icon, Color color) = switch (reason) {
+      'no_payment_deadline' => (
+        'ألغي الاشتراك — لم يُرسَل الدفع',
+        'انتهت المهلة المحددة دون إرسال إثبات الدفع، فأُلغي الاشتراك تلقائياً.',
+        Icons.timer_off_rounded,
+        AppColors.error,
+      ),
+      'fake_proof' => (
+        'ألغي الاشتراك — إثبات مزيف',
+        'رُفض إثبات الدفع لأنه غير صحيح وانتهت المهلة المعطاة للتصحيح.',
+        Icons.gpp_bad_rounded,
+        AppColors.error,
+      ),
+      'insufficient_refund' => (
+        'ألغي الاشتراك — مبلغ منقوص',
+        'لم يكتمل المبلغ المدفوع وانتهت المهلة. سيُعاد إليك المبلغ المدفوع قريباً.',
+        Icons.account_balance_wallet_outlined,
+        const Color(0xFF7B61FF),
+      ),
+      _ => (
+        'ألغي الاشتراك',
+        'تم إلغاء اشتراكك.',
+        Icons.cancel_outlined,
+        AppColors.error,
+      ),
+    };
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 90, height: 90,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                alignment: Alignment.center,
+                child: Icon(icon, size: 44, color: color),
+              ),
+              const SizedBox(height: 24),
+              Text(title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              const SizedBox(height: 12),
+              Text(body,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.6)),
+              if (withRefund) ...[
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD1FAE5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(children: [
+                    Icon(Icons.check_circle_outline_rounded, color: Color(0xFF059669), size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text('سيُودَع المبلغ المدفوع في حسابك تلقائياً',
+                        style: TextStyle(fontSize: 12.5, color: Color(0xFF059669), fontWeight: FontWeight.w600)),
+                    ),
+                  ]),
+                ),
+              ],
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    if (_courseId != null) {
+                      context.go('/course/$_courseId');
+                    } else if (_packageId != null) {
+                      context.go('/package/$_packageId');
+                    } else {
+                      context.go('/my-courses');
+                    }
+                  },
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('اشترك من جديد'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                    textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => context.go('/home'),
+                child: const Text('العودة للرئيسية',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
               ),
             ],
           ),

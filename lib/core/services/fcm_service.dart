@@ -95,6 +95,7 @@ class FcmService {
   static String? routeFromMessage(RemoteMessage message) {
     final type      = message.data['type']       as String?;
     final sessionId = message.data['session_id'] as String?;
+    final role      = message.data['role']        as String?; // 'teacher' | 'student'
 
     if (type != null && type.startsWith('SUB_')) {
       return '/my-courses';
@@ -102,6 +103,12 @@ class FcmService {
     if (sessionId == null) return null;
     if (type == 'SESSION_REQUESTED' || type == 'TEACHER_REQUEST') {
       return '/teacher/request/$sessionId';
+    }
+    // Both chat messages and video call rings open the live session room
+    if (type == 'SESSION_MESSAGE' || type == 'VIDEO_CALL') {
+      return role == 'teacher'
+          ? '/teacher/live/$sessionId'
+          : '/live/$sessionId';
     }
     return '/session/$sessionId';
   }

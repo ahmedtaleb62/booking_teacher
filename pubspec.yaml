@@ -36,6 +36,14 @@ dependencies:
   # WebView (Jitsi live sessions)
   webview_flutter: ^4.10.0
 
+  # Audio: in-app voice recording and playback
+  record: ^6.0.0
+  audioplayers: ^6.1.0
+  path_provider: ^2.1.5
+
+  # Open file/image URLs in external browser
+  url_launcher: ^6.3.1
+
   # Firebase (push notifications)
   firebase_core: ^3.6.0
   firebase_messaging: ^15.1.3
