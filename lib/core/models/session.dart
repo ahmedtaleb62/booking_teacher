@@ -89,8 +89,8 @@ class Session {
       studentId: json['student_id'] as String,
       teacherId: json['teacher_id'] as String,
       teacherName: json['teacher_name'] as String? ?? '',
-      teacherInitial: (json['teacher_name'] as String? ?? '?').isNotEmpty
-          ? (json['teacher_name'] as String)[0]
+      teacherInitial: ((json['teacher_name'] as String?) ?? '?').isNotEmpty
+          ? ((json['teacher_name'] as String?) ?? '?')[0]
           : '?',
       studentName: json['student_name'] as String? ?? '',
       subject: json['subject'] as String? ?? '',
