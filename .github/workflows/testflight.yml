@@ -146,7 +146,11 @@ jobs:
             --type ios \
             --file "$IPA_PATH" \
             --apiKey "$CLEAN_KEY_ID" \
-            --apiIssuer "$CLEAN_ISSUER_ID"
+            --apiIssuer "$CLEAN_ISSUER_ID" \
+            --apple-id "6781825815" \
+            --bundle-id "com.example.teacherBooking" \
+            --bundle-version "5" \
+            --bundle-short-version-string "1.0.0"
 
       # ── 11. Cleanup ───────────────────────────────────────────────
       - name: Delete temporary keychain
