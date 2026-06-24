@@ -9,6 +9,8 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/constants/session_states.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/locale_provider.dart';
+import '../../../core/models/course.dart' show SubscriptionStatus;
+import '../../../core/providers/courses_provider.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/services/supabase_service.dart';
 
@@ -204,6 +206,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final l             = context.l10n;
     final profileAsync  = ref.watch(currentProfileProvider);
     final sessionsAsync = ref.watch(studentSessionsProvider);
+    final subsAsync     = ref.watch(mySubscriptionsProvider);
 
     final name = profileAsync.when(
       data: (p) => p?['full_name'] as String? ?? l.profileUserFallback,
@@ -223,7 +226,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     sessionsAsync.whenData((sessions) {
       totalSessions     = sessions.length;
       completedSessions = sessions.where((s) => s.state == SessionState.completed).length;
-      totalAmount       = sessions.fold(0.0, (sum, s) => sum + s.amount);
+      totalAmount      += sessions.fold(0.0, (sum, s) => sum + s.amount);
+    });
+    // Add subscription payments (active or pending = paid)
+    subsAsync.whenData((subs) {
+      for (final s in subs) {
+        if (s.status == SubscriptionStatus.active ||
+            s.status == SubscriptionStatus.pending) {
+          totalAmount += s.amount;
+        }
+      }
     });
 
     return Scaffold(

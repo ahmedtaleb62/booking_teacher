@@ -48,26 +48,31 @@ class TeacherCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (teacher.isOnline)
-                        Row(
-                          children: [
-                            Container(
-                              width: 7, height: 7,
-                              decoration: const BoxDecoration(
-                                color: AppColors.online,
-                                shape: BoxShape.circle,
-                              ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 7, height: 7,
+                            decoration: BoxDecoration(
+                              color: teacher.isOnline
+                                  ? AppColors.online
+                                  : AppColors.textHint,
+                              shape: BoxShape.circle,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              context.l10n.statusOnline,
-                              style: const TextStyle(
-                                fontSize: 10, fontWeight: FontWeight.w600,
-                                color: AppColors.online,
-                              ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            teacher.isOnline
+                                ? context.l10n.statusOnline
+                                : context.l10n.statusOffline,
+                            style: TextStyle(
+                              fontSize: 10, fontWeight: FontWeight.w600,
+                              color: teacher.isOnline
+                                  ? AppColors.online
+                                  : AppColors.textHint,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: 2),

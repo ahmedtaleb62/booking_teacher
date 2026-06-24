@@ -11,7 +11,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 import 'package:url_launcher/url_launcher.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/session_states.dart';
 import '../../../core/models/session.dart';
@@ -47,13 +46,13 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
   // ── Session timer ─────────────────────────────────────────────────────────
   final _elapsed = ValueNotifier<int>(0);
   Timer? _elapsedTimer;
+  int _sessionDurationSeconds = 0; // 0 = unknown/not started
+  Timer? _autoEndTimer;
+  bool _warnShown = false;
 
   // ── Video call ────────────────────────────────────────────────────────────
-  String? _videoOverlayUrl;        // non-null = we are in a call (or showing the overlay)
-  WebViewController? _videoCtrl;
-  bool _videoReady = false;
-  bool _iInitiatedCall = false;
-  String? _acknowledgedCallUrl;    // URL whose incoming banner has been handled (accept/decline)
+  String? _myCallUrl;       // URL of the call I initiated (suppresses my own banner)
+  String? _acknowledgedCallUrl;
 
   // ── Text input ────────────────────────────────────────────────────────────
   final _textCtrl = TextEditingController();
@@ -78,6 +77,13 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
   // ── Navigation guard ──────────────────────────────────────────────────────
   bool _exited = false;
 
+  // ── Suppress stale call URL on first render ───────────────────────────────
+  bool _initialCallUrlCaptured = false;
+
+  // ── Realtime presence ─────────────────────────────────────────────────────
+  RealtimeChannel? _presenceChannel;
+  bool _otherOnline = false;
+
   // ── LIVE badge animation ──────────────────────────────────────────────────
   late final AnimationController _liveCtrl;
 
@@ -93,8 +99,11 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
     )..repeat(reverse: true);
 
     _loadMessages();
-    if (!widget.readOnly) _subscribeMessages();
-    _startTimer();
+    if (!widget.readOnly) {
+      _subscribeMessages();
+      _initPresence();
+      _startTimer();
+    }
     _initAudioPlayer();
 
     if (!widget.readOnly) {
@@ -103,19 +112,27 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
         SessionService.markStudentJoined(widget.sessionId).catchError((_) {});
       }
 
-      // Re-mark when session becomes active (student was waiting)
-      if (!widget.isTeacher) {
-        ref.listenManual(
-          sessionProvider(widget.sessionId),
-          (prev, next) {
-            if (next.valueOrNull?.state == SessionState.activeSession &&
-                prev?.valueOrNull?.state != SessionState.activeSession) {
+      // When session becomes active: re-mark student joined + arm auto-end timer
+      ref.listenManual(
+        sessionProvider(widget.sessionId),
+        (prev, next) {
+          final s = next.valueOrNull;
+          if (s?.state == SessionState.activeSession &&
+              prev?.valueOrNull?.state != SessionState.activeSession) {
+            if (!widget.isTeacher) {
               SessionService.markStudentJoined(widget.sessionId).catchError((_) {});
             }
-          },
-          fireImmediately: false,
-        );
-      }
+            // Arm the auto-end timer now that startedAt is available
+            if (s!.startedAt != null) {
+              final diff = DateTime.now().difference(s.startedAt!).inSeconds;
+              _elapsed.value = diff > 0 ? diff : 0;
+              _sessionDurationSeconds = s.durationMinutes * 60;
+              _scheduleAutoEnd();
+            }
+          }
+        },
+        fireImmediately: false,
+      );
     }
   }
 
@@ -123,6 +140,7 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
   void dispose() {
     _liveCtrl.dispose();
     _elapsedTimer?.cancel();
+    _autoEndTimer?.cancel();
     _elapsed.dispose();
     _textCtrl.dispose();
     _scrollCtrl.dispose();
@@ -131,7 +149,36 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
     if (_msgChannel != null) {
       SupabaseService.client.removeChannel(_msgChannel!);
     }
+    if (_presenceChannel != null) {
+      SupabaseService.client.removeChannel(_presenceChannel!);
+    }
     super.dispose();
+  }
+
+  // ── Realtime presence ─────────────────────────────────────────────────────
+  void _initPresence() {
+    _presenceChannel = SupabaseService.client
+        .channel('presence-${widget.sessionId}')
+        .onPresenceSync((_) => _syncPresence())
+        .onPresenceJoin((_) => _syncPresence())
+        .onPresenceLeave((_) => _syncPresence());
+
+    _presenceChannel!.subscribe(([RealtimeSubscribeStatus? status, Object? error]) async {
+      if (status == RealtimeSubscribeStatus.subscribed) {
+        await _presenceChannel?.track({'user_id': _myId});
+      }
+    });
+  }
+
+  void _syncPresence() {
+    if (!mounted || _presenceChannel == null) return;
+    final state = _presenceChannel!.presenceState();
+    final online = state.any((s) =>
+        s.presences.any((p) {
+          final uid = p.payload['user_id'] as String?;
+          return uid != null && uid != _myId;
+        }));
+    setState(() => _otherOnline = online);
   }
 
   // ── Audio player init ─────────────────────────────────────────────────────
@@ -161,7 +208,9 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
         setState(() => _messages = msgs);
         _scrollToBottom();
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) _showError('تعذّر تحميل الرسائل: $e');
+    }
   }
 
   void _subscribeMessages() {
@@ -196,14 +245,52 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
         final origin = s.startedAt ?? s.scheduledAt;
         final diff = DateTime.now().difference(origin).inSeconds;
         _elapsed.value = diff > 0 ? diff : 0;
+        if (s.state == SessionState.activeSession && s.startedAt != null) {
+          _sessionDurationSeconds = s.durationMinutes * 60;
+          _scheduleAutoEnd();
+        }
       } catch (_) {}
       if (!mounted) return;
-      _elapsedTimer = Timer.periodic(
-        const Duration(seconds: 1),
-        (_) => _elapsed.value++,
-      );
+      _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        _elapsed.value++;
+        _checkWarn();
+      });
     }
     seedAndStart();
+  }
+
+  void _scheduleAutoEnd() {
+    _autoEndTimer?.cancel();
+    final remaining = _sessionDurationSeconds - _elapsed.value;
+    if (remaining <= 0) {
+      _handleTimeUp();
+      return;
+    }
+    _autoEndTimer = Timer(Duration(seconds: remaining), _handleTimeUp);
+  }
+
+  void _checkWarn() {
+    if (_sessionDurationSeconds <= 0 || _warnShown) return;
+    final remaining = _sessionDurationSeconds - _elapsed.value;
+    if (remaining == 300) {
+      _warnShown = true;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('تبقّى 5 دقائق على انتهاء الجلسة'),
+          duration: Duration(seconds: 6),
+          backgroundColor: Color(0xFFD97706),
+        ));
+      }
+    }
+  }
+
+  void _handleTimeUp() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('انتهى وقت الجلسة — ستُغلق تلقائياً قريباً'),
+      duration: Duration(seconds: 10),
+      backgroundColor: AppColors.error,
+    ));
   }
 
   String _fmt(int secs) =>
@@ -223,38 +310,38 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
     }
   }
 
-  // ── End session (teacher) ─────────────────────────────────────────────────
-  Future<void> _endSession() async {
-    final ok = await showDialog<bool>(
+  // ── Leave (teacher) ───────────────────────────────────────────────────────
+  // Teacher cannot end the session manually — it closes automatically when
+  // the scheduled time is up (pg_cron). We only record departure time.
+  void _leaveTeacher() {
+    showDialog(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF1A2330),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('إنهاء الجلسة؟',
+        title: const Text('مغادرة الجلسة؟',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-        content: const Text('سيُنهي ذلك الجلسة وتُشعَر الطالب.',
+        content: const Text(
+            'الجلسة ستستمر وتُغلق تلقائياً عند انتهاء وقتها المحدد.',
             style: TextStyle(color: Color(0xFF9DB2B8))),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('لا', style: TextStyle(color: Color(0xFF7BE0C0))),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء', style: TextStyle(color: Color(0xFF7BE0C0))),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () {
+              Navigator.pop(context);
+              SessionService.recordTeacherLeft(widget.sessionId).catchError((_) {});
+              if (mounted) context.go('/teacher/sessions');
+            },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error, foregroundColor: Colors.white),
-            child: const Text('نعم، أنهِ'),
+                backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            child: const Text('مغادرة'),
           ),
         ],
       ),
     );
-    if (ok != true || !mounted) return;
-    try {
-      await SessionService.endSession(widget.sessionId);
-      if (mounted) context.go('/teacher/sessions');
-    } catch (e) {
-      if (mounted) _showError(e.toString());
-    }
   }
 
   // ── Leave (student) ───────────────────────────────────────────────────────
@@ -277,91 +364,21 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
 
   // ── Video call ─────────────────────────────────────────────────────────────
   Future<void> _callVideo(Session session) async {
-    setState(() => _iInitiatedCall = true);
     try {
       final url = await SessionService.initiateVideoCall(widget.sessionId);
-      _openVideoOverlay(url);
+      setState(() => _myCallUrl = url); // suppress my own banner
       _notifyOther(
         'مكالمة فيديو واردة 📹',
         '${_senderName()} يريد بدء مكالمة فيديو — اضغط للرد',
         type: 'VIDEO_CALL',
       );
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
     } catch (e) {
-      setState(() => _iInitiatedCall = false);
       if (mounted) _showError('فشل بدء المكالمة: $e');
     }
-  }
-
-  void _openVideoOverlay(String url) {
-    final ctrl = WebViewController(onPermissionRequest: (r) => r.grant());
-    ctrl
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      // Desktop UA: tells Jitsi this is a desktop browser so it skips the
-      // "How do you want to join?" mobile redirect page entirely.
-      ..setUserAgent(
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-        'AppleWebKit/537.36 (KHTML, like Gecko) '
-        'Chrome/125.0.0.0 Safari/537.36',
-      )
-      ..setNavigationDelegate(NavigationDelegate(
-        onPageFinished: (_) {
-          setState(() => _videoReady = true);
-          // Auto-skip Jitsi pre-join lobby if it appears despite the URL config.
-          ctrl.runJavaScript(_kJitsiAutoJoin);
-        },
-        onNavigationRequest: (req) {
-          // Block "open in native Jitsi app" deep-links so we stay in WebView.
-          final u = req.url;
-          if (u.startsWith('org.jitsi') ||
-              u.startsWith('intent://') ||
-              u.contains('play.google.com') ||
-              u.contains('apps.apple.com')) {
-            return NavigationDecision.prevent;
-          }
-          return NavigationDecision.navigate;
-        },
-      ))
-      ..loadRequest(Uri.parse(url));
-    setState(() {
-      _videoOverlayUrl = url;
-      _videoCtrl = ctrl;
-      _videoReady = false;
-    });
-  }
-
-  // Polls every 500 ms for up to 15 s until Jitsi's pre-join button appears,
-  // fills a guest name, then clicks "Join meeting" automatically.
-  static const _kJitsiAutoJoin = r'''
-(function tryJoin() {
-  var btn = document.querySelector('[data-testid="prejoin.joinMeeting"]')
-         || document.querySelector('button.prejoin-join-button')
-         || document.querySelector('button[aria-label="Join meeting"]');
-  if (btn) {
-    var inp = document.querySelector('#premeeting-name-input')
-           || document.querySelector('[data-testid="premeeting-input"]')
-           || document.querySelector('input[placeholder="Enter your name"]');
-    if (inp && !inp.value.trim()) {
-      var s = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-      s.call(inp, 'مشارك');
-      inp.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-    setTimeout(function() { btn.click(); }, 250);
-  } else {
-    window._jaTries = (window._jaTries || 0) + 1;
-    if (window._jaTries < 30) setTimeout(tryJoin, 500);
-  }
-})();
-''';
-
-
-  void _closeVideoOverlay() {
-    setState(() {
-      _acknowledgedCallUrl = _videoOverlayUrl ?? _acknowledgedCallUrl;
-      _videoOverlayUrl = null;
-      _videoCtrl = null;
-      _videoReady = false;
-      _iInitiatedCall = false;
-    });
   }
 
   void _declineCall(String callUrl) {
@@ -382,8 +399,8 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
       );
     } catch (e) {
       if (mounted) {
-        _textCtrl.text = text; // restore text on failure so user can retry
-        _showError('فشل إرسال الرسالة');
+        _textCtrl.text = text;
+        _showError('فشل إرسال الرسالة: $e');
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -403,7 +420,7 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
       await MessagingService.sendImage(widget.sessionId, bytes, ext);
       _notifyOther(_senderName(), 'أرسل لك صورة 🖼️');
     } catch (e) {
-      if (mounted) _showError('فشل إرسال الصورة');
+      if (mounted) _showError('فشل إرسال الصورة: $e');
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -426,7 +443,7 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
       );
       _notifyOther(_senderName(), 'أرسل لك ملفاً 📎: ${picked.name}');
     } catch (e) {
-      if (mounted) _showError('فشل إرسال الملف');
+      if (mounted) _showError('فشل إرسال الملف: $e');
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -466,7 +483,7 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
       await MessagingService.sendAudio(widget.sessionId, bytes, durationSec);
       _notifyOther(_senderName(), 'رسالة صوتية 🎤');
     } catch (e) {
-      if (mounted) _showError('فشل إرسال التسجيل الصوتي');
+      if (mounted) _showError('فشل إرسال التسجيل الصوتي: $e');
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -476,11 +493,11 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
   Future<void> _toggleAudio(String msgId, String url) async {
     if (_currentlyPlayingId == msgId && _audioPlaying) {
       await _audioPlayer.pause();
+    } else if (_currentlyPlayingId == msgId && !_audioPlaying) {
+      await _audioPlayer.resume(); // continue from where we paused
     } else {
-      if (_currentlyPlayingId != msgId) {
-        await _audioPlayer.stop();
-        setState(() { _currentlyPlayingId = msgId; _audioPos = Duration.zero; });
-      }
+      await _audioPlayer.stop();
+      setState(() { _currentlyPlayingId = msgId; _audioPos = Duration.zero; });
       await _audioPlayer.play(UrlSource(url));
     }
   }
@@ -528,6 +545,7 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
         if (widget.readOnly) {
           return Scaffold(
             backgroundColor: const Color(0xFF10171E),
+            resizeToAvoidBottomInset: false,
             body: Column(
               children: [
                 _buildTopBar(context, session),
@@ -538,11 +556,17 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
           );
         }
 
+        // On first render, mark existing roomUrl as already acknowledged so we
+        // never show a banner for a call that happened before we entered the room.
+        if (!_initialCallUrlCaptured) {
+          _initialCallUrlCaptured = true;
+          _acknowledgedCallUrl = session.roomUrl;
+        }
+
         // Compute before any early return so the banner works in pre-start too
         final incomingCall = session.roomUrl != null
             && session.roomUrl != _acknowledgedCallUrl
-            && _videoOverlayUrl == null
-            && !_iInitiatedCall;
+            && session.roomUrl != _myCallUrl;
 
         // Auto-exit on terminal state — _exited guard prevents double navigation
         const terminal = {
@@ -551,6 +575,7 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
           SessionState.studentNoShow,
           SessionState.cancelled,
           SessionState.dispute,
+          SessionState.teacherRejected,
         };
         if (terminal.contains(session.state)) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -566,24 +591,22 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
           });
         }
 
-        // Teacher pre-start screen
-        if (widget.isTeacher && session.state == SessionState.confirmedBooking) {
-          return _buildPreStart(context, session, incomingCall: incomingCall);
-        }
-
         return Scaffold(
           backgroundColor: const Color(0xFF10171E),
+          resizeToAvoidBottomInset: false,
           body: Stack(
             children: [
               Column(
                 children: [
                   _buildTopBar(context, session),
+                  // Teacher start-session prompt when booking is confirmed but not yet active
+                  if (widget.isTeacher && session.state == SessionState.confirmedBooking)
+                    _buildStartBanner(),
                   Expanded(child: _buildMessagesList(session)),
                   _buildInputBar(context, session),
                 ],
               ),
               if (incomingCall) _buildIncomingCallBanner(session),
-              if (_videoOverlayUrl != null && _videoCtrl != null) _buildVideoOverlay(),
             ],
           ),
         );
@@ -591,100 +614,55 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
     );
   }
 
-  // ── Pre-start screen (teacher) ─────────────────────────────────────────────
-  Widget _buildPreStart(BuildContext context, Session session, {bool incomingCall = false}) {
-    final initial = session.studentName.isNotEmpty ? session.studentName[0] : '؟';
-    return Scaffold(
-      backgroundColor: const Color(0xFF10171E),
-      body: Stack(
+  // ── Teacher start-session banner (confirmedBooking, above messages) ─────────
+  Widget _buildStartBanner() {
+    return Container(
+      color: const Color(0xFF0D131A),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+      child: Row(
         children: [
-          SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: const Text(
-                      'انتظار البدء',
-                      style: TextStyle(color: Colors.white54, fontSize: 11, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  const Spacer(),
-                  ValueListenableBuilder<int>(
-                    valueListenable: _elapsed,
-                    builder: (_, s, __) => Text(
-                      _fmt(s),
-                      style: const TextStyle(color: Colors.white38, fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
+          // Online status dot
+          Container(
+            width: 7, height: 7,
+            decoration: BoxDecoration(
+              color: _otherOnline ? const Color(0xFF10B981) : Colors.white24,
+              shape: BoxShape.circle,
             ),
-            const Spacer(),
-            Container(
-              width: 100, height: 100,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(28),
-              ),
-              alignment: Alignment.center,
-              child: Text(initial,
-                  style: const TextStyle(fontSize: 46, fontWeight: FontWeight.w700, color: Colors.white)),
-            ),
-            const SizedBox(height: 16),
-            Text(session.studentName,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
-            const SizedBox(height: 4),
-            Text(session.subject,
-                style: const TextStyle(fontSize: 14, color: Colors.white54)),
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFF064E3B),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: const Text(
-                '● الطالب في انتظارك',
-                style: TextStyle(color: Color(0xFF6EE7B7), fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-            ),
-            const Spacer(),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _starting ? null : _startSession,
-                  icon: _starting
-                      ? const SizedBox(
-                          width: 18, height: 18,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Icon(Icons.play_arrow_rounded, size: 24),
-                  label: Text(_starting ? 'جارٍ البدء...' : 'بدء الجلسة'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7B61FF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-          ],
-        ),
           ),
-          if (incomingCall) _buildIncomingCallBanner(session),
+          const SizedBox(width: 6),
+          Text(
+            _otherOnline ? 'الطالب متصل' : 'الطالب غير متصل',
+            style: TextStyle(
+              color: _otherOnline ? const Color(0xFF10B981) : Colors.white38,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: _starting ? null : _startSession,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+              decoration: BoxDecoration(
+                color: const Color(0xFF7B61FF),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: _starting
+                  ? const SizedBox(
+                      width: 16, height: 16,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18),
+                        SizedBox(width: 4),
+                        Text('بدء الجلسة',
+                            style: TextStyle(
+                                color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                      ],
+                    ),
+            ),
+          ),
         ],
       ),
     );
@@ -714,6 +692,27 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
           ),
         ),
       ),
+    );
+  }
+
+  // ── Online/offline chip for the other party ───────────────────────────────
+  Widget _buildOtherOnlineChip() {
+    final label = _otherOnline
+        ? (widget.isTeacher ? 'الطالب متصل' : 'الأستاذ متصل')
+        : (widget.isTeacher ? 'الطالب غير متصل' : 'الأستاذ غير متصل');
+    final dotColor = _otherOnline ? const Color(0xFF10B981) : Colors.white24;
+    final textColor = _otherOnline ? const Color(0xFF10B981) : Colors.white38;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6, height: 6,
+          decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(label,
+            style: TextStyle(color: textColor, fontSize: 10, fontWeight: FontWeight.w600)),
+      ],
     );
   }
 
@@ -791,16 +790,33 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
             const SizedBox(width: 8),
             ValueListenableBuilder<int>(
               valueListenable: _elapsed,
-              builder: (_, s, __) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.black38,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(_fmt(s),
-                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-              ),
+              builder: (_, elapsed, __) {
+                final hasLimit = _sessionDurationSeconds > 0;
+                final remaining = hasLimit
+                    ? (_sessionDurationSeconds - elapsed).clamp(0, _sessionDurationSeconds)
+                    : null;
+                final isLow = remaining != null && remaining <= 300;
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isLow
+                        ? AppColors.error.withValues(alpha: 0.2)
+                        : Colors.black38,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    remaining != null ? _fmt(remaining) : _fmt(elapsed),
+                    style: TextStyle(
+                      color: isLow ? AppColors.error : Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                );
+              },
             ),
+            const SizedBox(width: 8),
+            _buildOtherOnlineChip(),
             const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -813,16 +829,16 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
             ),
             const SizedBox(width: 10),
             GestureDetector(
-              onTap: widget.isTeacher ? _endSession : _leave,
+              onTap: widget.isTeacher ? _leaveTeacher : _leave,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(
                   color: AppColors.error,
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: Text(
-                  widget.isTeacher ? 'إنهاء' : 'مغادرة',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+                child: const Text(
+                  'مغادرة',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
                 ),
               ),
             ),
@@ -842,7 +858,7 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
             const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white12, size: 52),
             const SizedBox(height: 12),
             Text(
-              session.isLive ? 'ابدأ المحادثة' : 'في انتظار بدء الجلسة',
+              widget.readOnly ? 'لا توجد رسائل في هذه الجلسة' : 'ابدأ المحادثة',
               style: const TextStyle(color: Colors.white38, fontSize: 13),
             ),
           ],
@@ -1010,84 +1026,167 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
 
   // ── Input bar ──────────────────────────────────────────────────────────────
   Widget _buildInputBar(BuildContext context, Session session) {
+    final bottom = MediaQuery.of(context).padding.bottom + MediaQuery.of(context).viewInsets.bottom;
     return Container(
       color: const Color(0xFF0D131A),
-      padding: EdgeInsets.only(
-        left: 8, right: 8, top: 8,
-        bottom: MediaQuery.of(context).padding.bottom + MediaQuery.of(context).viewInsets.bottom + 8,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      padding: EdgeInsets.fromLTRB(12, 10, 12, bottom + 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Image
-          _IconBtn(icon: Icons.image_outlined, onTap: _pickAndSendImage),
-          const SizedBox(width: 4),
-          // File
-          _IconBtn(icon: Icons.attach_file_rounded, onTap: _pickAndSendFile),
-          const SizedBox(width: 4),
-          // Text field
-          Expanded(
-            child: TextField(
-              controller: _textCtrl,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'اكتب رسالة...',
-                hintStyle: const TextStyle(color: Colors.white38),
-                filled: true,
-                fillColor: const Color(0xFF1E293B),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
+          // ── Action toolbar ────────────────────────────────
+          if (_isRecording)
+            _buildRecordingIndicator()
+          else
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildActionBtn(
+                  icon: Icons.videocam_rounded,
+                  label: 'فيديو',
+                  color: session.isLive ? const Color(0xFF7B61FF) : Colors.white12,
+                  iconColor: session.isLive ? Colors.white : Colors.white24,
+                  onTap: session.isLive ? () => _callVideo(session) : null,
+                ),
+                _buildActionBtn(
+                  icon: Icons.mic_rounded,
+                  label: 'صوتي',
+                  color: const Color(0xFF1E293B),
+                  iconColor: Colors.white,
+                  onTap: _startRecording,
+                ),
+                _buildActionBtn(
+                  icon: Icons.attach_file_rounded,
+                  label: 'ملف',
+                  color: const Color(0xFF1E293B),
+                  iconColor: Colors.white,
+                  onTap: _pickAndSendFile,
+                ),
+                _buildActionBtn(
+                  icon: Icons.image_outlined,
+                  label: 'صورة',
+                  color: const Color(0xFF1E293B),
+                  iconColor: Colors.white,
+                  onTap: _pickAndSendImage,
+                ),
+              ],
+            ),
+          const SizedBox(height: 8),
+          // ── Text input row ────────────────────────────────
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _textCtrl,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'اكتب رسالة...',
+                    hintStyle: const TextStyle(color: Colors.white38),
+                    filled: true,
+                    fillColor: const Color(0xFF1E293B),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  textDirection: TextDirection.rtl,
+                  maxLines: 5,
+                  minLines: 1,
                 ),
               ),
-              textDirection: TextDirection.rtl,
-              maxLines: 5,
-              minLines: 1,
-            ),
+              const SizedBox(width: 8),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _textCtrl,
+                builder: (_, val, __) {
+                  final hasText = val.text.trim().isNotEmpty;
+                  return GestureDetector(
+                    onTap: hasText ? _sendText : null,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        color: hasText ? const Color(0xFF7B61FF) : const Color(0xFF1E293B),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Icon(Icons.send_rounded,
+                          color: hasText ? Colors.white : Colors.white24, size: 20),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
-          const SizedBox(width: 6),
-          // Send / Mic toggle
-          ValueListenableBuilder<TextEditingValue>(
-            valueListenable: _textCtrl,
-            builder: (_, val, __) {
-              if (val.text.trim().isNotEmpty) {
-                return GestureDetector(
-                  onTap: _sendText,
-                  child: _circleBtn(
-                    icon: Icons.send_rounded,
-                    color: const Color(0xFF7B61FF),
-                  ),
-                );
-              }
-              return GestureDetector(
-                onLongPressStart: (_) => _startRecording(),
-                onLongPressEnd: (_) => _stopRecording(),
-                child: _circleBtn(
-                  icon: _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
-                  color: _isRecording ? AppColors.error : const Color(0xFF1E293B),
-                ),
-              );
-            },
-          ),
-          // Video call (active sessions only)
-          if (session.isLive) ...[
-            const SizedBox(width: 6),
-            GestureDetector(
-              onTap: () => _callVideo(session),
-              child: _circleBtn(icon: Icons.videocam_rounded, color: const Color(0xFF7B61FF)),
-            ),
-          ],
         ],
       ),
     );
   }
 
-  Widget _circleBtn({required IconData icon, required Color color}) {
+  Widget _buildActionBtn({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color iconColor,
+    required VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 54, height: 54,
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(16)),
+            child: Icon(icon, color: iconColor, size: 24),
+          ),
+          const SizedBox(height: 5),
+          Text(label,
+              style: TextStyle(
+                color: onTap != null ? Colors.white54 : Colors.white24,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecordingIndicator() {
     return Container(
-      width: 42, height: 42,
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(999)),
-      child: Icon(icon, color: Colors.white, size: 22),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.fiber_manual_record, color: Colors.red, size: 12),
+          const SizedBox(width: 8),
+          const Text('جاري التسجيل...',
+              style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w600)),
+          const Spacer(),
+          GestureDetector(
+            onTap: _stopRecording,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.stop_rounded, color: Colors.white, size: 16),
+                  SizedBox(width: 4),
+                  Text('إيقاف وإرسال',
+                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1142,7 +1241,14 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
                 ),
                 const SizedBox(width: 4),
                 ElevatedButton(
-                  onPressed: () => _openVideoOverlay(session.roomUrl!),
+                  onPressed: () async {
+                    final url = session.roomUrl!;
+                    setState(() => _acknowledgedCallUrl = url);
+                    final uri = Uri.parse(url);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7B61FF),
                     foregroundColor: Colors.white,
@@ -1160,67 +1266,9 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
     );
   }
 
-  // ── Video overlay ──────────────────────────────────────────────────────────
-  Widget _buildVideoOverlay() {
-    return Positioned.fill(
-      child: Stack(
-        children: [
-          WebViewWidget(controller: _videoCtrl!),
-          if (!_videoReady)
-            const ColoredBox(
-              color: Color(0xFF10171E),
-              child: Center(child: CircularProgressIndicator(color: Color(0xFF7B61FF))),
-            ),
-          Positioned(
-            top: 0, left: 0, right: 0,
-            child: SafeArea(
-              child: Align(
-                alignment: Alignment.topRight,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: GestureDetector(
-                    onTap: _closeVideoOverlay,
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ── Shared helper widgets ──────────────────────────────────────────────────────
-
-class _IconBtn extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _IconBtn({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40, height: 40,
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Icon(icon, color: Colors.white54, size: 20),
-      ),
-    );
-  }
-}
 
 class _DarkLoader extends StatelessWidget {
   final String? label;

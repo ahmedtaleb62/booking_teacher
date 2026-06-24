@@ -8,9 +8,10 @@
 	<array>
 		<string>en</string>
 		<string>ar</string>
+		<string>fr</string>
 	</array>
 	<key>CFBundleDisplayName</key>
-	<string>Sawelni</string>
+	<string>حصتي</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -18,7 +19,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Sawelni</string>
+	<string>حصتي</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

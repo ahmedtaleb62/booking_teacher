@@ -372,7 +372,8 @@ export default function AddCourse({ onNavigate, courseId }) {
         const {error} = await supabase.from('courses').update(courseData).eq('id', courseId)
         if (error) throw error
         // Replace all lessons atomically
-        await supabase.from('course_lessons').delete().eq('course_id', courseId)
+        const {error: delErr} = await supabase.from('course_lessons').delete().eq('course_id', courseId)
+        if (delErr) throw delErr
       } else {
         const {data:course,error} = await supabase.from('courses').insert(courseData).select().single()
         if (error) throw error

@@ -98,11 +98,16 @@ export default function Payments({ adminId }) {
     setRejectInput(false)
     setRejectReason('')
     if (row.proof_image_url) {
-      if (row.proof_image_url.startsWith('http')) {
-        setProofUrl(row.proof_image_url)
-      } else {
-        const bucket = type === 'session' ? 'payment-proofs' : 'subscription-proofs'
-        const { data } = await supabase.storage.from(bucket).createSignedUrl(row.proof_image_url, 3600)
+      const bucket = type === 'session' ? 'payment-proofs' : 'subscription-proofs'
+      // Extract storage path whether we have a full URL or just a path
+      let path = row.proof_image_url
+      if (path.startsWith('http')) {
+        const marker = `/${bucket}/`
+        const idx = path.indexOf(marker)
+        path = idx !== -1 ? path.slice(idx + marker.length) : null
+      }
+      if (path) {
+        const { data } = await supabase.storage.from(bucket).createSignedUrl(path, 3600)
         setProofUrl(data?.signedUrl || null)
       }
     }
@@ -160,12 +165,14 @@ export default function Payments({ adminId }) {
 
   async function confirmSub(id) {
     setActionId(id)
+    const sub = subRows.find(r => r.id === id)
+    const months = sub?.plan_type === 'yearly' ? 12 : 1
     try {
       // admin_confirm_subscription(p_subscription_id, p_admin_id, p_months)
       const { error } = await supabase.rpc('admin_confirm_subscription', {
         p_subscription_id: id,
         p_admin_id:        adminId,
-        p_months:          1,
+        p_months:          months,
       })
       if (error) throw error
       closeModal()
@@ -363,7 +370,7 @@ export default function Payments({ adminId }) {
                   {r.course?.title || r.package?.title || '—'}
                   <br /><span style={{ fontSize: 10, color: 'var(--text3)' }}>{teacherName}</span>
                 </span>
-                <span className="text-2">{r.type === 'yearly' ? 'سنوي' : 'شهري'}</span>
+                <span className="text-2">{r.plan_type === 'yearly' ? 'سنوي' : 'شهري'}</span>
                 <span className="fw-700">{fmt(r.amount)}</span>
                 <span style={{ color: '#D97706', fontWeight: 600 }}>{fmt(comm)}</span>
                 <span className="fw-700 text-green">{fmt(net)}</span>
@@ -406,7 +413,7 @@ export default function Payments({ adminId }) {
                   <div><b>الطالب:</b> {modal.row.student?.full_name || '—'}</div>
                   <div><b>الدورة:</b> {modal.row.course?.title || modal.row.package?.title || '—'}</div>
                   <div><b>الأستاذ:</b> {modal.row.course?.teacher_name || '—'}</div>
-                  <div><b>الخطة:</b> شهري (شهر واحد)</div>
+                  <div><b>الخطة:</b> {modal.row.plan_type === 'yearly' ? 'سنوي (12 شهراً)' : 'شهري (شهر واحد)'}</div>
                 </>
               )}
               {modal.type === 'session' && (() => {

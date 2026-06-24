@@ -8,6 +8,9 @@ import '../core/services/supabase_service.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
+import '../features/auth/screens/otp_screen.dart';
+import '../features/auth/screens/forgot_password_screen.dart';
+import '../features/auth/screens/reset_password_screen.dart';
 import '../features/shell/main_shell.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/teacher_profile/screens/teacher_profile_screen.dart';
@@ -79,7 +82,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
 
       // Always allow public routes through
-      if (loc == '/splash' || loc == '/login' || loc == '/register') return null;
+      if (loc == '/splash' || loc == '/login' || loc == '/register' ||
+          loc == '/otp' || loc == '/forgot-password' || loc == '/reset-password') return null;
 
       // Redirect unauthenticated users to login immediately
       if (!isAuth) return '/login';
@@ -98,6 +102,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/register',
         builder: (_, __) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/otp',
+        builder: (_, state) {
+          final args = state.extra as OtpArgs?;
+          if (args == null) return const RegisterScreen();
+          return OtpScreen(args: args);
+        },
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (_, __) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        builder: (_, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          final phone = extra['phone'] as String? ?? '';
+          return ResetPasswordScreen(phone: phone);
+        },
       ),
 
       // ── Student shell (IndexedStack keeps tabs alive) ────────────────────────

@@ -323,21 +323,50 @@ class CourseService {
   }) async {
     final uid = SupabaseService.userId!;
     await _db.from('course_ratings').upsert({
-      'course_id': courseId,
+      'course_id':  courseId,
       'student_id': uid,
-      'rating': rating,
-    });
+      'rating':     rating,
+      'updated_at': DateTime.now().toIso8601String(),
+    }, onConflict: 'course_id,student_id');
   }
 
-  static Future<bool> hasRatedCourse(String courseId) async {
+  /// Returns true if the student already rated this course WITHIN the current
+  /// subscription period (i.e. updated_at >= subscription.started_at).
+  /// Falls back to checking any rating when subscriptionId is null.
+  static Future<bool> hasRatedInCurrentSubscription({
+    required String courseId,
+    String? subscriptionId,
+  }) async {
     final uid = SupabaseService.userId;
     if (uid == null) return true;
-    final data = await _db
+
+    // Fetch the existing rating
+    final rating = await _db
         .from('course_ratings')
-        .select('id')
+        .select('updated_at')
         .eq('course_id', courseId)
         .eq('student_id', uid)
         .maybeSingle();
-    return data != null;
+
+    if (rating == null) return false; // never rated → show dialog
+
+    if (subscriptionId == null) return true; // rated before, no sub context → skip
+
+    // Check if the rating was submitted after the current subscription started
+    final sub = await _db
+        .from('subscriptions')
+        .select('started_at')
+        .eq('id', subscriptionId)
+        .maybeSingle();
+
+    final startedAt = sub?['started_at'] as String?;
+    if (startedAt == null) return true;
+
+    final ratedAt   = DateTime.tryParse(rating['updated_at'] as String? ?? '');
+    final subStart  = DateTime.tryParse(startedAt);
+    if (ratedAt == null || subStart == null) return false;
+
+    // If rated AFTER current subscription started → already rated this round
+    return ratedAt.isAfter(subStart);
   }
 }

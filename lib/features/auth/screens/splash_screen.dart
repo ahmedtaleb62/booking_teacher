@@ -89,19 +89,23 @@ class _SplashScreenState extends State<SplashScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 90, height: 90,
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.accent.withValues(alpha: 0.3),
-                        blurRadius: 30, spreadRadius: 4,
+                        color: AppColors.accent.withValues(alpha: 0.35),
+                        blurRadius: 40, spreadRadius: 4,
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: Text('س', style: TextStyle(fontSize: 44, fontWeight: FontWeight.w700, color: Colors.white)),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(28),
+                    child: Image.asset(
+                      'assets/icons/Hessati.logo.png',
+                      width: 110,
+                      height: 110,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),

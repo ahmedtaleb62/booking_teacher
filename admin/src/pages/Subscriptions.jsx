@@ -61,11 +61,12 @@ export default function Subscriptions({ adminId }) {
   async function confirmSub(id) {
     setActionId(id)
     try {
+      const months = modal?.row?.plan_type === 'yearly' ? 12 : 1
       // admin_confirm_subscription(p_subscription_id, p_admin_id, p_months)
       const { error } = await supabase.rpc('admin_confirm_subscription', {
         p_subscription_id: id,
         p_admin_id:        adminId,
-        p_months:          1,
+        p_months:          months,
       })
       if (error) throw error
       closeModal()
@@ -140,7 +141,7 @@ export default function Subscriptions({ adminId }) {
               <span className="fw-700 dir-ltr">{s.id.slice(0, 8)}</span>
               <span>{s.student?.full_name || '—'}</span>
               <span className="text-2">{content}</span>
-              <span className="text-2">شهري</span>
+              <span className="text-2">{s.plan_type === 'yearly' ? 'سنوي' : 'شهري'}</span>
               <span className="text-2 dir-ltr">{fmtDate(s.started_at)}</span>
               <span className="text-2 dir-ltr">{fmtDate(s.expires_at)}</span>
               <span className="fw-700 text-teal">{daysLeft(s.expires_at)}</span>
@@ -181,7 +182,7 @@ export default function Subscriptions({ adminId }) {
             <div style={{ background: '#F5F7FF', borderRadius: 12, padding: 14, marginBottom: 20, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 7 }}>
               <div><b>الطالب:</b> {modal.row.student?.full_name || '—'}</div>
               <div><b>المحتوى:</b> {modal.row.course?.title || modal.row.package?.title || '—'}</div>
-              <div><b>نوع الاشتراك:</b> شهري (شهر واحد)</div>
+              <div><b>نوع الاشتراك:</b> {modal.row.plan_type === 'yearly' ? 'سنوي (سنة كاملة)' : 'شهري (شهر واحد)'}</div>
               <div><b>المبلغ:</b> {modal.row.amount?.toLocaleString('ar')} أوقية</div>
               <div><b>التاريخ:</b> {modal.row.created_at?.slice(0, 10)}</div>
             </div>

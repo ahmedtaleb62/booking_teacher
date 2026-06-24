@@ -193,9 +193,11 @@ class SessionService {
   // ── Teacher: activate session (room only — no Jitsi URL) ─────────────────────
   // Used by SessionRoomScreen. Keeps startSession() intact for legacy screens.
   static Future<void> activateSession(String sessionId) async {
+    final now = DateTime.now().toIso8601String();
     final updated = await _db.from('sessions').update({
       'state':      SessionState.activeSession.englishKey,
-      'updated_at': DateTime.now().toIso8601String(),
+      'started_at': now, // set client-side; DB trigger may override
+      'updated_at': now,
     }).eq('id', sessionId)
       .eq('state', SessionState.confirmedBooking.englishKey)
       .select('id');
@@ -265,6 +267,17 @@ class SessionService {
       throw Exception('الجلسة ليست نشطة أو انتهت بالفعل');
     }
     // Trigger sets ended_at + logs COMPLETED
+  }
+
+  // ── Teacher: record departure without ending session ──────────────────────────
+  // Session closes authoritatively via pg_cron when time is up.
+  // Teacher can leave early — we only record the timestamp for admin audit.
+  static Future<void> recordTeacherLeft(String sessionId) async {
+    await _db.from('sessions').update({
+      'teacher_left_at': DateTime.now().toIso8601String(),
+      'updated_at':      DateTime.now().toIso8601String(),
+    }).eq('id', sessionId)
+      .eq('teacher_id', SupabaseService.userId!);
   }
 
   // ── Student: request refund after teacher no-show ────────────────────────────
@@ -445,13 +458,25 @@ class SessionService {
     required int    rating,
     String?         comment,
   }) async {
-    await _db.from('reviews').insert({
+    await _db.from('reviews').upsert({
       'session_id': sessionId,
       'student_id': SupabaseService.userId,
       'teacher_id': teacherId,
       'rating':     rating,
       'comment':    comment,
-    });
+    }, onConflict: 'session_id,student_id');
+  }
+
+  static Future<bool> hasReviewedSession(String sessionId) async {
+    final uid = SupabaseService.userId;
+    if (uid == null) return false;
+    final data = await _db
+        .from('reviews')
+        .select('id')
+        .eq('session_id', sessionId)
+        .eq('student_id', uid)
+        .maybeSingle();
+    return data != null;
   }
 
   // ── Realtime subscription for a single session ───────────────────────────────

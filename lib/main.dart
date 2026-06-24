@@ -181,7 +181,7 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
     final router = ref.watch(routerProvider);
     final locale = ref.watch(localeProvider);
     return MaterialApp.router(
-      title: 'سولني',
+      title: 'حصتي',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       routerConfig: router,

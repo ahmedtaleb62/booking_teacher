@@ -90,25 +90,33 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
   Future<void> _markCompleted() async {
     if (_marking || _marked || !_hasSubscription) return;
     setState(() => _marking = true);
+
+    // Best-effort: mark lesson completed — failure doesn't block the rating prompt
     try {
       await CourseService.markLessonCompleted(
         lessonId: widget.lessonId,
         subscriptionId: widget.subscriptionId!,
       );
-      if (mounted) {
-        setState(() { _marking = false; _marked = true; });
-        if (widget.courseId != null) {
-          await Future.delayed(const Duration(milliseconds: 400));
-          if (mounted) {
-            final alreadyRated =
-                await CourseService.hasRatedCourse(widget.courseId!);
-            if (mounted && !alreadyRated) _showRatingDialog();
-          }
-        }
-      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() { _marking = false; _marked = true; });
+
+    if (widget.courseId == null) return;
+
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
+
+    bool alreadyRated = false;
+    try {
+      alreadyRated = await CourseService.hasRatedInCurrentSubscription(
+        courseId:       widget.courseId!,
+        subscriptionId: widget.subscriptionId,
+      );
     } catch (_) {
-      if (mounted) setState(() => _marking = false);
+      // If the check fails, show the rating dialog anyway
     }
+    if (mounted && !alreadyRated) _showRatingDialog();
   }
 
   void _showRatingDialog() {

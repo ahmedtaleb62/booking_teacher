@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/l10n_extension.dart';
+import '../../../core/services/otp_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/lang_toggle.dart';
@@ -15,8 +17,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController();
+  final _formKey  = GlobalKey<FormState>();
+  final _phoneCtrl = TextEditingController();
   final _passCtrl  = TextEditingController();
   bool _obscure = true;
   bool _loading = false;
@@ -24,7 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
+    _phoneCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
   }
@@ -33,8 +35,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _loading = true; _error = null; });
     try {
+      final email = OtpService.phoneToEmail(_phoneCtrl.text.trim());
       final res = await SupabaseService.client.auth.signInWithPassword(
-        email: _emailCtrl.text.trim(),
+        email:    email,
         password: _passCtrl.text,
       );
       if (!mounted) return;
@@ -106,14 +109,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: const LangToggle(),
                     ),
                     const SizedBox(height: 20),
-                    Container(
-                      width: 72, height: 72,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Center(
-                        child: Text('ح', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w700, color: Colors.white)),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.asset(
+                        'assets/icons/Hessati.logo.png',
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.contain,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -152,17 +154,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         const SizedBox(height: 16),
                       ],
-                      _label(l.authEmail),
+                      _label('رقم الهاتف'),
                       const SizedBox(height: 8),
                       TextFormField(
-                        controller: _emailCtrl,
-                        keyboardType: TextInputType.emailAddress,
+                        controller: _phoneCtrl,
+                        keyboardType: TextInputType.phone,
                         textDirection: TextDirection.ltr,
-                        decoration: InputDecoration(
-                          hintText: 'example@email.com',
-                          prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textHint),
+                        textInputAction: TextInputAction.next,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        decoration: const InputDecoration(
+                          hintText: '44800028',
+                          prefixIcon: Icon(Icons.phone_outlined, color: AppColors.textHint),
                         ),
-                        validator: (v) => (v == null || v.isEmpty) ? l.authValidEmail : null,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'أدخل رقم الهاتف';
+                          if (v.trim().length < 7) return 'رقم الهاتف غير صحيح';
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 18),
                       _label(l.authPassword),
@@ -186,7 +194,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Align(
                         alignment: AlignmentDirectional.centerEnd,
                         child: TextButton(
-                          onPressed: () {},
+                          onPressed: () => context.push('/forgot-password'),
                           child: Text(l.authForgotPassword,
                             style: const TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600)),
                         ),

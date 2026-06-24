@@ -26,6 +26,19 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
   bool _rated = false;
 
   @override
+  void initState() {
+    super.initState();
+    _checkIfAlreadyRated();
+  }
+
+  Future<void> _checkIfAlreadyRated() async {
+    try {
+      final rated = await SessionService.hasReviewedSession(widget.sessionId);
+      if (mounted && rated) setState(() => _rated = true);
+    } catch (_) {}
+  }
+
+  @override
   void dispose() {
     _countdownTimer?.cancel();
     super.dispose();
@@ -480,15 +493,20 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
   Widget _buildActions(BuildContext context, Session s) {
     final l = context.l10n;
 
-    if (s.state == SessionState.confirmedBooking || s.state == SessionState.activeSession) {
+    if (s.state == SessionState.activeSession) {
       return AppButton(
-        label: s.canEnterSession || s.state == SessionState.activeSession
-            ? l.actionEnterSession
-            : l.actionEnterIn10,
+        label: 'الجلسة جارية — ادخل الآن',
+        color: const Color(0xFF059669),
+        leading: const Icon(Icons.circle, color: Colors.white, size: 8),
+        onTap: () => context.push('/live/${s.id}'),
+      );
+    }
+
+    if (s.state == SessionState.confirmedBooking) {
+      return AppButton(
+        label: s.canEnterSession ? l.actionEnterSession : l.actionEnterIn10,
         color: AppColors.statusActive,
-        onTap: (s.canEnterSession || s.state == SessionState.activeSession)
-            ? () => context.push('/live/${s.id}')
-            : null,
+        onTap: s.canEnterSession ? () => context.push('/live/${s.id}') : null,
       );
     }
 
@@ -545,16 +563,11 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
               onTap: () => _showRatingDialog(context, s),
             ),
           const SizedBox(height: 10),
-          OutlinedButton.icon(
-            onPressed: () => context.push('/session-history/${s.id}'),
-            icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
-            label: const Text('عرض المحادثة'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 13),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              side: const BorderSide(color: AppColors.primary),
-              foregroundColor: AppColors.primary,
-            ),
+          AppButton(
+            label: 'عرض المحادثة',
+            color: const Color(0xFF7B61FF),
+            leading: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 17),
+            onTap: () => context.push('/session-history/${s.id}'),
           ),
         ],
       );

@@ -572,25 +572,7 @@ class _BottomActionState extends State<_BottomAction> {
         );
       }
 
-      Widget? disputeLink;
-      if (s.state == SessionState.confirmedBooking && !noShowWindowPassed) {
-        disputeLink = TextButton(
-          onPressed: _cancelling ? null : () => _cancelOrDispute(true),
-          child: Text(
-            _cancelling ? l.teacherProcessingMsg : l.teacherCantAttend,
-            style: TextStyle(fontSize: 12, color: AppColors.error.withValues(alpha: 0.8),
-              fontWeight: FontWeight.w600),
-          ),
-        );
-      }
-
-      return _wrap(context, Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          mainBtn,
-          if (disputeLink != null) ...[const SizedBox(height: 4), disputeLink],
-        ],
-      ));
+      return _wrap(context, mainBtn);
     }
 
     // ── AWAITING / SUBMITTED / REJECTED: can cancel ───────────
@@ -621,55 +603,29 @@ class _BottomActionState extends State<_BottomAction> {
 
     // ── PAYMENT_CONFIRMED: preparing booking automatically ────
     if (s.state == SessionState.paymentConfirmed) {
-      return _wrap(context, Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFD1FAE5),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFF6EE7B7)),
+      return _wrap(context, Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFD1FAE5),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFF6EE7B7)),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 18, height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF065F46)),
             ),
-            child: Row(
-              children: [
-                const SizedBox(
-                  width: 18, height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF065F46)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    l.teacherPaymentConfirmedWaiting,
-                    style: const TextStyle(fontSize: 12.5, color: Color(0xFF065F46), height: 1.5),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _cancelling ? null : () => _cancelOrDispute(true),
-              icon: _cancelling
-                  ? const SizedBox(width: 16, height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
-                  : const Icon(Icons.warning_amber_rounded, size: 16),
-              label: Text(
-                _cancelling ? l.teacherDisputingMsg : l.teacherCantAttend,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
-                foregroundColor: AppColors.error,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                l.teacherPaymentConfirmedWaiting,
+                style: const TextStyle(fontSize: 12.5, color: Color(0xFF065F46), height: 1.5),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ));
     }
 

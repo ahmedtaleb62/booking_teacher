@@ -20,7 +20,7 @@ import Methods from './pages/Methods'
 import Notifications from './pages/Notifications'
 
 const PAGE_META = {
-  overview:     { title: 'لوحة المراقبة',        sub: 'مرحباً بك في لوحة تحكم سولني' },
+  overview:     { title: 'لوحة المراقبة',        sub: 'مرحباً بك في لوحة تحكم حصتي' },
   sessions:     { title: 'مراقبة الجلسات',        sub: 'جميع الجلسات المجدولة والنشطة والمكتملة' },
   payments:     { title: 'المدفوعات',             sub: 'مراجعة إثباتات الدفع وتأكيدها' },
   accounting:   { title: 'المحاسبة والتسويات',    sub: 'مستحقات الأساتذة والتسوية الشهرية' },

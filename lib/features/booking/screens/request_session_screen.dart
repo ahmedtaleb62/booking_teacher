@@ -346,15 +346,16 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                         ),
                         child: Row(
                           children: [
-                            Container(
-                              width: 44, height: 44,
-                              decoration: BoxDecoration(
-                                color: AppColors.accentLight,
-                                borderRadius: BorderRadius.circular(12)),
-                              alignment: Alignment.center,
-                              child: Text(teacher.initial,
-                                style: const TextStyle(fontSize: 18,
-                                  fontWeight: FontWeight.w700, color: AppColors.primary)),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: teacher.avatarUrl != null && teacher.avatarUrl!.isNotEmpty
+                                  ? Image.network(
+                                      teacher.avatarUrl!,
+                                      width: 44, height: 44,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => _initialAvatar(teacher.initial),
+                                    )
+                                  : _initialAvatar(teacher.initial),
                             ),
                             const SizedBox(width: 12),
                             Column(
@@ -658,7 +659,9 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                       isLoading: _loading,
                       onTap: slots.isNotEmpty
                           ? () => _send(teacher.pricePerHour, teacher.subject, slots)
-                          : null,
+                          : () => setState(() => _error = allAvailability.isEmpty
+                              ? l.reqSessionTeacherUnavailable
+                              : l.reqSessionNoSlotsLeft),
                     ),
                   ],
                 ),
@@ -669,6 +672,15 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
       ),
     );
   }
+
+  Widget _initialAvatar(String initial) => Container(
+    width: 44, height: 44,
+    color: AppColors.accentLight,
+    alignment: Alignment.center,
+    child: Text(initial,
+      style: const TextStyle(
+          fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
+  );
 
   Widget _sectionTitle(String t) => Text(t,
     style: const TextStyle(

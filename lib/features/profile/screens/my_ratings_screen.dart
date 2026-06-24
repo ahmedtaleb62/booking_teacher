@@ -95,28 +95,35 @@ class MyRatingsScreen extends ConsumerWidget {
         loading: () =>
             const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
-              const SizedBox(height: 12),
-              Text(l.myRatingsLoadError,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () => ref.invalidate(_myRatingsProvider),
-                icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: Text(l.commonRetry),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
+                const SizedBox(height: 12),
+                Text(l.myRatingsLoadError,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
+                const SizedBox(height: 8),
+                Text(e.toString(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => ref.invalidate(_myRatingsProvider),
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: Text(l.commonRetry),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         data: (items) => items.isEmpty

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/l10n_extension.dart';
-import '../../../core/services/supabase_service.dart';
+import '../../../core/services/otp_service.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/lang_toggle.dart';
+import 'otp_screen.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -15,61 +16,45 @@ class RegisterScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
-  final _formKey  = GlobalKey<FormState>();
+  final _formKey   = GlobalKey<FormState>();
   final _nameCtrl  = TextEditingController();
-  final _emailCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _passCtrl  = TextEditingController();
-  bool _obscure = true;
-  bool _loading = false;
+  bool _obscure  = true;
+  bool _loading  = false;
   String? _error;
   String _role = 'student';
 
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _emailCtrl.dispose();
+    _phoneCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _register() async {
+  Future<void> _sendOtp() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _loading = true; _error = null; });
+
     try {
-      final res = await SupabaseService.client.auth.signUp(
-        email: _emailCtrl.text.trim(),
-        password: _passCtrl.text,
-        data: {'full_name': _nameCtrl.text.trim(), 'role': _role},
-      );
+      final phone = _phoneCtrl.text.trim();
+      final code  = await OtpService.sendOtp(phone);
+
       if (!mounted) return;
-      if (res.user == null) {
-        setState(() => _error = context.l10n.authErrCheckEmail);
-        return;
-      }
-      if (_role == 'teacher') {
-        context.go('/teacher/home');
-      } else {
-        context.go('/home');
-      }
-    } on AuthException catch (e) {
-      setState(() => _error = _friendlyAuthError(e.message));
+      // Navigate to OTP verification screen
+      context.push('/otp', extra: OtpArgs(
+        expectedCode: code,
+        phone:        phone,
+        name:         _nameCtrl.text.trim(),
+        password:     _passCtrl.text,
+        role:         _role,
+      ));
     } catch (e) {
-      setState(() => _error = context.l10n.authErrUnexpected);
+      setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-  }
-
-  String _friendlyAuthError(String raw) {
-    final l = context.l10n;
-    final msg = raw.toLowerCase();
-    if (msg.contains('already registered') || msg.contains('already exists')) return l.authErrEmailExists;
-    if (msg.contains('database error') || msg.contains('unexpected_failure') || msg.contains('saving new user')) return l.authErrServer;
-    if (msg.contains('invalid email') || msg.contains('valid email')) return l.authErrEmailFormat;
-    if (msg.contains('password') && msg.contains('6')) return l.authValidPassword;
-    if (msg.contains('rate limit') || msg.contains('too many')) return l.authErrRateLimit;
-    if (msg.contains('network') || msg.contains('connection') || msg.contains('socket')) return l.authErrNetwork;
-    return l.authErrGeneral;
   }
 
   @override
@@ -81,6 +66,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         child: SingleChildScrollView(
           child: Column(
             children: [
+              // ── Header ─────────────────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(28, 32, 28, 20),
                 child: Column(
@@ -91,13 +77,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(l.authRegisterTitle,
-                      style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white)),
+                        style: const TextStyle(
+                            fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white)),
                     const SizedBox(height: 6),
                     Text(l.authRegisterSubtitle,
-                      style: const TextStyle(fontSize: 14, color: Color(0xFF9DB2B8))),
+                        style: const TextStyle(fontSize: 14, color: Color(0xFF9DB2B8))),
                   ],
                 ),
               ),
+
+              // ── Form card ───────────────────────────────────────────────────
               Container(
                 decoration: const BoxDecoration(
                   color: AppColors.background,
@@ -120,10 +109,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(_error!,
-                            style: const TextStyle(fontSize: 13, color: Color(0xFFC0392B))),
+                              style: const TextStyle(fontSize: 13, color: Color(0xFFC0392B))),
                         ),
                         const SizedBox(height: 16),
                       ],
+
+                      // ── Role selector ─────────────────────────────────────
                       _label(l.authAccountType),
                       const SizedBox(height: 10),
                       Row(
@@ -134,59 +125,93 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ],
                       ),
                       const SizedBox(height: 20),
+
+                      // ── Full name ─────────────────────────────────────────
                       _label(l.authFullName),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _nameCtrl,
+                        textInputAction: TextInputAction.next,
                         decoration: InputDecoration(
                           hintText: l.authFullNameHint,
-                          prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.textHint),
+                          prefixIcon: const Icon(Icons.person_outline_rounded,
+                              color: AppColors.textHint),
                         ),
-                        validator: (v) => (v == null || v.isEmpty) ? l.authValidName : null,
+                        validator: (v) =>
+                            (v == null || v.trim().isEmpty) ? l.authValidName : null,
                       ),
                       const SizedBox(height: 18),
-                      _label(l.authEmail),
+
+                      // ── Phone number ──────────────────────────────────────
+                      _label('رقم الهاتف'),
                       const SizedBox(height: 8),
                       TextFormField(
-                        controller: _emailCtrl,
-                        keyboardType: TextInputType.emailAddress,
+                        controller: _phoneCtrl,
+                        keyboardType: TextInputType.phone,
                         textDirection: TextDirection.ltr,
+                        textInputAction: TextInputAction.next,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                         decoration: const InputDecoration(
-                          hintText: 'example@email.com',
-                          prefixIcon: Icon(Icons.email_outlined, color: AppColors.textHint),
+                          hintText: '44800028',
+                          prefixIcon: Icon(Icons.phone_outlined, color: AppColors.textHint),
                         ),
-                        validator: (v) => (v == null || !v.contains('@')) ? l.authValidEmailFormat : null,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'أدخل رقم الهاتف';
+                          if (v.trim().length < 7) return 'رقم الهاتف غير صحيح';
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 18),
+
+                      // ── Password ──────────────────────────────────────────
                       _label(l.authPassword),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _passCtrl,
                         obscureText: _obscure,
                         textDirection: TextDirection.ltr,
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) => _sendOtp(),
                         decoration: InputDecoration(
                           hintText: '••••••••',
-                          prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.textHint),
+                          prefixIcon: const Icon(Icons.lock_outline_rounded,
+                              color: AppColors.textHint),
                           suffixIcon: IconButton(
-                            icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                              color: AppColors.textHint, size: 20),
+                            icon: Icon(
+                              _obscure
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: AppColors.textHint, size: 20,
+                            ),
                             onPressed: () => setState(() => _obscure = !_obscure),
                           ),
                         ),
-                        validator: (v) => (v == null || v.length < 6) ? l.authValidPassword : null,
+                        validator: (v) =>
+                            (v == null || v.length < 6) ? l.authValidPassword : null,
                       ),
                       const SizedBox(height: 28),
-                      AppButton(label: l.authRegisterBtn, isLoading: _loading, onTap: _register),
+
+                      AppButton(
+                        label: 'إرسال رمز التحقق',
+                        isLoading: _loading,
+                        onTap: _sendOtp,
+                        leading: const Icon(Icons.sms_outlined, color: Colors.white, size: 18),
+                      ),
                       const SizedBox(height: 18),
+
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(l.authHaveAccount,
-                            style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                              style: const TextStyle(
+                                  fontSize: 14, color: AppColors.textSecondary)),
                           GestureDetector(
                             onTap: () => context.pop(),
                             child: Text(l.authLoginLink,
-                              style: const TextStyle(fontSize: 14, color: AppColors.primary, fontWeight: FontWeight.w700)),
+                                style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w700)),
                           ),
                         ],
                       ),
@@ -220,14 +245,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 18,
-              color: selected ? Colors.white : AppColors.textSecondary),
+                color: selected ? Colors.white : AppColors.textSecondary),
             const SizedBox(width: 6),
             Text(label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : AppColors.textSecondary,
-              )),
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? Colors.white : AppColors.textSecondary)),
           ],
         ),
       ),
@@ -235,7 +259,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Widget _label(String text) => Text(
-    text,
-    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-  );
+        text,
+        style: const TextStyle(
+            fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+      );
 }

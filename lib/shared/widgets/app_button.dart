@@ -29,17 +29,23 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = isDanger
-        ? AppColors.error
-        : isOutlined
-            ? Colors.transparent
-            : (color ?? AppColors.primary);
+    final disabled = !isLoading && onTap == null;
 
-    final fg = isDanger
-        ? Colors.white
-        : isOutlined
-            ? (textColor ?? AppColors.textSecondary)
-            : Colors.white;
+    final bg = disabled
+        ? const Color(0xFFCDD5DB)
+        : isDanger
+            ? AppColors.error
+            : isOutlined
+                ? Colors.transparent
+                : (color ?? AppColors.primary);
+
+    final fg = disabled
+        ? const Color(0xFF8A96A3)
+        : isDanger
+            ? Colors.white
+            : isOutlined
+                ? (textColor ?? AppColors.textSecondary)
+                : Colors.white;
 
     return SizedBox(
       width: width ?? double.infinity,
@@ -58,7 +64,7 @@ class AppButton extends StatelessWidget {
                   )
                 : BoxDecoration(
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: onTap == null || isOutlined
+                    boxShadow: disabled || isOutlined
                         ? null
                         : [
                             BoxShadow(

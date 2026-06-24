@@ -609,22 +609,24 @@ class CourseDetailsScreen extends ConsumerWidget {
     if (subStatus == 'pending') {
       showModalBottomSheet(
         context: context,
-        builder: (_) => Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(width: 40, height: 40,
-                  child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFFC77A1A))),
-              const SizedBox(height: 16),
-              Text(l.courseSubPendingTitle,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              Text(l.courseSubPendingBody,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-              const SizedBox(height: 20),
-            ],
+        builder: (ctx) => SafeArea(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(width: 40, height: 40,
+                    child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFFC77A1A))),
+                const SizedBox(height: 16),
+                Text(l.courseSubPendingTitle,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                Text(l.courseSubPendingBody,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
       );
@@ -633,38 +635,40 @@ class CourseDetailsScreen extends ConsumerWidget {
 
     showModalBottomSheet(
       context: context,
-      builder: (_) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.lock_outline_rounded, size: 40, color: AppColors.textHint),
-            const SizedBox(height: 12),
-            Text(l.courseLessonLockedTitle,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            Text(l.courseLessonLockedBody(course.title),
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  context.push('/subscribe/course/${course.id}',
-                      extra: {'priceMonthly': course.priceMonthly, 'priceYearly': course.priceYearly, 'title': course.title});
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      builder: (ctx) => SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_outline_rounded, size: 40, color: AppColors.textHint),
+              const SizedBox(height: 12),
+              Text(l.courseLessonLockedTitle,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Text(l.courseLessonLockedBody(course.title),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    context.push('/subscribe/course/${course.id}',
+                        extra: {'priceMonthly': course.priceMonthly, 'priceYearly': course.priceYearly, 'title': course.title});
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: Text(l.courseSubscribeNow,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
                 ),
-                child: Text(l.courseSubscribeNow,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

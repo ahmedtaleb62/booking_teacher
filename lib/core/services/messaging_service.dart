@@ -121,8 +121,9 @@ class MessagingService {
     String fileName,
     String mimeType,
   ) async {
-    final uid = SupabaseService.userId!;
-    final path = '$uid/${sessionId}_file_${DateTime.now().millisecondsSinceEpoch}_$fileName';
+    final uid      = SupabaseService.userId!;
+    final safeName = _sanitizeName(fileName);
+    final path     = '$uid/${sessionId}_file_${DateTime.now().millisecondsSinceEpoch}_$safeName';
     await SupabaseService.client.storage
         .from(_bucket)
         .uploadBinary(path, bytes, fileOptions: FileOptions(contentType: mimeType));
@@ -131,8 +132,15 @@ class MessagingService {
       'session_id': sessionId,
       'sender_id':  uid,
       'type':       'file',
-      'content':    fileName,
+      'content':    fileName, // display original name to user
       'file_url':   url,
     });
+  }
+
+  // Replace non-ASCII chars and whitespace/special chars with underscores
+  // so storage keys are always valid.
+  static String _sanitizeName(String name) {
+    final noAccents = name.replaceAll(RegExp(r'[^\x00-\x7F]'), '_');
+    return noAccents.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
   }
 }

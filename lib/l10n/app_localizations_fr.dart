@@ -9,7 +9,7 @@ class AppLocalizationsFr extends AppLocalizations {
   AppLocalizationsFr([String locale = 'fr']) : super(locale);
 
   @override
-  String get appName => 'Sawelni';
+  String get appName => 'Hessati';
 
   @override
   String get splashTagline => 'Plateforme de cours particuliers en direct';
@@ -100,7 +100,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get authRegisterTitle => 'Créer un compte';
 
   @override
-  String get authRegisterSubtitle => 'Rejoignez la plateforme Sawelni';
+  String get authRegisterSubtitle => 'Rejoignez la plateforme Hessati';
 
   @override
   String get authAccountType => 'Type de compte';
@@ -1618,11 +1618,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get privacyPolicyContent =>
-      '# Politique de confidentialité\n\nDernière mise à jour : janvier 2025\n\n## Introduction\n\nChez Sawelni, nous nous engageons à protéger votre vie privée. Cette politique explique comment nous collectons, utilisons et protégeons vos informations lorsque vous utilisez notre application.\n\n## Informations que nous collectons\n\nNous collectons les informations que vous fournissez directement lors de la création d\'un compte, telles que : nom, adresse e-mail, numéro de téléphone et photo de profil. Nous collectons également des données d\'utilisation de l\'application telles que les sessions réservées et les paiements.\n\n## Comment nous utilisons vos informations\n\nNous utilisons vos données pour exploiter et améliorer le service, faciliter la communication entre étudiants et professeurs, traiter les paiements et envoyer des notifications liées aux sessions.\n\n## Partage des informations\n\nNous ne vendons pas vos données à des tiers. Nous pouvons partager vos informations avec des prestataires de services nécessaires au fonctionnement de la plateforme (comme les services de paiement) uniquement dans le cadre d\'accords de confidentialité stricts.\n\n## Protection des données\n\nNous utilisons un chiffrement de premier ordre pour protéger vos données. Tout est stocké en toute sécurité sur des serveurs certifiés.\n\n## Vos droits\n\nVous pouvez à tout moment : consulter vos données, les corriger ou en demander la suppression. Contactez-nous via : ahmedelkentawi@gmail.com\n\n## Nous contacter\n\nPour toute question concernant cette politique, veuillez nous contacter au : 42740370 ou par e-mail : ahmedelkentawi@gmail.com';
+      '# Politique de confidentialité\n\nDernière mise à jour : janvier 2025\n\n## Introduction\n\nChez Hessati, nous nous engageons à protéger votre vie privée. Cette politique explique comment nous collectons, utilisons et protégeons vos informations lorsque vous utilisez notre application.\n\n## Informations que nous collectons\n\nNous collectons les informations que vous fournissez directement lors de la création d\'un compte, telles que : nom, adresse e-mail, numéro de téléphone et photo de profil. Nous collectons également des données d\'utilisation de l\'application telles que les sessions réservées et les paiements.\n\n## Comment nous utilisons vos informations\n\nNous utilisons vos données pour exploiter et améliorer le service, faciliter la communication entre étudiants et professeurs, traiter les paiements et envoyer des notifications liées aux sessions.\n\n## Partage des informations\n\nNous ne vendons pas vos données à des tiers. Nous pouvons partager vos informations avec des prestataires de services nécessaires au fonctionnement de la plateforme (comme les services de paiement) uniquement dans le cadre d\'accords de confidentialité stricts.\n\n## Protection des données\n\nNous utilisons un chiffrement de premier ordre pour protéger vos données. Tout est stocké en toute sécurité sur des serveurs certifiés.\n\n## Vos droits\n\nVous pouvez à tout moment : consulter vos données, les corriger ou en demander la suppression. Contactez-nous via : ahmedelkentawi@gmail.com\n\n## Nous contacter\n\nPour toute question concernant cette politique, veuillez nous contacter au : 42740370 ou par e-mail : ahmedelkentawi@gmail.com';
 
   @override
   String get termsContent =>
-      '# Conditions d\'utilisation\n\nDernière mise à jour : janvier 2025\n\n## Acceptation des conditions\n\nEn utilisant l\'application Sawelni, vous acceptez ces conditions dans leur intégralité. Si vous n\'acceptez pas, veuillez cesser d\'utiliser l\'application.\n\n## Le service\n\nSawelni est une plateforme qui met en relation des étudiants et des professeurs pour des sessions d\'enseignement privées. Nous sommes un intermédiaire et ne sommes pas partie au contrat entre l\'étudiant et le professeur.\n\n## Compte utilisateur\n\nVous êtes responsable de la confidentialité de vos identifiants. Les informations fournies doivent être exactes et à jour. Nous nous réservons le droit de suspendre les comptes qui enfreignent les conditions.\n\n## Sessions et paiements\n\nLes sessions se déroulent selon les horaires convenus. Le paiement doit être effectué avant la confirmation de la session. En cas d\'annulation plus de 24 heures à l\'avance, un remboursement est possible selon la politique de remboursement.\n\n## Comportement des utilisateurs\n\nIl est interdit d\'utiliser l\'application à des fins illégales ou abusives. Il est interdit de partager le contenu des sessions sans autorisation. Il est interdit d\'usurper l\'identité d\'autrui.\n\n## Limitation de responsabilité\n\nNous nous efforçons de fournir le meilleur service possible, mais nous ne garantissons pas l\'absence d\'interruptions. La qualité de l\'enseignement dépend du professeur et Sawelni n\'est pas responsable des résultats académiques.\n\n## Modifications\n\nNous nous réservons le droit de modifier ces conditions à tout moment. Les utilisateurs seront informés des changements importants via les notifications dans l\'application.\n\n## Nous contacter\n\nPour toute question : téléphone 42740370 ou e-mail : ahmedelkentawi@gmail.com';
+      '# Conditions d\'utilisation\n\nDernière mise à jour : janvier 2025\n\n## Acceptation des conditions\n\nEn utilisant l\'application Hessati, vous acceptez ces conditions dans leur intégralité. Si vous n\'acceptez pas, veuillez cesser d\'utiliser l\'application.\n\n## Le service\n\nHessati est une plateforme qui met en relation des étudiants et des professeurs pour des sessions d\'enseignement privées. Nous sommes un intermédiaire et ne sommes pas partie au contrat entre l\'étudiant et le professeur.\n\n## Compte utilisateur\n\nVous êtes responsable de la confidentialité de vos identifiants. Les informations fournies doivent être exactes et à jour. Nous nous réservons le droit de suspendre les comptes qui enfreignent les conditions.\n\n## Sessions et paiements\n\nLes sessions se déroulent selon les horaires convenus. Le paiement doit être effectué avant la confirmation de la session. En cas d\'annulation plus de 24 heures à l\'avance, un remboursement est possible selon la politique de remboursement.\n\n## Comportement des utilisateurs\n\nIl est interdit d\'utiliser l\'application à des fins illégales ou abusives. Il est interdit de partager le contenu des sessions sans autorisation. Il est interdit d\'usurper l\'identité d\'autrui.\n\n## Limitation de responsabilité\n\nNous nous efforçons de fournir le meilleur service possible, mais nous ne garantissons pas l\'absence d\'interruptions. La qualité de l\'enseignement dépend du professeur et Hessati n\'est pas responsable des résultats académiques.\n\n## Modifications\n\nNous nous réservons le droit de modifier ces conditions à tout moment. Les utilisateurs seront informés des changements importants via les notifications dans l\'application.\n\n## Nous contacter\n\nPour toute question : téléphone 42740370 ou e-mail : ahmedelkentawi@gmail.com';
 
   @override
   String courseSubscribersCount(String n) {
@@ -2161,6 +2161,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get statusOnline => 'En ligne';
 
   @override
+  String get statusOffline => 'Hors ligne';
+
+  @override
   String get timeAmAbbrev => 'am';
 
   @override
@@ -2554,7 +2557,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get teacherBadgeRequired => 'Requis';
 
   @override
-  String get profileAppVersion => 'Sawelni · Version 1.0.0';
+  String get profileAppVersion => 'Hessati · Version 1.0.0';
 
   @override
   String get teacherVerifiedBadge => 'Vérifié';

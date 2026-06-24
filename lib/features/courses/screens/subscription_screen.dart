@@ -36,9 +36,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   bool _loading = false;
   String? _error;
 
+  double get _effectiveYearlyPrice => widget.priceYearly ?? (widget.priceMonthly * 10);
+
   double get _amount =>
-      _selectedPlan == 'yearly' && widget.priceYearly != null
-          ? widget.priceYearly!
+      _selectedPlan == 'yearly'
+          ? _effectiveYearlyPrice
           : widget.priceMonthly;
 
   Future<void> _pickImage() async {
@@ -101,10 +103,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildItemCard(l),
-            if (widget.priceYearly != null) ...[
-              const SizedBox(height: 16),
-              _buildPlanSelector(l),
-            ],
+            const SizedBox(height: 16),
+            _buildPlanSelector(l),
             const SizedBox(height: 20),
             methodsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -159,7 +159,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
   Widget _buildPlanSelector(dynamic l) {
     final monthly = widget.priceMonthly;
-    final yearly  = widget.priceYearly!;
+    final yearly  = _effectiveYearlyPrice;
     final saving  = ((monthly * 12 - yearly) / (monthly * 12) * 100).round();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
