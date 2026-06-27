@@ -1,4 +1,4 @@
-{
+﻿{
   "project_info": {
     "project_number": "510460102100",
     "project_id": "fluttercourse-87a9d",
@@ -28,7 +28,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:510460102100:android:8b67f45321a9de058a4241",
         "android_client_info": {
-          "package_name": "com.example.teacher_booking"
+          "package_name": "com.hessati.app"
         }
       },
       "oauth_client": [],

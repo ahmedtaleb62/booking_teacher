@@ -367,15 +367,18 @@ class PackageDetailsScreen extends ConsumerWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
           ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.replay_rounded, color: AppColors.error, size: 18),
-              SizedBox(width: 6),
-              Text('إعادة المحاولة',
-                  style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
-            ],
-          ),
+          child: Builder(builder: (context) {
+            final l = context.l10n;
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.replay_rounded, color: AppColors.error, size: 18),
+                const SizedBox(width: 6),
+                Text(l.commonRetry,
+                    style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
+              ],
+            );
+          }),
         ),
       );
     }

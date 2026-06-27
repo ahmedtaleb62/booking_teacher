@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -61,8 +62,9 @@ class TeacherBookingApp extends ConsumerStatefulWidget {
 }
 
 class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
-  OverlayEntry?    _bannerEntry;
-  RealtimeChannel? _notifChannel;
+  OverlayEntry?      _bannerEntry;
+  RealtimeChannel?   _notifChannel;
+  StreamSubscription? _authSub;
 
   @override
   void initState() {
@@ -75,6 +77,7 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
 
   @override
   void dispose() {
+    _authSub?.cancel();
     _notifChannel?.unsubscribe();
     super.dispose();
   }
@@ -89,7 +92,7 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
     }
 
     // Re-subscribe / unsubscribe on auth changes
-    SupabaseService.client.auth.onAuthStateChange.listen((data) {
+    _authSub = SupabaseService.client.auth.onAuthStateChange.listen((data) {
       final session = data.session;
       if (session != null) {
         _subscribeToUserNotifications(session.user.id);

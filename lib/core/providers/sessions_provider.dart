@@ -76,6 +76,8 @@ final sessionProvider = StreamProvider.autoDispose.family<Session?, String>((ref
 
   SessionService.getSession(sessionId).then((s) {
     if (!controller.isClosed) controller.add(s);
+  }).catchError((e) {
+    if (!controller.isClosed) controller.addError(e);
   });
 
   final channel = SessionService.subscribeToSession(sessionId, (s) {

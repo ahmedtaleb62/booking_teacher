@@ -257,7 +257,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
       final msg = e.toString();
       setState(() => _error = msg.contains('double-booking') || msg.contains('conflict')
           ? context.l10n.reqSessionErrBooked
-          : msg); // DEBUG: show real error — revert to reqSessionErrGeneral after testing
+          : context.l10n.reqSessionErrGeneral);
     } finally {
       if (mounted) setState(() => _loading = false);
     }

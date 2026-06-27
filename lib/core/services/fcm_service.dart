@@ -51,6 +51,13 @@ class FcmService {
     );
   }
 
+  /// Returns true if notification permission is already granted.
+  static Future<bool> getPermissionStatus() async {
+    final settings = await _messaging.getNotificationSettings();
+    return settings.authorizationStatus == AuthorizationStatus.authorized ||
+           settings.authorizationStatus == AuthorizationStatus.provisional;
+  }
+
   /// Save device FCM token to Supabase after login
   static Future<void> saveToken() async {
     final uid = SupabaseService.userId;

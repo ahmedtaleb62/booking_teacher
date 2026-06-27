@@ -376,9 +376,9 @@ class _SubscriptionPendingScreenState
                 child: ElevatedButton.icon(
                   onPressed: () {
                     if (_courseId != null) {
-                      context.go('/course/$_courseId');
+                      context.go('/subscribe/course/$_courseId');
                     } else if (_packageId != null) {
-                      context.go('/package/$_packageId');
+                      context.go('/subscribe/package/$_packageId');
                     } else {
                       context.go('/my-courses');
                     }

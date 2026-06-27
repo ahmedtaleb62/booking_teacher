@@ -220,14 +220,15 @@ class _MiniStepper extends StatelessWidget {
 
   int get _step {
     switch (state) {
-      case SessionState.awaitingPayment:
-      case SessionState.teacherApproved:  return 1;
+      case SessionState.requested:        return 0;
+      case SessionState.teacherApproved:
+      case SessionState.awaitingPayment:  return 1;
       case SessionState.paymentSubmitted:
       case SessionState.paymentConfirmed: return 2;
       case SessionState.confirmedBooking: return 3;
       case SessionState.activeSession:
       case SessionState.completed:        return 4;
-      default:                            return 1;
+      default:                            return 0;
     }
   }
 
