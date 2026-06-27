@@ -332,6 +332,48 @@ abstract class AppLocalizations {
   /// **'تسجيل الدخول'**
   String get authLoginLink;
 
+  /// No description provided for @authPhone.
+  ///
+  /// In ar, this message translates to:
+  /// **'رقم الهاتف'**
+  String get authPhone;
+
+  /// No description provided for @authPhoneHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'أدخل رقم هاتفك'**
+  String get authPhoneHint;
+
+  /// No description provided for @authValidPhone.
+  ///
+  /// In ar, this message translates to:
+  /// **'أدخل رقم الهاتف'**
+  String get authValidPhone;
+
+  /// No description provided for @authValidPhoneInvalid.
+  ///
+  /// In ar, this message translates to:
+  /// **'رقم الهاتف غير صحيح'**
+  String get authValidPhoneInvalid;
+
+  /// No description provided for @authSendOtp.
+  ///
+  /// In ar, this message translates to:
+  /// **'إرسال رمز التحقق'**
+  String get authSendOtp;
+
+  /// No description provided for @authForgotTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'نسيت كلمة المرور؟'**
+  String get authForgotTitle;
+
+  /// No description provided for @authForgotSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'أدخل رقم هاتفك وسنرسل لك رمز التحقق'**
+  String get authForgotSubtitle;
+
   /// No description provided for @authValidEmail.
   ///
   /// In ar, this message translates to:
@@ -2672,6 +2714,12 @@ abstract class AppLocalizations {
   /// **'مؤكّد'**
   String get stepConfirmed;
 
+  /// No description provided for @stepActive.
+  ///
+  /// In ar, this message translates to:
+  /// **'مباشر'**
+  String get stepActive;
+
   /// No description provided for @stepCompleted.
   ///
   /// In ar, this message translates to:
@@ -3041,7 +3089,7 @@ abstract class AppLocalizations {
   /// No description provided for @faqA3.
   ///
   /// In ar, this message translates to:
-  /// **'في حال تغيّب الأستاذ، يتم إعادة جدولة الجلسة أو استرداد المبلغ كاملاً. يُرجى التواصل معنا فوراً.'**
+  /// **'في حال واجهتَ أي مشكلة مع الأستاذ يُرجى التواصل معنا فوراً عبر الهاتف أو البريد الإلكتروني وسنعمل على حلّها.'**
   String get faqA3;
 
   /// No description provided for @faqQ4.
@@ -3698,6 +3746,24 @@ abstract class AppLocalizations {
   /// **'تعذّر تحميل سجل المدفوعات'**
   String get payHistLoadError;
 
+  /// No description provided for @payHistRejectFake.
+  ///
+  /// In ar, this message translates to:
+  /// **'الوصل مزيف — مرفوض نهائياً'**
+  String get payHistRejectFake;
+
+  /// No description provided for @payHistRejectIncompleteRefund.
+  ///
+  /// In ar, this message translates to:
+  /// **'المبلغ غير مكتمل — سيُسترد مبلغك'**
+  String get payHistRejectIncompleteRefund;
+
+  /// No description provided for @payHistRejectIncomplete.
+  ///
+  /// In ar, this message translates to:
+  /// **'المبلغ غير مكتمل'**
+  String get payHistRejectIncomplete;
+
   /// No description provided for @payHistStatusPending.
   ///
   /// In ar, this message translates to:
@@ -3859,6 +3925,168 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'أعد كتابة كلمة المرور'**
   String get changePassConfirmHint;
+
+  /// No description provided for @authBackToLogin.
+  ///
+  /// In ar, this message translates to:
+  /// **'العودة إلى تسجيل الدخول'**
+  String get authBackToLogin;
+
+  /// No description provided for @authSendOtpError.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذّر إرسال رمز التحقق — تحقق من الاتصال وحاول مجدداً'**
+  String get authSendOtpError;
+
+  /// No description provided for @resetPassTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'كلمة المرور الجديدة'**
+  String get resetPassTitle;
+
+  /// No description provided for @resetPassSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'أنشئ كلمة مرور جديدة لرقم\n{phone}'**
+  String resetPassSubtitle(String phone);
+
+  /// No description provided for @resetPassErrTooShort.
+  ///
+  /// In ar, this message translates to:
+  /// **'كلمة المرور يجب أن تكون 6 أحرف على الأقل'**
+  String get resetPassErrTooShort;
+
+  /// No description provided for @resetPassErrConfirmEmpty.
+  ///
+  /// In ar, this message translates to:
+  /// **'أدخل تأكيد كلمة المرور'**
+  String get resetPassErrConfirmEmpty;
+
+  /// No description provided for @resetPassSaveBtn.
+  ///
+  /// In ar, this message translates to:
+  /// **'حفظ كلمة المرور'**
+  String get resetPassSaveBtn;
+
+  /// No description provided for @resetPassSuccessTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم تغيير كلمة المرور'**
+  String get resetPassSuccessTitle;
+
+  /// No description provided for @resetPassSuccessBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة'**
+  String get resetPassSuccessBody;
+
+  /// No description provided for @resetPassErrNotFound.
+  ///
+  /// In ar, this message translates to:
+  /// **'رقم الهاتف غير مسجّل في التطبيق'**
+  String get resetPassErrNotFound;
+
+  /// No description provided for @resetPassErrGeneral.
+  ///
+  /// In ar, this message translates to:
+  /// **'فشل تغيير كلمة المرور — حاول مجدداً'**
+  String get resetPassErrGeneral;
+
+  /// No description provided for @roomErrLoadMessages.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذّر تحميل الرسائل'**
+  String get roomErrLoadMessages;
+
+  /// No description provided for @roomErrStartSession.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذّر بدء الجلسة'**
+  String get roomErrStartSession;
+
+  /// No description provided for @roomErrStartCall.
+  ///
+  /// In ar, this message translates to:
+  /// **'فشل بدء المكالمة'**
+  String get roomErrStartCall;
+
+  /// No description provided for @roomErrSendText.
+  ///
+  /// In ar, this message translates to:
+  /// **'فشل إرسال الرسالة'**
+  String get roomErrSendText;
+
+  /// No description provided for @roomErrSendImage.
+  ///
+  /// In ar, this message translates to:
+  /// **'فشل إرسال الصورة'**
+  String get roomErrSendImage;
+
+  /// No description provided for @roomErrSendFile.
+  ///
+  /// In ar, this message translates to:
+  /// **'فشل إرسال الملف'**
+  String get roomErrSendFile;
+
+  /// No description provided for @roomErrMicPermission.
+  ///
+  /// In ar, this message translates to:
+  /// **'يرجى السماح للتطبيق بالوصول إلى الميكروفون'**
+  String get roomErrMicPermission;
+
+  /// No description provided for @roomErrStartRecording.
+  ///
+  /// In ar, this message translates to:
+  /// **'فشل بدء التسجيل'**
+  String get roomErrStartRecording;
+
+  /// No description provided for @roomErrSendAudio.
+  ///
+  /// In ar, this message translates to:
+  /// **'فشل إرسال التسجيل الصوتي'**
+  String get roomErrSendAudio;
+
+  /// No description provided for @roomErrSaveImage.
+  ///
+  /// In ar, this message translates to:
+  /// **'فشل حفظ الصورة'**
+  String get roomErrSaveImage;
+
+  /// No description provided for @roomErrDownloadFile.
+  ///
+  /// In ar, this message translates to:
+  /// **'فشل تحميل الملف'**
+  String get roomErrDownloadFile;
+
+  /// No description provided for @roomEditMessage.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعديل الرسالة'**
+  String get roomEditMessage;
+
+  /// No description provided for @roomDeleteMessage.
+  ///
+  /// In ar, this message translates to:
+  /// **'حذف الرسالة'**
+  String get roomDeleteMessage;
+
+  /// No description provided for @roomDeleteMessageConfirm.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيتم حذف هذه الرسالة للجميع. هل تريد المتابعة؟'**
+  String get roomDeleteMessageConfirm;
+
+  /// No description provided for @roomErrDeleteMessage.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذّر حذف الرسالة'**
+  String get roomErrDeleteMessage;
+
+  /// No description provided for @roomErrEditMessage.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذّر تعديل الرسالة'**
+  String get roomErrEditMessage;
 
   /// No description provided for @myRatingsLoadError.
   ///
@@ -4035,6 +4263,9 @@ abstract class AppLocalizations {
   String get statusOnline;
 
   /// No description provided for @statusOffline.
+  ///
+  /// In ar, this message translates to:
+  /// **'غير متصل'**
   String get statusOffline;
 
   /// No description provided for @timeAmAbbrev.
@@ -4786,6 +5017,816 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'تقييمات الطلاب ({count})'**
   String teacherPublicReviews(int count);
+
+  /// No description provided for @actionViewChat.
+  ///
+  /// In ar, this message translates to:
+  /// **'عرض المحادثة'**
+  String get actionViewChat;
+
+  /// No description provided for @actionEnterNow.
+  ///
+  /// In ar, this message translates to:
+  /// **'الجلسة جارية — ادخل الآن'**
+  String get actionEnterNow;
+
+  /// No description provided for @actionRequestRefund.
+  ///
+  /// In ar, this message translates to:
+  /// **'استرداد المبلغ'**
+  String get actionRequestRefund;
+
+  /// No description provided for @actionConfirmRequest.
+  ///
+  /// In ar, this message translates to:
+  /// **'تأكيد الطلب'**
+  String get actionConfirmRequest;
+
+  /// No description provided for @sessionRefundPendingMsg.
+  ///
+  /// In ar, this message translates to:
+  /// **'طلبت استرداد المبلغ — بانتظار معالجة الإدارة.'**
+  String get sessionRefundPendingMsg;
+
+  /// No description provided for @dialogRefundTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'طلب استرداد المبلغ'**
+  String get dialogRefundTitle;
+
+  /// No description provided for @dialogRefundContent.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيتم إرسال طلبك إلى الإدارة لمعالجته.\n\nلن تتمكن من إعادة الجدولة بعد هذا الطلب.'**
+  String get dialogRefundContent;
+
+  /// No description provided for @cancelledNoPaymentTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'ألغيت — انتهت مهلة الدفع'**
+  String get cancelledNoPaymentTitle;
+
+  /// No description provided for @cancelledNoPaymentBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يُرسَل إثبات الدفع خلال المهلة المحددة فأُلغيت الجلسة تلقائياً.'**
+  String get cancelledNoPaymentBody;
+
+  /// No description provided for @cancelledFakeProofTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'ألغيت — إثبات دفع مزيف'**
+  String get cancelledFakeProofTitle;
+
+  /// No description provided for @cancelledFakeProofBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'رُفض إثبات الدفع لأنه غير صحيح وانتهت المهلة المعطاة للتصحيح.'**
+  String get cancelledFakeProofBody;
+
+  /// No description provided for @cancelledInsufficientTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'ألغيت — مبلغ منقوص (استرداد)'**
+  String get cancelledInsufficientTitle;
+
+  /// No description provided for @cancelledInsufficientBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يكتمل المبلغ وانتهت المهلة. سيُعاد إليك المبلغ المدفوع قريباً.'**
+  String get cancelledInsufficientBody;
+
+  /// No description provided for @cancelledNoShowRefundTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'ألغيت — استرداد مبلغك'**
+  String get cancelledNoShowRefundTitle;
+
+  /// No description provided for @cancelledNoShowRefundBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'غاب الأستاذ وطلبت الاسترداد. ستُحوَّل قيمة الجلسة إليك قريباً.'**
+  String get cancelledNoShowRefundBody;
+
+  /// No description provided for @cancelledDefaultTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'الجلسة ملغاة'**
+  String get cancelledDefaultTitle;
+
+  /// No description provided for @cancelledDefaultBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إلغاء الجلسة.'**
+  String get cancelledDefaultBody;
+
+  /// No description provided for @cancelledAutoDeposit.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيُودَع المبلغ في حسابك تلقائياً'**
+  String get cancelledAutoDeposit;
+
+  /// No description provided for @evtRequested.
+  ///
+  /// In ar, this message translates to:
+  /// **'أرسلت الطلب'**
+  String get evtRequested;
+
+  /// No description provided for @evtTeacherApproved.
+  ///
+  /// In ar, this message translates to:
+  /// **'وافق الأستاذ على طلبك'**
+  String get evtTeacherApproved;
+
+  /// No description provided for @evtTeacherRejected.
+  ///
+  /// In ar, this message translates to:
+  /// **'رفض الأستاذ الطلب'**
+  String get evtTeacherRejected;
+
+  /// No description provided for @evtAwaitingPayment.
+  ///
+  /// In ar, this message translates to:
+  /// **'في انتظار الدفع'**
+  String get evtAwaitingPayment;
+
+  /// No description provided for @evtPaymentSubmitted.
+  ///
+  /// In ar, this message translates to:
+  /// **'رفعت إثبات الدفع'**
+  String get evtPaymentSubmitted;
+
+  /// No description provided for @evtPaymentRejected.
+  ///
+  /// In ar, this message translates to:
+  /// **'رُفض إثبات الدفع'**
+  String get evtPaymentRejected;
+
+  /// No description provided for @evtPaymentConfirmed.
+  ///
+  /// In ar, this message translates to:
+  /// **'أكّدت الإدارة الدفع'**
+  String get evtPaymentConfirmed;
+
+  /// No description provided for @evtConfirmedBooking.
+  ///
+  /// In ar, this message translates to:
+  /// **'تأكّد الحجز'**
+  String get evtConfirmedBooking;
+
+  /// No description provided for @evtSessionStarted.
+  ///
+  /// In ar, this message translates to:
+  /// **'بدأت الجلسة'**
+  String get evtSessionStarted;
+
+  /// No description provided for @evtSessionCompleted.
+  ///
+  /// In ar, this message translates to:
+  /// **'انتهت الجلسة'**
+  String get evtSessionCompleted;
+
+  /// No description provided for @evtActiveSession.
+  ///
+  /// In ar, this message translates to:
+  /// **'الجلسة مباشرة'**
+  String get evtActiveSession;
+
+  /// No description provided for @evtCompleted.
+  ///
+  /// In ar, this message translates to:
+  /// **'اكتملت الجلسة'**
+  String get evtCompleted;
+
+  /// No description provided for @evtTeacherNoShow.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يحضر الأستاذ'**
+  String get evtTeacherNoShow;
+
+  /// No description provided for @evtStudentNoShow.
+  ///
+  /// In ar, this message translates to:
+  /// **'سُجّل غيابك'**
+  String get evtStudentNoShow;
+
+  /// No description provided for @evtDisputeOpened.
+  ///
+  /// In ar, this message translates to:
+  /// **'فُتح نزاع'**
+  String get evtDisputeOpened;
+
+  /// No description provided for @evtCancelled.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إلغاء الجلسة'**
+  String get evtCancelled;
+
+  /// No description provided for @evtRescheduled.
+  ///
+  /// In ar, this message translates to:
+  /// **'أُعيدت الجدولة'**
+  String get evtRescheduled;
+
+  /// No description provided for @evtRefundRequested.
+  ///
+  /// In ar, this message translates to:
+  /// **'طلبت استرداد المبلغ'**
+  String get evtRefundRequested;
+
+  /// No description provided for @evtRefundProcessed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم استرداد مبلغك'**
+  String get evtRefundProcessed;
+
+  /// No description provided for @evtTRequested.
+  ///
+  /// In ar, this message translates to:
+  /// **'استقبلت طلب جلسة جديداً'**
+  String get evtTRequested;
+
+  /// No description provided for @evtTApproved.
+  ///
+  /// In ar, this message translates to:
+  /// **'وافقت على الطلب'**
+  String get evtTApproved;
+
+  /// No description provided for @evtTRejected.
+  ///
+  /// In ar, this message translates to:
+  /// **'رفضت الطلب'**
+  String get evtTRejected;
+
+  /// No description provided for @evtTAwaitingPayment.
+  ///
+  /// In ar, this message translates to:
+  /// **'في انتظار دفع الطالب'**
+  String get evtTAwaitingPayment;
+
+  /// No description provided for @evtTPaymentSubmitted.
+  ///
+  /// In ar, this message translates to:
+  /// **'رفع الطالب إثبات الدفع'**
+  String get evtTPaymentSubmitted;
+
+  /// No description provided for @evtTPaymentRejected.
+  ///
+  /// In ar, this message translates to:
+  /// **'رُفض إثبات دفع الطالب'**
+  String get evtTPaymentRejected;
+
+  /// No description provided for @evtTPaymentConfirmed.
+  ///
+  /// In ar, this message translates to:
+  /// **'أكّدت الإدارة الدفع'**
+  String get evtTPaymentConfirmed;
+
+  /// No description provided for @evtTConfirmedBooking.
+  ///
+  /// In ar, this message translates to:
+  /// **'تأكّد الحجز — الجلسة محجوزة'**
+  String get evtTConfirmedBooking;
+
+  /// No description provided for @evtTSessionStarted.
+  ///
+  /// In ar, this message translates to:
+  /// **'بدأت الجلسة'**
+  String get evtTSessionStarted;
+
+  /// No description provided for @evtTSessionCompleted.
+  ///
+  /// In ar, this message translates to:
+  /// **'انتهت الجلسة بنجاح'**
+  String get evtTSessionCompleted;
+
+  /// No description provided for @evtTActiveSession.
+  ///
+  /// In ar, this message translates to:
+  /// **'الجلسة مباشرة'**
+  String get evtTActiveSession;
+
+  /// No description provided for @evtTCompleted.
+  ///
+  /// In ar, this message translates to:
+  /// **'اكتملت الجلسة'**
+  String get evtTCompleted;
+
+  /// No description provided for @evtTTeacherNoShow.
+  ///
+  /// In ar, this message translates to:
+  /// **'سُجّل غيابك عن الجلسة'**
+  String get evtTTeacherNoShow;
+
+  /// No description provided for @evtTStudentNoShow.
+  ///
+  /// In ar, this message translates to:
+  /// **'سجّلت غياب الطالب'**
+  String get evtTStudentNoShow;
+
+  /// No description provided for @evtTDisputeOpened.
+  ///
+  /// In ar, this message translates to:
+  /// **'فُتح نزاع على الجلسة'**
+  String get evtTDisputeOpened;
+
+  /// No description provided for @evtTCancelled.
+  ///
+  /// In ar, this message translates to:
+  /// **'ألغى الطالب الجلسة'**
+  String get evtTCancelled;
+
+  /// No description provided for @evtTRescheduled.
+  ///
+  /// In ar, this message translates to:
+  /// **'أُعيدت الجدولة'**
+  String get evtTRescheduled;
+
+  /// No description provided for @evtTRefundRequested.
+  ///
+  /// In ar, this message translates to:
+  /// **'طلب الطالب استرداد المبلغ'**
+  String get evtTRefundRequested;
+
+  /// No description provided for @evtTRefundProcessed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم معالجة الاسترداد'**
+  String get evtTRefundProcessed;
+
+  /// No description provided for @notifBodySessionRequested.
+  ///
+  /// In ar, this message translates to:
+  /// **'طالب جديد يريد حجز جلسة معك'**
+  String get notifBodySessionRequested;
+
+  /// No description provided for @notifBodyTeacherApproved.
+  ///
+  /// In ar, this message translates to:
+  /// **'يمكنك الآن إتمام الدفع'**
+  String get notifBodyTeacherApproved;
+
+  /// No description provided for @notifBodyTeacherRejected.
+  ///
+  /// In ar, this message translates to:
+  /// **'يمكنك البحث عن أستاذ آخر'**
+  String get notifBodyTeacherRejected;
+
+  /// No description provided for @notifBodyPaymentRequired.
+  ///
+  /// In ar, this message translates to:
+  /// **'أرسل إثبات الدفع لتأكيد الحجز'**
+  String get notifBodyPaymentRequired;
+
+  /// No description provided for @notifBodyPaymentConfirmed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم تأكيد حجزك!'**
+  String get notifBodyPaymentConfirmed;
+
+  /// No description provided for @notifBodySessionConfirmed.
+  ///
+  /// In ar, this message translates to:
+  /// **'جلستك مؤكدة — استعد!'**
+  String get notifBodySessionConfirmed;
+
+  /// No description provided for @notifBodySessionStarting.
+  ///
+  /// In ar, this message translates to:
+  /// **'جلستك ستبدأ قريباً'**
+  String get notifBodySessionStarting;
+
+  /// No description provided for @notifBodyTeacherNoShow.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم تسجيل غياب الأستاذ'**
+  String get notifBodyTeacherNoShow;
+
+  /// No description provided for @notifBodyStudentNoShow.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم تسجيل غياب الطالب'**
+  String get notifBodyStudentNoShow;
+
+  /// No description provided for @notifBodySessionCompleted.
+  ///
+  /// In ar, this message translates to:
+  /// **'اكتملت جلستك — قيّم الأستاذ'**
+  String get notifBodySessionCompleted;
+
+  /// No description provided for @notifBodyDisputeOpened.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم فتح نزاع — ستراجع الإدارة الأمر'**
+  String get notifBodyDisputeOpened;
+
+  /// No description provided for @notifBodyRescheduled.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إعادة جدولة جلستك'**
+  String get notifBodyRescheduled;
+
+  /// No description provided for @notifBodySubPending.
+  ///
+  /// In ar, this message translates to:
+  /// **'اشتراكك قيد المراجعة وسيُفعَّل خلال 24 ساعة'**
+  String get notifBodySubPending;
+
+  /// No description provided for @notifBodySubActive.
+  ///
+  /// In ar, this message translates to:
+  /// **'يمكنك الآن الوصول إلى جميع المحتوى'**
+  String get notifBodySubActive;
+
+  /// No description provided for @notifBodySubRejected.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يُقبل إثبات الدفع — أعد المحاولة أو تواصل مع الدعم'**
+  String get notifBodySubRejected;
+
+  /// No description provided for @notifTypeSessionApproved.
+  ///
+  /// In ar, this message translates to:
+  /// **'وافق الأستاذ على طلبك 🎉'**
+  String get notifTypeSessionApproved;
+
+  /// No description provided for @notifBodySessionApproved.
+  ///
+  /// In ar, this message translates to:
+  /// **'أرسل إثبات الدفع لتأكيد الحجز'**
+  String get notifBodySessionApproved;
+
+  /// No description provided for @notifTypePaymentRejected.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم رفض إثبات الدفع'**
+  String get notifTypePaymentRejected;
+
+  /// No description provided for @notifBodyPaymentRejected.
+  ///
+  /// In ar, this message translates to:
+  /// **'أعِد إرسال إثبات الدفع الصحيح'**
+  String get notifBodyPaymentRejected;
+
+  /// No description provided for @notifTypeDisputeResolved.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم حل النزاع ✅'**
+  String get notifTypeDisputeResolved;
+
+  /// No description provided for @notifBodyDisputeResolved.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم حل النزاع لصالحك'**
+  String get notifBodyDisputeResolved;
+
+  /// No description provided for @notifTypeRefundProcessed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم معالجة الاسترداد ✅'**
+  String get notifTypeRefundProcessed;
+
+  /// No description provided for @notifBodyRefundProcessed.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيُحوَّل المبلغ إليك قريباً'**
+  String get notifBodyRefundProcessed;
+
+  /// No description provided for @notifTypeSubscriptionRefunded.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيُسترد مبلغك 💰'**
+  String get notifTypeSubscriptionRefunded;
+
+  /// No description provided for @notifBodySubscriptionRefunded.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم رفض الاشتراك وسيُسترد مبلغك قريباً'**
+  String get notifBodySubscriptionRefunded;
+
+  /// No description provided for @notifTypeTeacherAccountApproved.
+  ///
+  /// In ar, this message translates to:
+  /// **'تهانينا! تم اعتماد حسابك 🎉'**
+  String get notifTypeTeacherAccountApproved;
+
+  /// No description provided for @notifBodyTeacherAccountApproved.
+  ///
+  /// In ar, this message translates to:
+  /// **'يمكنك الآن استقبال طلبات الجلسات من الطلاب'**
+  String get notifBodyTeacherAccountApproved;
+
+  /// No description provided for @notifTypeTeacherAccountRejected.
+  ///
+  /// In ar, this message translates to:
+  /// **'اعتذرنا عن طلبك'**
+  String get notifTypeTeacherAccountRejected;
+
+  /// No description provided for @notifBodyTeacherAccountRejected.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا يمكن قبول طلبك حالياً. تواصل معنا للمزيد'**
+  String get notifBodyTeacherAccountRejected;
+
+  /// No description provided for @notifTypeTeacherRevoked.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إيقاف حسابك مؤقتاً'**
+  String get notifTypeTeacherRevoked;
+
+  /// No description provided for @notifBodyTeacherRevoked.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إلغاء اعتماد حسابك. تواصل مع الإدارة للاستفسار'**
+  String get notifBodyTeacherRevoked;
+
+  /// No description provided for @notifTypeAutoCancelled.
+  ///
+  /// In ar, this message translates to:
+  /// **'انتهت مهلة الدفع'**
+  String get notifTypeAutoCancelled;
+
+  /// No description provided for @notifBodyAutoCancelled.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إلغاء طلبك تلقائياً لعدم إتمام الدفع في الوقت المحدد'**
+  String get notifBodyAutoCancelled;
+
+  /// No description provided for @subRejectedFakeProofNote.
+  ///
+  /// In ar, this message translates to:
+  /// **'الوصل مزيف — يرجى الاشتراك من جديد برفع وصل دفع حقيقي'**
+  String get subRejectedFakeProofNote;
+
+  /// No description provided for @subRejectedIncompleteAmountNote.
+  ///
+  /// In ar, this message translates to:
+  /// **'المبلغ غير مكتمل — سيُعاد إليك المبلغ المدفوع تلقائياً'**
+  String get subRejectedIncompleteAmountNote;
+
+  /// No description provided for @paymentIncompleteLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'المبلغ غير مكتمل'**
+  String get paymentIncompleteLabel;
+
+  /// No description provided for @subCancelledNoPaymentTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'ألغي الاشتراك — لم يُرسَل الدفع'**
+  String get subCancelledNoPaymentTitle;
+
+  /// No description provided for @subCancelledNoPaymentBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'انتهت المهلة المحددة دون إرسال إثبات الدفع، فأُلغي الاشتراك تلقائياً.'**
+  String get subCancelledNoPaymentBody;
+
+  /// No description provided for @subCancelledFakeProofTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'ألغي الاشتراك — إثبات مزيف'**
+  String get subCancelledFakeProofTitle;
+
+  /// No description provided for @subCancelledFakeProofBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'رُفض إثبات الدفع لأنه غير صحيح وانتهت المهلة المعطاة للتصحيح.'**
+  String get subCancelledFakeProofBody;
+
+  /// No description provided for @subCancelledInsufficientTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'ألغي الاشتراك — مبلغ منقوص'**
+  String get subCancelledInsufficientTitle;
+
+  /// No description provided for @subCancelledInsufficientBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يكتمل المبلغ المدفوع وانتهت المهلة. سيُعاد إليك المبلغ المدفوع قريباً.'**
+  String get subCancelledInsufficientBody;
+
+  /// No description provided for @subCancelledDefaultTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'ألغي الاشتراك'**
+  String get subCancelledDefaultTitle;
+
+  /// No description provided for @subCancelledDefaultBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إلغاء اشتراكك.'**
+  String get subCancelledDefaultBody;
+
+  /// No description provided for @subCancelledRefundNote.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيُودَع المبلغ المدفوع في حسابك تلقائياً'**
+  String get subCancelledRefundNote;
+
+  /// No description provided for @roomChatLog.
+  ///
+  /// In ar, this message translates to:
+  /// **'سجل المحادثة'**
+  String get roomChatLog;
+
+  /// No description provided for @roomOnline.
+  ///
+  /// In ar, this message translates to:
+  /// **'متصل الآن'**
+  String get roomOnline;
+
+  /// No description provided for @roomOffline.
+  ///
+  /// In ar, this message translates to:
+  /// **'غير متصل'**
+  String get roomOffline;
+
+  /// No description provided for @roomLeave.
+  ///
+  /// In ar, this message translates to:
+  /// **'مغادرة'**
+  String get roomLeave;
+
+  /// No description provided for @roomLeaveTeacherTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'مغادرة الجلسة؟'**
+  String get roomLeaveTeacherTitle;
+
+  /// No description provided for @roomLeaveTeacherBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'الجلسة ستستمر وتُغلق تلقائياً عند انتهاء وقتها.'**
+  String get roomLeaveTeacherBody;
+
+  /// No description provided for @roomLeaveStudentTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'مغادرة الجلسة'**
+  String get roomLeaveStudentTitle;
+
+  /// No description provided for @roomLeaveStudentBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'يمكنك العودة في أي وقت أثناء بقاء الجلسة نشطة.'**
+  String get roomLeaveStudentBody;
+
+  /// No description provided for @roomWarn5Min.
+  ///
+  /// In ar, this message translates to:
+  /// **'تبقّى 5 دقائق على انتهاء الجلسة'**
+  String get roomWarn5Min;
+
+  /// No description provided for @roomTimeUp.
+  ///
+  /// In ar, this message translates to:
+  /// **'انتهى وقت الجلسة — جارٍ الإغلاق...'**
+  String get roomTimeUp;
+
+  /// No description provided for @roomStartSession.
+  ///
+  /// In ar, this message translates to:
+  /// **'بدء الجلسة'**
+  String get roomStartSession;
+
+  /// No description provided for @roomStudentOnline.
+  ///
+  /// In ar, this message translates to:
+  /// **'الطالب متصل'**
+  String get roomStudentOnline;
+
+  /// No description provided for @roomStudentOffline.
+  ///
+  /// In ar, this message translates to:
+  /// **'الطالب غير متصل'**
+  String get roomStudentOffline;
+
+  /// No description provided for @roomNoMessages.
+  ///
+  /// In ar, this message translates to:
+  /// **'الرسائل مؤمّنة — ابدأ المحادثة'**
+  String get roomNoMessages;
+
+  /// No description provided for @roomNoMessagesReadOnly.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا توجد رسائل في هذه الجلسة'**
+  String get roomNoMessagesReadOnly;
+
+  /// No description provided for @roomTypeHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'اكتب رسالة...'**
+  String get roomTypeHint;
+
+  /// No description provided for @roomAttachImage.
+  ///
+  /// In ar, this message translates to:
+  /// **'صورة'**
+  String get roomAttachImage;
+
+  /// No description provided for @roomAttachFile.
+  ///
+  /// In ar, this message translates to:
+  /// **'ملف'**
+  String get roomAttachFile;
+
+  /// No description provided for @roomAttachAudio.
+  ///
+  /// In ar, this message translates to:
+  /// **'صوتي'**
+  String get roomAttachAudio;
+
+  /// No description provided for @roomAttachVideo.
+  ///
+  /// In ar, this message translates to:
+  /// **'فيديو'**
+  String get roomAttachVideo;
+
+  /// No description provided for @roomRecording.
+  ///
+  /// In ar, this message translates to:
+  /// **'جارٍ التسجيل...'**
+  String get roomRecording;
+
+  /// No description provided for @roomStopSend.
+  ///
+  /// In ar, this message translates to:
+  /// **'إيقاف وإرسال'**
+  String get roomStopSend;
+
+  /// No description provided for @roomNewBooking.
+  ///
+  /// In ar, this message translates to:
+  /// **'حجز حصة جديدة'**
+  String get roomNewBooking;
+
+  /// No description provided for @roomIncomingCall.
+  ///
+  /// In ar, this message translates to:
+  /// **'مكالمة فيديو واردة'**
+  String get roomIncomingCall;
+
+  /// No description provided for @roomCallFromStudent.
+  ///
+  /// In ar, this message translates to:
+  /// **'من الطالب'**
+  String get roomCallFromStudent;
+
+  /// No description provided for @roomCallFromTeacher.
+  ///
+  /// In ar, this message translates to:
+  /// **'من الأستاذ'**
+  String get roomCallFromTeacher;
+
+  /// No description provided for @roomDeclineCall.
+  ///
+  /// In ar, this message translates to:
+  /// **'رفض'**
+  String get roomDeclineCall;
+
+  /// No description provided for @roomAcceptCall.
+  ///
+  /// In ar, this message translates to:
+  /// **'قبول'**
+  String get roomAcceptCall;
+
+  /// No description provided for @roomSaveToGallery.
+  ///
+  /// In ar, this message translates to:
+  /// **'حفظ في المعرض'**
+  String get roomSaveToGallery;
+
+  /// No description provided for @roomViewFullSize.
+  ///
+  /// In ar, this message translates to:
+  /// **'عرض بالحجم الكامل'**
+  String get roomViewFullSize;
+
+  /// No description provided for @roomOpenInBrowser.
+  ///
+  /// In ar, this message translates to:
+  /// **'فتح في المتصفح'**
+  String get roomOpenInBrowser;
+
+  /// No description provided for @roomFileTapHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'اضغط للفتح أو الحفظ'**
+  String get roomFileTapHint;
+
+  /// No description provided for @roomImageSaved.
+  ///
+  /// In ar, this message translates to:
+  /// **'✓ تم حفظ الصورة في المعرض'**
+  String get roomImageSaved;
+
+  /// No description provided for @roomDownloadingFile.
+  ///
+  /// In ar, this message translates to:
+  /// **'جارٍ تحميل الملف...'**
+  String get roomDownloadingFile;
 }
 
 class _AppLocalizationsDelegate

@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class OtpService {
-  // ── ضع مفاتيحك هنا ─────────────────────────────────────────────────────────
-  static const _validationKey = 'c3u4baltUaXNxf8W';
-  static const _token         = 'wqQF52vS6gIgdVeOJPCuIlItBapVlnX2';
-  // ───────────────────────────────────────────────────────────────────────────
+  // المفاتيح تُمرَّر عبر --dart-define عند البناء:
+  //   flutter build apk --dart-define=SMS_VALIDATION_KEY=xxx --dart-define=SMS_TOKEN=yyy
+  static const _validationKey = String.fromEnvironment('SMS_VALIDATION_KEY',
+      defaultValue: 'c3u4baltUaXNxf8W');
+  static const _token = String.fromEnvironment('SMS_TOKEN',
+      defaultValue: 'wqQF52vS6gIgdVeOJPCuIlItBapVlnX2');
 
   static const _baseUrl = 'https://chinguisoft.com/api/sms/validation';
 
@@ -24,8 +26,12 @@ class OtpService {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({'phone': phone, 'lang': lang}),
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw 'انتهت مهلة الاتصال بخادم الرسائل — حاول مجدداً',
       );
-    } catch (_) {
+    } catch (e) {
+      if (e is String) rethrow;
       throw 'تعذّر الاتصال بخادم الرسائل — تحقق من الاتصال بالإنترنت';
     }
 

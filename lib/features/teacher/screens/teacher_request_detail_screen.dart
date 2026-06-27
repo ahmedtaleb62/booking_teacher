@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -197,16 +198,27 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                           children: [
                             Container(
                               width: 48, height: 48,
+                              clipBehavior: Clip.antiAlias,
                               decoration: BoxDecoration(
                                 color: AppColors.accentLight,
                                 borderRadius: BorderRadius.circular(13),
                               ),
                               alignment: Alignment.center,
-                              child: Text(
-                                session.studentName.isNotEmpty ? session.studentName[0] : 'ط',
-                                style: const TextStyle(color: AppColors.primary,
-                                  fontWeight: FontWeight.w700, fontSize: 19),
-                              ),
+                              child: session.studentAvatarUrl != null && session.studentAvatarUrl!.isNotEmpty
+                                  ? CachedNetworkImage(
+                                      imageUrl: session.studentAvatarUrl!,
+                                      width: 48, height: 48, fit: BoxFit.cover,
+                                      errorWidget: (_, __, ___) => Text(
+                                        session.studentName.isNotEmpty ? session.studentName[0] : 'ط',
+                                        style: const TextStyle(color: AppColors.primary,
+                                          fontWeight: FontWeight.w700, fontSize: 19),
+                                      ),
+                                    )
+                                  : Text(
+                                      session.studentName.isNotEmpty ? session.studentName[0] : 'ط',
+                                      style: const TextStyle(color: AppColors.primary,
+                                        fontWeight: FontWeight.w700, fontSize: 19),
+                                    ),
                             ),
                             const SizedBox(width: 12),
                             Column(

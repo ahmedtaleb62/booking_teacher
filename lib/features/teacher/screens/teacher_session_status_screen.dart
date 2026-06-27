@@ -137,7 +137,14 @@ class _HeroBanner extends StatelessWidget {
     }
   }
 
-  String _subtitle(SessionState state, AppLocalizations l) {
+  String _subtitle(Session session, AppLocalizations l) {
+    final state = session.state;
+    if (state == SessionState.cancelled) {
+      final cr = session.cancellationReason ?? '';
+      if (cr == 'fake_proof')          return 'غياب الدفع — الوصل مزيف';
+      if (cr == 'insufficient_refund') return 'غياب الدفع — المبلغ غير مكتمل';
+      return l.sessionCancelledInfo;
+    }
     switch (state) {
       case SessionState.awaitingPayment:  return l.teacherSubAwaitingPayment;
       case SessionState.paymentSubmitted: return l.teacherSubPaymentSubmitted;
@@ -148,7 +155,6 @@ class _HeroBanner extends StatelessWidget {
       case SessionState.dispute:          return l.teacherSubDispute;
       case SessionState.teacherNoShow:    return l.teacherStatusNoShow;
       case SessionState.studentNoShow:    return l.teacherStatusStudentNoShow;
-      case SessionState.cancelled:        return l.sessionCancelledInfo;
       case SessionState.teacherRejected:  return l.teacherSubRejected;
       default:                            return '';
     }
@@ -198,7 +204,7 @@ class _HeroBanner extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 5),
-          Text(_subtitle(s.state, l),
+          Text(_subtitle(s, l),
             style: const TextStyle(fontSize: 12.5, color: Colors.white70, height: 1.6)),
         ],
       ),
@@ -384,10 +390,16 @@ class _TimelineCard extends StatelessWidget {
   const _TimelineCard({required this.s});
 
   String _fmtTime(DateTime dt, AppLocalizations l) {
-    final diff = DateTime.now().difference(dt);
+    final now  = DateTime.now();
+    final diff = now.difference(dt);
     if (diff.inMinutes < 60) return l.timeMinutesAgo(diff.inMinutes);
-    if (diff.inHours < 24) return '${l.timeToday} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
-    return '${dt.day}/${dt.month}';
+    final hhmm = '${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+    final isToday     = dt.year == now.year && dt.month == now.month && dt.day == now.day;
+    final yesterday   = now.subtract(const Duration(days: 1));
+    final isYesterday = dt.year == yesterday.year && dt.month == yesterday.month && dt.day == yesterday.day;
+    if (isToday)     return '${l.timeToday} $hhmm';
+    if (isYesterday) return '${l.timeYesterday} $hhmm';
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 
   @override
@@ -428,7 +440,7 @@ class _TimelineCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(event.teacherLabel,
+                        Text(event.teacherLabelFor(l),
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary)),
                         Text(_fmtTime(event.createdAt, l),
@@ -504,81 +516,29 @@ class _BottomActionState extends State<_BottomAction> {
     // ── CONFIRMED or ACTIVE ───────────────────────────────────
     if (s.state == SessionState.confirmedBooking ||
         s.state == SessionState.activeSession) {
-      final canEnter           = s.canEnterSession || s.state == SessionState.activeSession;
-      final noShowDeadline     = s.scheduledAt.add(const Duration(minutes: 15));
-      final noShowWindowPassed = DateTime.now().isAfter(noShowDeadline);
-
-      Widget mainBtn;
-      if (noShowWindowPassed && s.state == SessionState.confirmedBooking) {
-        final studentJoined = s.studentJoinedAt != null;
-        mainBtn = Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (studentJoined)
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFFBBF24)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(l.teacherStudentAlreadyJoined,
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF92400E), height: 1.4)),
-                    ),
-                  ],
-                ),
-              ),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => context.push('/teacher/no-show/${s.id}'),
-                icon: const Icon(Icons.person_off_rounded, size: 16),
-                label: Text(l.teacherMarkNoShow,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
-                  foregroundColor: AppColors.error,
-                ),
-              ),
-            ),
-          ],
-        );
-      } else {
-        mainBtn = SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: canEnter ? () => context.push('/teacher/live/${s.id}') : null,
-            icon: const Icon(Icons.videocam_rounded, size: 18),
-            label: Text(
-              canEnter ? l.teacherStartSession : l.teacherSessionEntryNote,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-            ),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 15),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              backgroundColor: canEnter ? const Color(0xFF1B9E77) : AppColors.textHint,
-              foregroundColor: Colors.white,
-            ),
+      final canEnter = s.canEnterSession || s.state == SessionState.activeSession;
+      return _wrap(context, SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: canEnter ? () => context.push('/teacher/live/${s.id}') : null,
+          icon: const Icon(Icons.videocam_rounded, size: 18),
+          label: Text(
+            canEnter ? 'دخول الجلسة' : l.teacherSessionEntryNote,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
           ),
-        );
-      }
-
-      return _wrap(context, mainBtn);
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 15),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            backgroundColor: canEnter ? const Color(0xFF1B9E77) : AppColors.textHint,
+            foregroundColor: Colors.white,
+          ),
+        ),
+      ));
     }
 
-    // ── AWAITING / SUBMITTED / REJECTED: can cancel ───────────
+    // ── AWAITING / SUBMITTED: can cancel ─────────────────────
     if (s.state == SessionState.awaitingPayment ||
-        s.state == SessionState.paymentSubmitted ||
-        s.state == SessionState.paymentRejected) {
+        s.state == SessionState.paymentSubmitted) {
       return _wrap(context, SizedBox(
         width: double.infinity,
         child: OutlinedButton.icon(
@@ -629,27 +589,44 @@ class _BottomActionState extends State<_BottomAction> {
       ));
     }
 
-    // ── STUDENT_NO_SHOW ───────────────────────────────────────
-    if (s.state == SessionState.studentNoShow) {
-      return _wrap(context, Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFEF3E2),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.info_outline_rounded, color: Color(0xFFC77A1A), size: 18),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                context.l10n.teacherStatusStudentNoShow,
-                style: const TextStyle(fontSize: 12.5, color: Color(0xFF8A5A14), height: 1.5),
+    // ── CANCELLED: show reason to teacher ────────────────────────
+    if (s.state == SessionState.cancelled) {
+      final cr = s.cancellationReason ?? '';
+      final isPaymentIssue = cr == 'fake_proof' || cr == 'insufficient_refund';
+      if (isPaymentIssue) {
+        return _wrap(context, Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFEF3C7),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFFBBF24)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.payments_outlined, color: Color(0xFF92400E), size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('غياب الدفع — الجلسة ملغاة',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF92400E))),
+                    const SizedBox(height: 4),
+                    Text(
+                      cr == 'fake_proof'
+                          ? 'رُفض إثبات دفع الطالب لأنه غير حقيقي.'
+                          : 'المبلغ المدفوع من الطالب كان أقل من المطلوب.',
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF92400E), height: 1.5),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-      ));
+            ],
+          ),
+        ));
+      }
     }
 
     return const SizedBox.shrink();

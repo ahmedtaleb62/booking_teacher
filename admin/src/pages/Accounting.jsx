@@ -15,6 +15,17 @@ export default function Accounting() {
 
   async function loadData() {
     setLoading(true)
+    try {
+    // Load commission rates
+    let sessionCommRate = 0.15
+    let subCommRate     = 0.15
+    const { data: settingsData } = await supabase.rpc('get_system_settings')
+    if (settingsData) {
+      const s = Object.fromEntries(settingsData.map(r => [r.key, parseFloat(r.value)]))
+      if (!isNaN(s.session_commission_pct))      sessionCommRate = s.session_commission_pct / 100
+      if (!isNaN(s.subscription_commission_pct)) subCommRate     = s.subscription_commission_pct / 100
+    }
+
     const { data: tps } = await supabase
       .from('teacher_profiles')
       .select('id, is_approved')
@@ -26,7 +37,7 @@ export default function Accounting() {
     const profMap = Object.fromEntries((profs || []).map(p => [p.id, p]))
     const teachers = (tps || []).map(t => ({ ...t, profiles: profMap[t.id] || {} }))
 
-    const [{ data: sessions }, { data: subs }, { data: payouts }] = await Promise.all([
+    const [{ data: sessions }, { data: subs }, { data: pkgSubs }, { data: payouts }] = await Promise.all([
       supabase
         .from('sessions')
         .select('teacher_id, amount, state')
@@ -37,6 +48,11 @@ export default function Accounting() {
         .eq('status', 'active')
         .eq('type', 'course'),
       supabase
+        .from('subscriptions')
+        .select('package:package_id(teacher_id), amount')
+        .eq('status', 'active')
+        .eq('type', 'package'),
+      supabase
         .from('ledger_entries')
         .select('teacher_id, net_amount')
         .eq('type', 'payout_sent'),
@@ -45,13 +61,19 @@ export default function Accounting() {
     const byTeacher = {}
     ;(sessions || []).forEach(s => {
       if (!byTeacher[s.teacher_id]) byTeacher[s.teacher_id] = { sessions: 0, subs: 0 }
-      byTeacher[s.teacher_id].sessions += (s.amount || 0) * 0.85
+      byTeacher[s.teacher_id].sessions += (s.amount || 0) * (1 - sessionCommRate)
     })
     ;(subs || []).forEach(s => {
       const tid = s.course?.teacher_id
       if (!tid) return
       if (!byTeacher[tid]) byTeacher[tid] = { sessions: 0, subs: 0 }
-      byTeacher[tid].subs += (s.amount || 0) * 0.85
+      byTeacher[tid].subs += (s.amount || 0) * (1 - subCommRate)
+    })
+    ;(pkgSubs || []).forEach(s => {
+      const tid = s.package?.teacher_id
+      if (!tid) return
+      if (!byTeacher[tid]) byTeacher[tid] = { sessions: 0, subs: 0 }
+      byTeacher[tid].subs += (s.amount || 0) * (1 - subCommRate)
     })
 
     // net_amount for payout_sent is stored as negative — sum gives negative total paid out
@@ -82,11 +104,16 @@ export default function Accounting() {
 
     const fromSessions = Math.round(teacherRows.reduce((s, r) => s + r.sessions, 0))
     const fromSubs     = Math.round(teacherRows.reduce((s, r) => s + r.subs, 0))
-    // due = sum of per-teacher totals (already net of paidOut)
     const due          = Math.round(teacherRows.reduce((s, r) => s + r.total, 0))
-    setTotals({ due, fromSessions, fromSubs })
-    setRows(teacherRows)
-    setLoading(false)
+    const settled      = teacherRows.filter(r => r.total === 0 && (byTeacher[r.id]?.sessions || byTeacher[r.id]?.subs)).length
+    setTotals({ due, fromSessions, fromSubs, settled, sessionCommRate: sessionCommRate * 100, subCommRate: subCommRate * 100 })
+    // only show teachers with pending balance
+    setRows(teacherRows.filter(r => r.total > 0))
+    } catch (err) {
+      console.error('Accounting loadData error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   function openSettle(teacherId, amount, name) {
@@ -96,19 +123,18 @@ export default function Accounting() {
   async function confirmSettle() {
     const { teacherId, amount, name } = confirmModal
     setActionId(teacherId)
-    const { error } = await supabase.from('ledger_entries').insert({
-      teacher_id: teacherId,
-      type: 'payout_sent',
-      gross_amount: amount,
-      net_amount: -amount,
-      notes: 'تسوية من الإدارة — ' + new Date().toLocaleDateString('ar-EG'),
+    const dateLabel = new Date().toLocaleDateString('ar-EG')
+    const { error } = await supabase.rpc('admin_settle_teacher', {
+      p_teacher_id:  teacherId,
+      p_amount:      amount,
+      p_description: 'تسوية من الإدارة — ' + dateLabel,
     })
     setActionId(null)
     setConfirmModal(null)
     if (error) {
       showToast('خطأ في تسجيل التسوية: ' + error.message, 'error')
     } else {
-      showToast(`تمت تسوية مستحقات ${name} بنجاح`, 'success')
+      showToast(`تمت تسوية مستحقات ${name} وإشعاره`, 'success')
       await loadData()
     }
   }
@@ -133,18 +159,28 @@ export default function Accounting() {
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)' }}>مستحقات الاشتراكات</div>
             <div style={{ fontSize: 23, fontWeight: 700, color: '#A5B4FC', marginTop: 3 }}>{fmt(totals.fromSubs)} <span style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>أوقية</span></div>
           </div>
+          <div className="card-sm">
+            <div className="text-muted" style={{ fontSize: 12 }}>تمت تسويتهم</div>
+            <div style={{ fontSize: 23, fontWeight: 700, color: '#059669', marginTop: 3 }}>{totals.settled ?? 0} <span style={{ fontSize: 11, color: 'var(--text3)' }}>أستاذ</span></div>
+          </div>
         </div>
       </div>
 
       <div className="info-banner warn">
-        ℹ️ &nbsp;تُحسب مستحقات كل أستاذ = (دخل الجلسات − عمولة 15%) + (دخل الاشتراكات في دروسه − عمولة 15%). تتم التسوية والدفع شهرياً.
+        ℹ️ &nbsp;تُحسب مستحقات كل أستاذ = (دخل الجلسات − عمولة {Math.round((totals.sessionCommRate ?? 15))}%) + (دخل الاشتراكات − عمولة {Math.round((totals.subCommRate ?? 15))}%). تتم التسوية والدفع شهرياً.
       </div>
 
       <div className="table-wrap">
         <div className="table-head" style={{ gridTemplateColumns: '1.6fr 1fr 1fr 1fr 1fr 1.1fr' }}>
           <span>الأستاذ</span><span>صافي الجلسات</span><span>صافي الاشتراكات</span><span>الإجمالي المستحق</span><span>الحالة</span><span style={{ textAlign: 'left' }}>إجراء</span>
         </div>
-        {rows.length === 0 && <div style={{ padding: 24, textAlign: 'center', color: 'var(--text3)' }}>لا توجد بيانات</div>}
+        {rows.length === 0 && (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text3)' }}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>✅</div>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>لا توجد مستحقات معلّقة</div>
+            <div style={{ fontSize: 13, marginTop: 6 }}>جميع مستحقات الأساتذة تمت تسويتها</div>
+          </div>
+        )}
         {rows.map(r => (
           <div key={r.id} className="table-row" style={{ gridTemplateColumns: '1.6fr 1fr 1fr 1fr 1fr 1.1fr' }}>
             <span className="flex items-center gap-10">

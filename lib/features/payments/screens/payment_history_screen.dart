@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/supabase_service.dart';
@@ -454,7 +455,8 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
                                 if (item.subtitle.isNotEmpty) ...[
                                   const SizedBox(width: 6),
                                   Expanded(
-                                    child: Text(item.subtitle,
+                                    child: Text(
+                                        translateSubject(item.subtitle, Localizations.localeOf(context)),
                                         style: const TextStyle(
                                             fontSize: 12,
                                             color: AppColors.textHint),
@@ -538,32 +540,11 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
                     ),
                   ],
 
-                  if (item.status == 'rejected' &&
+                  if ((item.status == 'rejected' || item.status == 'refunded') &&
                       item.rejectReason != null &&
                       item.rejectReason!.isNotEmpty) ...[
                     const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.statusRejectedBg,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.info_outline_rounded,
-                              size: 14, color: AppColors.error),
-                          const SizedBox(width: 7),
-                          Expanded(
-                            child: Text(item.rejectReason!,
-                                style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.error,
-                                    height: 1.4)),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildRejectReasonBadge(l, item.status, item.rejectReason!),
                   ],
                 ],
               ),
@@ -594,6 +575,49 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRejectReasonBadge(AppLocalizations l, String status, String rawReason) {
+    final r = rawReason.toUpperCase().replaceAll(RegExp(r'^REFUND:', caseSensitive: false), '');
+    final isFake    = r.contains('FAKE');
+    final isRefund  = status == 'refunded';
+
+    final String label;
+    final Color  bg, fg;
+    final IconData icon;
+
+    if (isFake) {
+      label = l.payHistRejectFake;
+      bg    = const Color(0xFFFDECEC);
+      fg    = AppColors.error;
+      icon  = Icons.gpp_bad_rounded;
+    } else if (isRefund) {
+      label = l.payHistRejectIncompleteRefund;
+      bg    = const Color(0xFFF0EDFF);
+      fg    = const Color(0xFF5B21B6);
+      icon  = Icons.account_balance_wallet_outlined;
+    } else {
+      label = l.payHistRejectIncomplete;
+      bg    = const Color(0xFFFDECEC);
+      fg    = AppColors.error;
+      icon  = Icons.money_off_rounded;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 14, color: fg),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(label,
+              style: TextStyle(fontSize: 12, color: fg, height: 1.4)),
+          ),
+        ],
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/services/otp_service.dart';
 import '../../../shared/widgets/app_button.dart';
 import 'otp_screen.dart';
@@ -28,6 +29,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Future<void> _send() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _loading = true; _error = null; });
+    final l = context.l10n;
     try {
       final phone = _phoneCtrl.text.trim();
       final code  = await OtpService.sendOtp(phone);
@@ -37,8 +39,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         phone:           phone,
         isPasswordReset: true,
       ));
-    } catch (e) {
-      setState(() => _error = e.toString());
+    } catch (_) {
+      if (mounted) setState(() => _error = l.authSendOtpError);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -46,6 +48,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.primaryDark,
       body: SafeArea(
@@ -69,15 +72,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text(
-                      'نسيت كلمة المرور؟',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white),
+                    Text(
+                      l.authForgotTitle,
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'أدخل رقم هاتفك وسنرسل لك رمز التحقق',
+                    Text(
+                      l.authForgotSubtitle,
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 14, color: Color(0xFF9DB2B8), height: 1.5),
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF9DB2B8), height: 1.5),
                     ),
                   ],
                 ),
@@ -112,9 +115,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         const SizedBox(height: 20),
                       ],
 
-                      const Text(
-                        'رقم الهاتف',
-                        style: TextStyle(
+                      Text(
+                        l.authPhone,
+                        style: const TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                       ),
                       const SizedBox(height: 8),
@@ -123,20 +126,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         keyboardType: TextInputType.phone,
                         textDirection: TextDirection.ltr,
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        decoration: const InputDecoration(
-                          hintText: '44800028',
-                          prefixIcon: Icon(Icons.phone_outlined, color: AppColors.textHint),
+                        decoration: InputDecoration(
+                          hintText: l.authPhoneHint,
+                          prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.textHint),
                         ),
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'أدخل رقم الهاتف';
-                          if (v.trim().length < 7) return 'رقم الهاتف غير صحيح';
+                          if (v == null || v.trim().isEmpty) return l.authValidPhone;
+                          if (v.trim().length < 7) return l.authValidPhoneInvalid;
                           return null;
                         },
                       ),
                       const SizedBox(height: 28),
 
                       AppButton(
-                        label: 'إرسال رمز التحقق',
+                        label: l.authSendOtp,
                         isLoading: _loading,
                         onTap: _send,
                       ),
@@ -145,9 +148,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       Center(
                         child: GestureDetector(
                           onTap: () => context.pop(),
-                          child: const Text(
-                            'العودة إلى تسجيل الدخول',
-                            style: TextStyle(
+                          child: Text(
+                            l.authBackToLogin,
+                            style: const TextStyle(
                                 fontSize: 13,
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.w600),

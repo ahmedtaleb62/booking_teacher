@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/session_states.dart';
 import '../../../core/extensions/l10n_extension.dart';
@@ -76,11 +77,13 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
             ),
             child: const Icon(Icons.arrow_forward_rounded, size: 18, color: AppColors.textPrimary),
           ),
-          onPressed: () => context.pop(),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/sessions'),
         ),
         title: Text(l.sessionStatusTitle),
       ),
-      body: async.when(
+      body: SafeArea(
+        top: false,
+        child: async.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (e, _) => Center(
           child: Column(
@@ -103,8 +106,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
           }
 
           final needsCountdown = session.paymentDeadline != null &&
-              (session.state == SessionState.paymentRejected ||
-               session.state == SessionState.teacherApproved ||
+              (session.state == SessionState.teacherApproved ||
                session.state == SessionState.awaitingPayment);
           if (needsCountdown) _startCountdownIfNeeded(session.paymentDeadline!);
 
@@ -136,22 +138,19 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
             ),
           );
         },
+        ),
       ),
     );
   }
 
   // ── Payment rejected banner ──────────────────────────────────────
+  // Both rejection reasons (FAKE_PROOF / INCOMPLETE_AMOUNT) now cancel the session
+  // immediately — no retry window, no countdown. Student is informed and can re-book.
 
   Widget _buildPaymentRejectedBanner(BuildContext context, Session s) {
     final l = context.l10n;
-    final reason = s.payment?.rejectReason ?? '';
-    final isFake = reason.toLowerCase().contains('fake') ||
-        reason.contains('مزيف') ||
-        reason.contains('fake_proof');
-
-    final mins = _remaining.inMinutes;
-    final secs = _remaining.inSeconds % 60;
-    final expired = s.paymentDeadline != null && _remaining == Duration.zero;
+    final reason = (s.payment?.rejectReason ?? '').toUpperCase();
+    final isFake = reason.contains('FAKE');
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -165,99 +164,24 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 20),
+              Icon(
+                isFake ? Icons.report_gmailerrorred_rounded : Icons.money_off_rounded,
+                color: const Color(0xFFDC2626), size: 20,
+              ),
               const SizedBox(width: 8),
-              Text(l.paymentRejectedTitle,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFFDC2626))),
+              Text(
+                isFake ? l.paymentFakeProofLabel : l.paymentIncompleteLabel,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFFDC2626)),
+              ),
             ],
           ),
           const SizedBox(height: 10),
-
-          if (reason.isNotEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFFCA5A5)),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    isFake ? Icons.report_gmailerrorred_rounded : Icons.money_off_rounded,
-                    size: 17, color: const Color(0xFFDC2626),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      isFake ? l.paymentFakeProofLabel : reason,
-                      style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600,
-                        color: Color(0xFF7F1D1D), height: 1.4),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          const SizedBox(height: 10),
           Text(
-            isFake ? l.paymentFakeInstruction : l.paymentAmountInstruction,
-            style: const TextStyle(fontSize: 12.5, color: Color(0xFF9B1C1C), height: 1.5),
+            isFake
+                ? l.paymentFakeInstruction
+                : l.cancelledInsufficientBody,
+            style: const TextStyle(fontSize: 13, color: Color(0xFF9B1C1C), height: 1.5),
           ),
-
-          if (s.paymentDeadline != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              decoration: BoxDecoration(
-                color: expired ? const Color(0xFFF3F4F6) : const Color(0xFFFFEDD5),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    expired ? Icons.timer_off_rounded : Icons.timer_outlined,
-                    size: 15,
-                    color: expired ? AppColors.textHint : const Color(0xFFEA580C),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    expired
-                        ? l.paymentDeadlineExpiredMsg
-                        : l.paymentRemainingTime('${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}'),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: expired ? AppColors.textHint : const Color(0xFFEA580C),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          if (!expired) ...[
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => context.push('/payment/${s.id}'),
-                icon: const Icon(Icons.upload_file_rounded, size: 18),
-                label: Text(l.actionRetryPayment),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFDC2626),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -472,7 +396,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(event.label,
+                        Text(event.labelFor(l),
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                         Text(_formatTime(event.createdAt),
                           style: const TextStyle(fontSize: 10.5, color: AppColors.textHint)),
@@ -495,7 +419,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
 
     if (s.state == SessionState.activeSession) {
       return AppButton(
-        label: 'الجلسة جارية — ادخل الآن',
+        label: l.actionEnterNow,
         color: const Color(0xFF059669),
         leading: const Icon(Icons.circle, color: Colors.white, size: 8),
         onTap: () => context.push('/live/${s.id}'),
@@ -535,17 +459,6 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
       );
     }
 
-    if (s.state == SessionState.paymentRejected) {
-      final effectivelyExpired = s.paymentDeadline != null && _remaining == Duration.zero;
-      if (effectivelyExpired) return const SizedBox.shrink();
-      return AppButton(
-        label: l.actionCancelFinal,
-        isOutlined: true,
-        isDanger: true,
-        onTap: () => _showCancelDialog(context),
-      );
-    }
-
     if (s.state == SessionState.completed) {
       return Column(
         children: [
@@ -556,15 +469,52 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
               color: AppColors.statusConfirmed,
               bgColor: AppColors.statusConfirmedBg,
             )
-          else
-            AppButton(
-              label: l.actionRateTeacher,
-              color: AppColors.statusConfirmed,
-              onTap: () => _showRatingDialog(context, s),
+          else ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'كيف كانت جلستك؟',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 12),
+                  AppButton(
+                    label: 'جيدة — قيم الأستاذ ⭐',
+                    color: AppColors.statusConfirmed,
+                    onTap: () => _showRatingDialog(context, s),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _openWhatsApp,
+                      icon: const Icon(Icons.chat_rounded, size: 16),
+                      label: const Text(
+                        'واجهت مشاكل — تواصل معنا',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        side: const BorderSide(color: Color(0xFF25D366)),
+                        foregroundColor: const Color(0xFF25D366),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
+          ],
           const SizedBox(height: 10),
           AppButton(
-            label: 'عرض المحادثة',
+            label: l.actionViewChat,
             color: const Color(0xFF7B61FF),
             leading: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 17),
             onTap: () => context.push('/session-history/${s.id}'),
@@ -677,7 +627,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
       if (s.hasRefundRequested) {
         return _buildInfoBanner(
           icon: Icons.hourglass_top_rounded,
-          message: 'طلبت استرداد المبلغ — بانتظار معالجة الإدارة.',
+          message: l.sessionRefundPendingMsg,
           color: const Color(0xFF7B61FF),
           bgColor: const Color(0xFFF0EDFF),
         );
@@ -725,7 +675,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
                 child: ElevatedButton.icon(
                   onPressed: () => _showRefundDialog(context, s),
                   icon: const Icon(Icons.account_balance_wallet_outlined, size: 16),
-                  label: const Text('استرداد المبلغ'),
+                  label: Text(l.actionRequestRefund),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     backgroundColor: const Color(0xFF7B61FF),
@@ -747,42 +697,43 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
   // ── Cancelled sub-reason section ────────────────────────────────
 
   Widget _buildCancelledSection(BuildContext context, Session s) {
+    final l      = context.l10n;
     final reason = s.cancellationReason ?? '';
     final bool withRefund = reason == 'teacher_no_show_refund' || reason == 'insufficient_refund';
 
     final (IconData icon, String title, String body, Color color, Color bg) = switch (reason) {
       'no_payment_deadline' => (
         Icons.timer_off_rounded,
-        'ألغيت — انتهت مهلة الدفع',
-        'لم يُرسَل إثبات الدفع خلال المهلة المحددة فأُلغيت الجلسة تلقائياً.',
+        l.cancelledNoPaymentTitle,
+        l.cancelledNoPaymentBody,
         AppColors.error,
         const Color(0xFFFDECEC),
       ),
       'fake_proof' => (
         Icons.gpp_bad_rounded,
-        'ألغيت — إثبات دفع مزيف',
-        'رُفض إثبات الدفع لأنه غير صحيح وانتهت المهلة المعطاة للتصحيح.',
+        l.cancelledFakeProofTitle,
+        l.cancelledFakeProofBody,
         AppColors.error,
         const Color(0xFFFDECEC),
       ),
       'insufficient_refund' => (
         Icons.account_balance_wallet_outlined,
-        'ألغيت — مبلغ منقوص (استرداد)',
-        'لم يكتمل المبلغ وانتهت المهلة. سيُعاد إليك المبلغ المدفوع قريباً.',
+        l.cancelledInsufficientTitle,
+        l.cancelledInsufficientBody,
         const Color(0xFF7B61FF),
         const Color(0xFFF0EDFF),
       ),
       'teacher_no_show_refund' => (
         Icons.account_balance_wallet_rounded,
-        'ألغيت — استرداد مبلغك',
-        'غاب الأستاذ وطلبت الاسترداد. ستُحوَّل قيمة الجلسة إليك قريباً.',
+        l.cancelledNoShowRefundTitle,
+        l.cancelledNoShowRefundBody,
         const Color(0xFF059669),
         const Color(0xFFD1FAE5),
       ),
       _ => (
         Icons.cancel_outlined,
-        'الجلسة ملغاة',
-        'تم إلغاء الجلسة.',
+        l.cancelledDefaultTitle,
+        l.cancelledDefaultBody,
         AppColors.error,
         const Color(0xFFFDECEC),
       ),
@@ -817,40 +768,50 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
                   Icon(Icons.check_circle_outline_rounded,
                     color: const Color(0xFF059669), size: 14),
                   const SizedBox(width: 6),
-                  const Text('سيُودَع المبلغ في حسابك تلقائياً',
-                    style: TextStyle(fontSize: 11.5, color: Color(0xFF059669), fontWeight: FontWeight.w600)),
+                  Expanded(child: Text(l.cancelledAutoDeposit,
+                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF059669), fontWeight: FontWeight.w600))),
                 ]),
               ],
             ],
           ),
         ),
         const SizedBox(height: 12),
-        AppButton(label: 'حجز جلسة جديدة', onTap: () => context.go('/home')),
+        AppButton(label: l.sessionNewSession, onTap: () => context.go('/home')),
       ],
     );
+  }
+
+  // ── WhatsApp support ────────────────────────────────────────────
+
+  Future<void> _openWhatsApp() async {
+    final uri = Uri.parse('https://wa.me/22242740370');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   // ── Dialogs ─────────────────────────────────────────────────────
 
   void _showRefundDialog(BuildContext context, Session s) {
+    final l = context.l10n;
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(children: [
-          Icon(Icons.account_balance_wallet_outlined, color: Color(0xFF7B61FF), size: 22),
-          SizedBox(width: 8),
-          Text('طلب استرداد المبلغ',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        title: Row(children: [
+          const Icon(Icons.account_balance_wallet_outlined, color: Color(0xFF7B61FF), size: 22),
+          const SizedBox(width: 8),
+          Text(l.dialogRefundTitle,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         ]),
-        content: const Text(
-          'سيتم إرسال طلبك إلى الإدارة لمعالجته.\n\nلن تتمكن من إعادة الجدولة بعد هذا الطلب.',
-          style: TextStyle(fontSize: 13, height: 1.6),
+        content: Text(
+          l.dialogRefundContent,
+          style: const TextStyle(fontSize: 13, height: 1.6),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('رجوع'),
+            child: Text(l.dialogBack2),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -871,7 +832,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
               foregroundColor: Colors.white,
               elevation: 0,
             ),
-            child: const Text('تأكيد الطلب'),
+            child: Text(l.actionConfirmRequest),
           ),
         ],
       ),
@@ -1043,7 +1004,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
       case SessionState.activeSession:    return l.subActiveSession;
       case SessionState.completed:        return l.subCompleted;
       case SessionState.teacherNoShow:    return l.subTeacherNoShow;
-      case SessionState.studentNoShow:    return l.subStudentNoShow;
+      case SessionState.studentNoShow:    return l.sessionStudentAbsentInfo;
       case SessionState.dispute:          return l.subDispute;
       case SessionState.cancelled:        return l.subCancelled;
     }
@@ -1057,7 +1018,6 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
       case SessionState.awaitingPayment:  return l.respStudent;
       case SessionState.paymentSubmitted: return l.respAdmin;
       case SessionState.paymentConfirmed: return l.respAdminConfirm;
-      case SessionState.paymentRejected:  return l.respStudentRetry;
       case SessionState.confirmedBooking: return l.respNoneWaiting;
       case SessionState.activeSession:    return l.respBothJoin;
       case SessionState.completed:        return l.respCompleted;
@@ -1074,7 +1034,6 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
       case SessionState.awaitingPayment:  return l.nextCompletePayment;
       case SessionState.paymentSubmitted: return l.nextWaitAdmin;
       case SessionState.paymentConfirmed: return l.nextWaitAdminConfirm;
-      case SessionState.paymentRejected:  return l.nextRetryPayment;
       case SessionState.confirmedBooking: return l.sessionStartDate(_formatDate(s.scheduledAt));
       case SessionState.activeSession:    return l.nextEnterSession;
       case SessionState.completed:        return _rated ? l.nextRated : l.nextRateTeacher;
@@ -1087,10 +1046,16 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
 
   String _formatTime(DateTime dt) {
     final l = context.l10n;
-    final diff = DateTime.now().difference(dt);
+    final now  = DateTime.now();
+    final diff = now.difference(dt);
     if (diff.inMinutes < 60) return l.timeMinutesAgo(diff.inMinutes);
-    if (diff.inHours < 24)   return '${l.timeToday} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
-    return '${dt.day}/${dt.month}';
+    final hhmm = '${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+    final isToday     = dt.year == now.year && dt.month == now.month && dt.day == now.day;
+    final yesterday   = now.subtract(const Duration(days: 1));
+    final isYesterday = dt.year == yesterday.year && dt.month == yesterday.month && dt.day == yesterday.day;
+    if (isToday)     return '${l.timeToday} $hhmm';
+    if (isYesterday) return '${l.timeYesterday} $hhmm';
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 
   String _formatDate(DateTime dt) {

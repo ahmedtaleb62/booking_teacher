@@ -46,24 +46,58 @@ class MessagingService {
   }
 
   static RealtimeChannel subscribeToMessages(
-    String sessionId,
-    void Function(SessionMessage msg) onNew,
-  ) {
+    String sessionId, {
+    required void Function(SessionMessage) onInsert,
+    required void Function(SessionMessage) onUpdate,
+    required void Function(String msgId) onDelete,
+  }) {
+    final filter = PostgresChangeFilter(
+      type: PostgresChangeFilterType.eq,
+      column: 'session_id',
+      value: sessionId,
+    );
     return _db
         .channel('msgs-$sessionId')
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'session_messages',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'session_id',
-            value: sessionId,
-          ),
-          callback: (payload) =>
-              onNew(SessionMessage.fromJson(payload.newRecord)),
+          filter: filter,
+          callback: (p) => onInsert(SessionMessage.fromJson(p.newRecord)),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'session_messages',
+          filter: filter,
+          callback: (p) => onUpdate(SessionMessage.fromJson(p.newRecord)),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.delete,
+          schema: 'public',
+          table: 'session_messages',
+          filter: filter,
+          callback: (p) {
+            final id = p.oldRecord['id'] as String?;
+            if (id != null) onDelete(id);
+          },
         )
         .subscribe();
+  }
+
+  static Future<void> deleteMessage(String msgId) async {
+    await _db.from('session_messages')
+        .delete()
+        .eq('id', msgId)
+        .eq('sender_id', SupabaseService.userId!);
+  }
+
+  static Future<void> editMessage(String msgId, String newContent) async {
+    await _db.from('session_messages')
+        .update({'content': newContent.trim()})
+        .eq('id', msgId)
+        .eq('sender_id', SupabaseService.userId!)
+        .eq('type', 'text');
   }
 
   static Future<void> sendText(String sessionId, String text) async {

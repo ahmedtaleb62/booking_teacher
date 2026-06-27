@@ -143,7 +143,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(height: 18),
 
                       // ── Phone number ──────────────────────────────────────
-                      _label('رقم الهاتف'),
+                      _label(l.authPhone),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _phoneCtrl,
@@ -151,13 +151,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         textDirection: TextDirection.ltr,
                         textInputAction: TextInputAction.next,
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        decoration: const InputDecoration(
-                          hintText: '44800028',
-                          prefixIcon: Icon(Icons.phone_outlined, color: AppColors.textHint),
+                        decoration: InputDecoration(
+                          hintText: l.authPhoneHint,
+                          prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.textHint),
                         ),
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'أدخل رقم الهاتف';
-                          if (v.trim().length < 7) return 'رقم الهاتف غير صحيح';
+                          if (v == null || v.trim().isEmpty) return l.authValidPhone;
+                          if (v.trim().length < 7) return l.authValidPhoneInvalid;
                           return null;
                         },
                       ),
@@ -192,7 +192,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(height: 28),
 
                       AppButton(
-                        label: 'إرسال رمز التحقق',
+                        label: l.authSendOtp,
                         isLoading: _loading,
                         onTap: _sendOtp,
                         leading: const Icon(Icons.sms_outlined, color: Colors.white, size: 18),

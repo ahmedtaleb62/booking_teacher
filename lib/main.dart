@@ -123,6 +123,8 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
             ref.invalidate(notificationsProvider);
             ref.invalidate(unreadCountProvider);
             _showBanner(title, body);
+            // Persistent system notification (stays in shade until user dismisses)
+            FcmService.showNotification(title, body);
           },
         )
         .subscribe();
@@ -147,17 +149,11 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
 
   void _setupForegroundBanner() {
     if (kIsWeb) return;
+    // Realtime handles the in-app banner; FCM onMessage only refreshes counters.
+    // (Realtime fires faster and avoids a double-banner race with FCM.)
     FirebaseMessaging.onMessage.listen((message) {
-      final title = message.notification?.title ?? '';
-      final body  = message.notification?.body  ?? '';
-      if (title.isEmpty && body.isEmpty) return;
-
-      // Refresh notifications badge
       ref.invalidate(notificationsProvider);
       ref.invalidate(unreadCountProvider);
-
-      // Show in-app banner
-      _showBanner(title, body);
     });
   }
 
@@ -181,7 +177,7 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
     final router = ref.watch(routerProvider);
     final locale = ref.watch(localeProvider);
     return MaterialApp.router(
-      title: 'حصتي',
+      title: 'Hessati',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       routerConfig: router,
@@ -213,7 +209,7 @@ class _NotifBannerState extends State<_NotifBanner>
     _slide = Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
     _ctrl.forward();
-    Future.delayed(const Duration(seconds: 4), _dismiss);
+    Future.delayed(const Duration(seconds: 8), _dismiss);
   }
 
   void _dismiss() async {

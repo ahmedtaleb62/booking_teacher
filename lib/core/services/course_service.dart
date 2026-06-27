@@ -31,34 +31,54 @@ class CourseService {
     List<dynamic> lessonsRaw = [];
 
     if (uid != null) {
-      // Fetch all lessons (RLS will filter non-preview based on subscription)
-      final lessonsData = await _db
-          .from('course_lessons')
-          .select('*')
-          .eq('course_id', courseId)
-          .order('order_index');
+      // 1. Full lesson outline for ALL authenticated users (no video_url — bypasses RLS)
+      final outlineData = await _db
+          .rpc('get_course_lesson_outline', params: {'p_course_id': courseId});
+      final outline = (outlineData as List).map((e) {
+        final m = Map<String, dynamic>.from(e as Map);
+        m['course_id'] = courseId;
+        return m;
+      }).toList();
 
-      // Fetch progress for completed lessons
+      // 2. Full lesson data (video_url etc.) — RLS returns rows only for subscribers
+      final fullData = await _db
+          .from('course_lessons')
+          .select('id, video_url, quiz_data, description, thumbnail_url')
+          .eq('course_id', courseId);
+      final fullMap = <String, Map<String, dynamic>>{
+        for (final f in (fullData as List))
+          (f as Map<String, dynamic>)['id'] as String:
+              Map<String, dynamic>.from(f as Map),
+      };
+
+      // 3. Progress for completed lessons
       final progressData = await _db
           .from('lesson_progress')
           .select('lesson_id, completed')
           .eq('student_id', uid);
+      final progressMap = <String, bool>{};
+      for (final p in (progressData as List)) {
+        final m = p as Map<String, dynamic>;
+        progressMap[m['lesson_id'] as String] = m['completed'] == true;
+      }
 
-      final progressMap = {
-        for (final p in (progressData as List))
-          (p as Map<String, dynamic>)['lesson_id'] as String:
-              p['completed'] as bool? ?? false,
-      };
-
-      lessonsRaw = (lessonsData as List).map((l) {
-        final m = Map<String, dynamic>.from(l as Map);
-        if (progressMap.containsKey(m['id'])) {
-          m['progress'] = {'completed': progressMap[m['id']]};
+      // Merge: outline + subscribed video data + progress
+      lessonsRaw = outline.map((item) {
+        final m = Map<String, dynamic>.from(item);
+        final full = fullMap[m['id'] as String];
+        if (full != null) {
+          m['video_url']     = full['video_url'];
+          m['quiz_data']     = full['quiz_data'];
+          m['description']   = full['description'];
+          m['thumbnail_url'] = full['thumbnail_url'];
+        }
+        if (progressMap.containsKey(m['id'] as String)) {
+          m['progress'] = {'completed': progressMap[m['id'] as String]};
         }
         return m;
       }).toList();
     } else {
-      // Only preview lessons for logged-out users
+      // Logged-out: only preview lessons
       final lessonsData = await _db
           .from('course_lessons')
           .select('*')
@@ -195,23 +215,27 @@ class CourseService {
     final uid = SupabaseService.userId;
     if (uid == null) return false;
 
+    final nowIso = DateTime.now().toIso8601String();
+
     if (courseId != null) {
-      // Check direct course subscription
+      // Check direct course subscription (not expired)
       final direct = await _db
           .from('subscriptions')
           .select('id')
           .eq('student_id', uid)
           .eq('course_id', courseId)
           .eq('status', 'active')
+          .or('expires_at.is.null,expires_at.gt.$nowIso')
           .maybeSingle();
       if (direct != null) return true;
 
-      // Check via package
+      // Check via package (not expired)
       final viaPackage = await _db
           .from('subscriptions')
           .select('id, package:package_id(package_courses(course_id))')
           .eq('student_id', uid)
           .eq('status', 'active')
+          .or('expires_at.is.null,expires_at.gt.$nowIso')
           .not('package_id', 'is', null);
 
       for (final sub in (viaPackage as List)) {
@@ -231,6 +255,7 @@ class CourseService {
           .eq('student_id', uid)
           .eq('package_id', packageId)
           .eq('status', 'active')
+          .or('expires_at.is.null,expires_at.gt.$nowIso')
           .maybeSingle();
       return data != null;
     }
@@ -247,7 +272,9 @@ class CourseService {
   }) async {
     final uid = SupabaseService.userId!;
 
-    // Prevent duplicate active/pending subscription
+    // Prevent duplicate active/pending subscription.
+    // .limit(1) before .maybeSingle() avoids a PostgrestException if the student
+    // somehow has multiple rows (data-integrity violation / prior bug).
     var dupQ = _db
         .from('subscriptions')
         .select('id, status')
@@ -255,7 +282,7 @@ class CourseService {
         .inFilter('status', ['active', 'pending']);
     if (courseId != null) dupQ = dupQ.eq('course_id', courseId);
     if (packageId != null) dupQ = dupQ.eq('package_id', packageId);
-    final existing = await dupQ.maybeSingle();
+    final existing = await dupQ.limit(1).maybeSingle();
     if (existing != null) {
       final s = existing['status'] as String;
       throw Exception(s == 'active'

@@ -1,18 +1,14 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'supabase_service.dart';
 
-// Must be top-level — called when app is in background/terminated
-@pragma('vm:entry-point')
-Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // FCM auto-shows notification in background; this handles data-only messages.
-}
-
 class FcmService {
   static final _messaging = FirebaseMessaging.instance;
   static final _localNotifs = FlutterLocalNotificationsPlugin();
+  static StreamSubscription<String>? _tokenRefreshSub;
 
   static const _channelId   = 'hajez_ustad_channel';
   static const _channelName = 'إشعارات حجز استاذ';
@@ -40,12 +36,12 @@ class FcmService {
           ),
         );
 
-    // iOS: show notification while app is in foreground
     await _messaging.setForegroundNotificationPresentationOptions(
       alert: true, badge: true, sound: true,
     );
 
-    // Android: show local notification while app is in foreground
+    // Foreground: show system notification so it stays in the notification shade.
+    // Background/terminated: Android auto-shows from FCM payload — no code needed.
     FirebaseMessaging.onMessage.listen(_showLocalNotification);
   }
 
@@ -61,29 +57,35 @@ class FcmService {
     if (uid == null) return;
     try {
       final token = await _messaging.getToken();
-      if (token == null) return;
+      if (token == null) {
+        debugPrint('[FCM] getToken() returned null — permission not granted?');
+        return;
+      }
       await _upsertToken(uid, token);
 
-      // Refresh token when FCM rotates it
-      _messaging.onTokenRefresh.listen((t) => _upsertToken(uid, t));
-    } catch (_) {}
+      // Refresh token when FCM rotates it — cancel previous sub to avoid leak
+      _tokenRefreshSub?.cancel();
+      _tokenRefreshSub = _messaging.onTokenRefresh.listen((t) => _upsertToken(uid, t));
+    } catch (e) {
+      debugPrint('[FCM] saveToken error: $e');
+    }
   }
 
   /// Remove token from Supabase on logout
   static Future<void> removeToken() async {
+    _tokenRefreshSub?.cancel();
+    _tokenRefreshSub = null;
     final uid = SupabaseService.userId;
     if (uid == null) return;
     try {
-      final token = await _messaging.getToken();
-      if (token != null) {
-        await SupabaseService.client
-            .from('device_tokens')
-            .delete()
-            .eq('user_id', uid)
-            .eq('token', token);
-      }
+      await SupabaseService.client
+          .from('device_tokens')
+          .delete()
+          .eq('user_id', uid);
       await _messaging.deleteToken();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[FCM] removeToken error: $e');
+    }
   }
 
   /// Returns the message that launched the app from terminated state
@@ -115,34 +117,49 @@ class FcmService {
 
   // ── Private helpers ─────────────────────────────────────────
 
-  static Future<void> _upsertToken(String uid, String token) async {
-    final platform = kIsWeb ? 'web' : (Platform.isAndroid ? 'android' : 'ios');
-    await SupabaseService.client.from('device_tokens').upsert({
-      'user_id':    uid,
-      'token':      token,
-      'platform':   platform,
-      'updated_at': DateTime.now().toIso8601String(),
-    }, onConflict: 'user_id,token');
-  }
-
-  static Future<void> _showLocalNotification(RemoteMessage message) async {
-    final n = message.notification;
-    if (n == null) return;
+  /// Show a persistent system notification (stays in the notification shade).
+  /// Called from Realtime callback so it works even without FCM delivery.
+  static Future<void> showNotification(String title, String body) async {
+    if (kIsWeb) return;
     await _localNotifs.show(
-      message.hashCode,
-      n.title,
-      n.body,
-      NotificationDetails(
+      title.hashCode ^ body.hashCode,
+      title,
+      body,
+      const NotificationDetails(
         android: AndroidNotificationDetails(
           _channelId, _channelName,
           importance: Importance.high,
           priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
+          icon: '@drawable/ic_notification',
         ),
-        iOS: const DarwinNotificationDetails(
+        iOS: DarwinNotificationDetails(
           presentAlert: true, presentBadge: true, presentSound: true,
         ),
       ),
     );
   }
+
+  static Future<void> _showLocalNotification(RemoteMessage message) async {
+    final n = message.notification;
+    if (n == null) return;
+    await showNotification(n.title ?? '', n.body ?? '');
+  }
+
+  static Future<void> _upsertToken(String uid, String token) async {
+    if (kIsWeb) return;
+    final platform = Platform.isAndroid ? 'android' : 'ios';
+    // Delete → Insert avoids ON CONFLICT constraint issues and cleans stale tokens.
+    await SupabaseService.client
+        .from('device_tokens')
+        .delete()
+        .eq('user_id', uid)
+        .eq('platform', platform);
+    await SupabaseService.client.from('device_tokens').insert({
+      'user_id':  uid,
+      'token':    token,
+      'platform': platform,
+    });
+    debugPrint('[FCM] Token saved: ...${token.length > 8 ? token.substring(token.length - 8) : token}');
+  }
+
 }

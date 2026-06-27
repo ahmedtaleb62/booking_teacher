@@ -31,4 +31,15 @@ class SessionMessage {
       createdAt:   DateTime.parse(json['created_at'] as String),
     );
   }
+
+  SessionMessage copyWith({String? content}) => SessionMessage(
+    id:          id,
+    sessionId:   sessionId,
+    senderId:    senderId,
+    type:        type,
+    content:     content ?? this.content,
+    fileUrl:     fileUrl,
+    durationSec: durationSec,
+    createdAt:   createdAt,
+  );
 }

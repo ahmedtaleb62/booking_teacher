@@ -111,6 +111,32 @@ SELECT cron.schedule(
 );
 
 -- ============================================================
+-- 5. Expire overdue subscriptions — every hour
+--    Updates subscriptions with expires_at < NOW() from active → expired
+--    so RLS policies and Flutter checks see the correct status.
+-- ============================================================
+CREATE OR REPLACE FUNCTION expire_overdue_subscriptions()
+RETURNS INT LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_count INT := 0;
+BEGIN
+  UPDATE public.subscriptions
+  SET status = 'expired', updated_at = NOW()
+  WHERE status = 'active'
+    AND expires_at IS NOT NULL
+    AND expires_at < NOW();
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END;
+$$;
+
+SELECT cron.schedule(
+  'expire-overdue-subscriptions',
+  '0 * * * *',   -- every hour at :00
+  $$SELECT expire_overdue_subscriptions()$$
+);
+
+-- ============================================================
 -- View scheduled jobs (for verification)
 -- ============================================================
 -- SELECT * FROM cron.job;
@@ -120,4 +146,5 @@ SELECT cron.schedule(
 -- SELECT cron.unschedule('expire-overdue-payments');
 -- SELECT cron.unschedule('detect-no-shows');
 -- SELECT cron.unschedule('auto-open-payment-disputes');
+-- SELECT cron.unschedule('expire-overdue-subscriptions');
 -- ============================================================

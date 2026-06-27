@@ -86,7 +86,12 @@ BEGIN
     started_at  = NOW(),
     expires_at  = NOW() + (p_months || ' months')::INTERVAL,
     updated_at  = NOW()
-  WHERE id = p_subscription_id;
+  WHERE id = p_subscription_id
+    AND status = 'pending';  -- guard: only confirm pending subscriptions
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'subscription % is not in pending state', p_subscription_id;
+  END IF;
 END;
 $$;
 
@@ -102,7 +107,12 @@ BEGIN
     status        = 'rejected',
     reject_reason = p_reason,
     updated_at    = NOW()
-  WHERE id = p_subscription_id;
+  WHERE id = p_subscription_id
+    AND status = 'pending';  -- guard: only reject pending subscriptions
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'subscription % is not in pending state', p_subscription_id;
+  END IF;
 END;
 $$;
 

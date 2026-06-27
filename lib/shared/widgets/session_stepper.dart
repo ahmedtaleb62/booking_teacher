@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/session_states.dart';
+import '../../core/extensions/l10n_extension.dart';
 
 class SessionStepper extends StatelessWidget {
   final SessionState currentState;
 
   const SessionStepper({super.key, required this.currentState});
 
-  static const _steps = [
-    ('REQUESTED', 'طلب'),
-    ('TEACHER_APPROVED', 'موافقة'),
-    ('PAYMENT_CONFIRMED', 'دفع'),
-    ('CONFIRMED_BOOKING', 'مؤكّد'),
-    ('ACTIVE_SESSION', 'مباشر'),
-  ];
+  List<String> _labels(BuildContext context) {
+    final l = context.l10n;
+    return [l.stepRequest, l.stepApproval, l.stepPayment, l.stepConfirmed, l.stepActive];
+  }
 
   int get _currentIndex {
     final key = currentState.englishKey;
@@ -32,7 +30,9 @@ class SessionStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final idx = _currentIndex;
+    final idx    = _currentIndex;
+    final labels = _labels(context);
+    final count  = labels.length;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -43,7 +43,7 @@ class SessionStepper extends StatelessWidget {
       child: Column(
         children: [
           Row(
-            children: List.generate(_steps.length * 2 - 1, (i) {
+            children: List.generate(count * 2 - 1, (i) {
               if (i.isOdd) {
                 final stepIdx = i ~/ 2;
                 final done = idx > stepIdx;
@@ -65,16 +65,15 @@ class SessionStepper extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Row(
-            children: List.generate(_steps.length * 2 - 1, (i) {
+            children: List.generate(count * 2 - 1, (i) {
               if (i.isOdd) return const Expanded(child: SizedBox());
               final stepIdx = i ~/ 2;
               final done = idx > stepIdx;
               final active = idx == stepIdx;
-              final label = _steps[stepIdx].$2;
               return SizedBox(
                 width: 42,
                 child: Text(
-                  label,
+                  labels[stepIdx],
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 9.5,

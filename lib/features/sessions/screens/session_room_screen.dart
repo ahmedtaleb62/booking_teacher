@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gal/gal.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
@@ -13,17 +16,28 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/session_states.dart';
+import '../../../core/constants/subjects.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/session.dart';
 import '../../../core/models/session_message.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/services/messaging_service.dart';
 import '../../../core/services/session_service.dart';
 import '../../../core/services/supabase_service.dart';
+import 'video_call_screen.dart';
+
+// ─── WhatsApp-like color palette ─────────────────────────────────────────────
+const _kChatBg  = Color(0xFFF0EBE3);  // warm light beige chat background
+const _kSentBg  = Color(0xFFDCF8C6);  // sent bubble (WhatsApp green)
+const _kRecvBg  = Colors.white;
+const _kBarBg   = Colors.white;
+const _kFieldBg = Color(0xFFF0F2F5);
+// ─────────────────────────────────────────────────────────────────────────────
 
 class SessionRoomScreen extends ConsumerStatefulWidget {
   final String sessionId;
   final bool isTeacher;
-  final bool readOnly; // archive view — no sending, no live features
+  final bool readOnly;
 
   const SessionRoomScreen({
     super.key,
@@ -43,19 +57,19 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
   List<SessionMessage> _messages = [];
   RealtimeChannel? _msgChannel;
 
-  // ── Session timer ─────────────────────────────────────────────────────────
+  // ── Timer ─────────────────────────────────────────────────────────────────
   final _elapsed = ValueNotifier<int>(0);
   Timer? _elapsedTimer;
-  int _sessionDurationSeconds = 0; // 0 = unknown/not started
-  Timer? _autoEndTimer;
+  int _sessionDurationSeconds = 0;
   bool _warnShown = false;
+  DateTime? _scheduledAt;
 
   // ── Video call ────────────────────────────────────────────────────────────
-  String? _myCallUrl;       // URL of the call I initiated (suppresses my own banner)
+  String? _myCallUrl;
   String? _acknowledgedCallUrl;
 
-  // ── Text input ────────────────────────────────────────────────────────────
-  final _textCtrl = TextEditingController();
+  // ── Input ─────────────────────────────────────────────────────────────────
+  final _textCtrl  = TextEditingController();
   final _scrollCtrl = ScrollController();
   bool _sending = false;
 
@@ -65,26 +79,25 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
   String? _recordingPath;
   DateTime? _recordStart;
 
+  // ── Message editing ───────────────────────────────────────────────────────
+  SessionMessage? _editingMsg;
+
   // ── Audio playback ────────────────────────────────────────────────────────
   final _audioPlayer = AudioPlayer();
   String? _currentlyPlayingId;
   bool _audioPlaying = false;
   Duration _audioPos = Duration.zero;
 
-  // ── Teacher pre-start ─────────────────────────────────────────────────────
-  bool _starting = false;
-
-  // ── Navigation guard ──────────────────────────────────────────────────────
+  // ── Nav guard ─────────────────────────────────────────────────────────────
   bool _exited = false;
-
-  // ── Suppress stale call URL on first render ───────────────────────────────
+  bool _sessionOver = false;
   bool _initialCallUrlCaptured = false;
 
-  // ── Realtime presence ─────────────────────────────────────────────────────
+  // ── Presence ─────────────────────────────────────────────────────────────
   RealtimeChannel? _presenceChannel;
   bool _otherOnline = false;
 
-  // ── LIVE badge animation ──────────────────────────────────────────────────
+  // ── LIVE animation ────────────────────────────────────────────────────────
   late final AnimationController _liveCtrl;
 
   String get _myId => SupabaseService.userId ?? '';
@@ -94,8 +107,7 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
   void initState() {
     super.initState();
     _liveCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      vsync: this, duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
 
     _loadMessages();
@@ -106,33 +118,8 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
     }
     _initAudioPlayer();
 
-    if (!widget.readOnly) {
-      // Mark student as joined (prevents STUDENT_NO_SHOW cron)
-      if (!widget.isTeacher) {
-        SessionService.markStudentJoined(widget.sessionId).catchError((_) {});
-      }
-
-      // When session becomes active: re-mark student joined + arm auto-end timer
-      ref.listenManual(
-        sessionProvider(widget.sessionId),
-        (prev, next) {
-          final s = next.valueOrNull;
-          if (s?.state == SessionState.activeSession &&
-              prev?.valueOrNull?.state != SessionState.activeSession) {
-            if (!widget.isTeacher) {
-              SessionService.markStudentJoined(widget.sessionId).catchError((_) {});
-            }
-            // Arm the auto-end timer now that startedAt is available
-            if (s!.startedAt != null) {
-              final diff = DateTime.now().difference(s.startedAt!).inSeconds;
-              _elapsed.value = diff > 0 ? diff : 0;
-              _sessionDurationSeconds = s.durationMinutes * 60;
-              _scheduleAutoEnd();
-            }
-          }
-        },
-        fireImmediately: false,
-      );
+    if (!widget.readOnly && !widget.isTeacher) {
+      SessionService.markStudentJoined(widget.sessionId).catchError((_) {});
     }
   }
 
@@ -140,29 +127,23 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
   void dispose() {
     _liveCtrl.dispose();
     _elapsedTimer?.cancel();
-    _autoEndTimer?.cancel();
     _elapsed.dispose();
     _textCtrl.dispose();
     _scrollCtrl.dispose();
     _recorder?.dispose();
     _audioPlayer.dispose();
-    if (_msgChannel != null) {
-      SupabaseService.client.removeChannel(_msgChannel!);
-    }
-    if (_presenceChannel != null) {
-      SupabaseService.client.removeChannel(_presenceChannel!);
-    }
+    if (_msgChannel != null) SupabaseService.client.removeChannel(_msgChannel!);
+    if (_presenceChannel != null) SupabaseService.client.removeChannel(_presenceChannel!);
     super.dispose();
   }
 
-  // ── Realtime presence ─────────────────────────────────────────────────────
+  // ── Presence ──────────────────────────────────────────────────────────────
   void _initPresence() {
     _presenceChannel = SupabaseService.client
         .channel('presence-${widget.sessionId}')
         .onPresenceSync((_) => _syncPresence())
         .onPresenceJoin((_) => _syncPresence())
         .onPresenceLeave((_) => _syncPresence());
-
     _presenceChannel!.subscribe(([RealtimeSubscribeStatus? status, Object? error]) async {
       if (status == RealtimeSubscribeStatus.subscribed) {
         await _presenceChannel?.track({'user_id': _myId});
@@ -172,31 +153,26 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
 
   void _syncPresence() {
     if (!mounted || _presenceChannel == null) return;
-    final state = _presenceChannel!.presenceState();
-    final online = state.any((s) =>
-        s.presences.any((p) {
-          final uid = p.payload['user_id'] as String?;
-          return uid != null && uid != _myId;
-        }));
+    final state  = _presenceChannel!.presenceState();
+    final online = state.any((s) => s.presences.any((p) {
+      final uid = p.payload['user_id'] as String?;
+      return uid != null && uid != _myId;
+    }));
     setState(() => _otherOnline = online);
   }
 
-  // ── Audio player init ─────────────────────────────────────────────────────
+  // ── Audio player ──────────────────────────────────────────────────────────
   void _initAudioPlayer() {
-    _audioPlayer.onPlayerStateChanged.listen((s) {
-      if (mounted) setState(() => _audioPlaying = s == PlayerState.playing);
-    });
-    _audioPlayer.onPositionChanged.listen((p) {
-      if (mounted) setState(() => _audioPos = p);
-    });
+    _audioPlayer.onPlayerStateChanged.listen(
+        (s) { if (mounted) setState(() => _audioPlaying = s == PlayerState.playing); });
+    _audioPlayer.onPositionChanged.listen(
+        (p) { if (mounted) setState(() => _audioPos = p); });
     _audioPlayer.onPlayerComplete.listen((_) {
-      if (mounted) {
-        setState(() {
-          _currentlyPlayingId = null;
-          _audioPlaying = false;
-          _audioPos = Duration.zero;
-        });
-      }
+      if (mounted) setState(() {
+        _currentlyPlayingId = null;
+        _audioPlaying = false;
+        _audioPos = Duration.zero;
+      });
     });
   }
 
@@ -206,129 +182,161 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
       final msgs = await MessagingService.getMessages(widget.sessionId);
       if (mounted) {
         setState(() => _messages = msgs);
-        _scrollToBottom();
+        _scrollToBottom(animated: false);
       }
-    } catch (e) {
-      if (mounted) _showError('تعذّر تحميل الرسائل: $e');
+    } catch (_) {
+      if (mounted) _showError(context.l10n.roomErrLoadMessages);
     }
   }
 
   void _subscribeMessages() {
     _msgChannel = MessagingService.subscribeToMessages(
       widget.sessionId,
-      (msg) {
+      onInsert: (msg) {
         if (!mounted) return;
         setState(() => _messages = [..._messages, msg]);
         _scrollToBottom();
       },
+      onUpdate: (msg) {
+        if (!mounted) return;
+        setState(() => _messages = _messages.map((m) => m.id == msg.id ? msg : m).toList());
+      },
+      onDelete: (msgId) {
+        if (!mounted) return;
+        setState(() => _messages = _messages.where((m) => m.id != msgId).toList());
+      },
     );
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool animated = true}) {
+    // With reverse: true, offset 0.0 is always the visual bottom.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollCtrl.hasClients) {
-        _scrollCtrl.animateTo(
-          _scrollCtrl.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        );
+      if (!mounted || !_scrollCtrl.hasClients) return;
+      if (animated) {
+        _scrollCtrl.animateTo(0,
+            duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+      } else {
+        _scrollCtrl.jumpTo(0);
       }
     });
   }
 
   // ── Timer ─────────────────────────────────────────────────────────────────
   void _startTimer() {
-    Future<void> seedAndStart() async {
+    Future<void> seed() async {
       try {
         final s = await SessionService.getSession(widget.sessionId);
         if (!mounted) return;
-        final origin = s.startedAt ?? s.scheduledAt;
-        final diff = DateTime.now().difference(origin).inSeconds;
-        _elapsed.value = diff > 0 ? diff : 0;
-        if (s.state == SessionState.activeSession && s.startedAt != null) {
-          _sessionDurationSeconds = s.durationMinutes * 60;
-          _scheduleAutoEnd();
+        _scheduledAt = s.scheduledAt;
+        _sessionDurationSeconds = s.durationMinutes * 60;
+        final elapsed = DateTime.now().difference(s.scheduledAt).inSeconds;
+        _elapsed.value = elapsed.clamp(0, 999999);
+        // Only the teacher triggers activation to avoid double notifications
+        if (widget.isTeacher &&
+            s.state == SessionState.confirmedBooking &&
+            elapsed >= 0) {
+          SessionService.activateSession(widget.sessionId).then((_) {
+            _notifySessionStarted(s);
+          }).catchError((_) {});
+        }
+        // If already past end time, handle immediately
+        if (_sessionDurationSeconds > 0 && elapsed >= _sessionDurationSeconds) {
+          _handleTimeUp();
+          return;
         }
       } catch (_) {}
       if (!mounted) return;
       _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-        _elapsed.value++;
+        if (_scheduledAt != null) {
+          _elapsed.value = DateTime.now().difference(_scheduledAt!).inSeconds.clamp(0, 999999);
+        } else {
+          _elapsed.value++;
+        }
         _checkWarn();
+        if (_sessionDurationSeconds > 0 &&
+            _elapsed.value >= _sessionDurationSeconds &&
+            !_sessionOver) {
+          _elapsedTimer?.cancel();
+          _handleTimeUp();
+        }
       });
     }
-    seedAndStart();
-  }
-
-  void _scheduleAutoEnd() {
-    _autoEndTimer?.cancel();
-    final remaining = _sessionDurationSeconds - _elapsed.value;
-    if (remaining <= 0) {
-      _handleTimeUp();
-      return;
-    }
-    _autoEndTimer = Timer(Duration(seconds: remaining), _handleTimeUp);
+    seed();
   }
 
   void _checkWarn() {
     if (_sessionDurationSeconds <= 0 || _warnShown) return;
-    final remaining = _sessionDurationSeconds - _elapsed.value;
-    if (remaining == 300) {
+    if (_sessionDurationSeconds - _elapsed.value == 300) {
       _warnShown = true;
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('تبقّى 5 دقائق على انتهاء الجلسة'),
-          duration: Duration(seconds: 6),
-          backgroundColor: Color(0xFFD97706),
-        ));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(context.l10n.roomWarn5Min),
+        duration: const Duration(seconds: 6),
+        backgroundColor: const Color(0xFFD97706),
+      ));
     }
   }
 
   void _handleTimeUp() {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('انتهى وقت الجلسة — ستُغلق تلقائياً قريباً'),
-      duration: Duration(seconds: 10),
+    if (!mounted || _sessionOver) return;
+    _sessionOver = true; // synchronous guard before any async call
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(context.l10n.roomTimeUp),
+      duration: const Duration(seconds: 3),
       backgroundColor: AppColors.error,
     ));
+    SessionService.endSession(widget.sessionId).catchError((_) {});
+    Future.delayed(const Duration(seconds: 3), () {
+      if (!mounted || _exited) return;
+      _exited = true;
+      if (widget.isTeacher) {
+        ref.invalidate(teacherSessionsProvider);
+        context.go('/teacher/sessions');
+      } else {
+        ref.invalidate(studentSessionsProvider);
+        context.go('/sessions');
+      }
+    });
+  }
+
+  void _notifySessionStarted(Session s) {
+    MessagingService.notifyRecipient(
+      recipientId: s.teacherId,
+      title: 'بدأت جلستك الآن',
+      body: s.studentName.isNotEmpty ? s.studentName : 'الطالب',
+      sessionId: widget.sessionId,
+      type: 'SESSION_STARTED',
+    );
+    MessagingService.notifyRecipient(
+      recipientId: s.studentId,
+      title: 'بدأت جلستك الآن',
+      body: s.teacherName.isNotEmpty ? s.teacherName : 'الأستاذ',
+      sessionId: widget.sessionId,
+      type: 'SESSION_STARTED',
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('بدأت جلستك الآن'),
+        backgroundColor: AppColors.primary,
+        duration: Duration(seconds: 4),
+      ));
+    }
   }
 
   String _fmt(int secs) =>
       '${(secs ~/ 60).toString().padLeft(2, '0')}:${(secs % 60).toString().padLeft(2, '0')}';
 
-  // ── Start session (teacher) ────────────────────────────────────────────────
-  Future<void> _startSession() async {
-    if (_starting) return;
-    setState(() => _starting = true);
-    try {
-      await SessionService.activateSession(widget.sessionId);
-      ref.invalidate(sessionProvider(widget.sessionId));
-    } catch (e) {
-      if (mounted) _showError(e.toString());
-    } finally {
-      if (mounted) setState(() => _starting = false);
-    }
-  }
-
-  // ── Leave (teacher) ───────────────────────────────────────────────────────
-  // Teacher cannot end the session manually — it closes automatically when
-  // the scheduled time is up (pg_cron). We only record departure time.
+  // ── Teacher actions ───────────────────────────────────────────────────────
   void _leaveTeacher() {
+    final l = context.l10n;
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1A2330),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('مغادرة الجلسة؟',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-        content: const Text(
-            'الجلسة ستستمر وتُغلق تلقائياً عند انتهاء وقتها المحدد.',
-            style: TextStyle(color: Color(0xFF9DB2B8))),
+        title: Text(l.roomLeaveTeacherTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
+        content: Text(l.roomLeaveTeacherBody),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء', style: TextStyle(color: Color(0xFF7BE0C0))),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(l.commonCancel)),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
@@ -337,25 +345,26 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.error, foregroundColor: Colors.white),
-            child: const Text('مغادرة'),
+            child: Text(l.roomLeave),
           ),
         ],
       ),
     );
   }
 
-  // ── Leave (student) ───────────────────────────────────────────────────────
   void _leave() {
+    final l = context.l10n;
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('مغادرة الجلسة'),
-        content: const Text('يمكنك العودة في أي وقت أثناء بقاء الجلسة نشطة.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(l.roomLeaveStudentTitle),
+        content: Text(l.roomLeaveStudentBody),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(l.commonCancel)),
           TextButton(
             onPressed: () { Navigator.pop(context); context.go('/sessions'); },
-            child: const Text('مغادرة', style: TextStyle(color: AppColors.error)),
+            child: Text(l.roomLeave, style: const TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -364,69 +373,168 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
 
   // ── Video call ─────────────────────────────────────────────────────────────
   Future<void> _callVideo(Session session) async {
+    final l = context.l10n;
     try {
       final url = await SessionService.initiateVideoCall(widget.sessionId);
-      setState(() => _myCallUrl = url); // suppress my own banner
-      _notifyOther(
-        'مكالمة فيديو واردة 📹',
-        '${_senderName()} يريد بدء مكالمة فيديو — اضغط للرد',
-        type: 'VIDEO_CALL',
+      setState(() => _myCallUrl = url);
+      _notifyOther('مكالمة فيديو واردة 📹',
+          '${_senderName()} يريد بدء مكالمة فيديو', type: 'VIDEO_CALL');
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => VideoCallScreen(url: url)),
       );
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-    } catch (e) {
-      if (mounted) _showError('فشل بدء المكالمة: $e');
+    } catch (_) {
+      if (mounted) _showError(l.roomErrStartCall);
     }
   }
 
-  void _declineCall(String callUrl) {
-    setState(() => _acknowledgedCallUrl = callUrl);
+  void _declineCall(String url) => setState(() => _acknowledgedCallUrl = url);
+
+  // ── Message actions ───────────────────────────────────────────────────────
+  void _showMessageOptions(SessionMessage msg) {
+    if (widget.readOnly) return;
+    final canEdit = msg.type == 'text';
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(width: 36, height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.black12, borderRadius: BorderRadius.circular(99))),
+            const SizedBox(height: 8),
+            if (canEdit)
+              ListTile(
+                leading: const Icon(Icons.edit_rounded, color: AppColors.primary),
+                title: Text(context.l10n.roomEditMessage),
+                onTap: () { Navigator.pop(context); _startEdit(msg); },
+              ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+              title: Text(context.l10n.roomDeleteMessage,
+                  style: const TextStyle(color: AppColors.error)),
+              onTap: () { Navigator.pop(context); _confirmDelete(msg); },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
-  // ── Send message helpers ───────────────────────────────────────────────────
+  void _startEdit(SessionMessage msg) {
+    setState(() => _editingMsg = msg);
+    _textCtrl.text = msg.content ?? '';
+    _textCtrl.selection = TextSelection.fromPosition(
+        TextPosition(offset: _textCtrl.text.length));
+  }
+
+  void _cancelEdit() {
+    setState(() => _editingMsg = null);
+    _textCtrl.clear();
+  }
+
+  void _confirmDelete(SessionMessage msg) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(context.l10n.roomDeleteMessage,
+            style: const TextStyle(fontWeight: FontWeight.w700)),
+        content: Text(context.l10n.roomDeleteMessageConfirm),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.l10n.commonCancel)),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteMessage(msg);
+            },
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteMessage(SessionMessage msg) async {
+    try {
+      await MessagingService.deleteMessage(msg.id);
+      if (mounted) {
+        setState(() => _messages = _messages.where((m) => m.id != msg.id).toList());
+      }
+    } catch (_) {
+      if (mounted) _showError(context.l10n.roomErrDeleteMessage);
+    }
+  }
+
+  // ── Send ──────────────────────────────────────────────────────────────────
   Future<void> _sendText() async {
     final text = _textCtrl.text.trim();
-    if (text.isEmpty || _sending) return;
+    if (text.isEmpty || _sending || _sessionOver) return;
+
+    // ── Edit mode ─────────────────────────────────────────────────────────
+    if (_editingMsg != null) {
+      final editing = _editingMsg!;
+      setState(() { _editingMsg = null; _sending = true; });
+      _textCtrl.clear();
+      try {
+        await MessagingService.editMessage(editing.id, text);
+        if (mounted) {
+          setState(() {
+            _messages = _messages.map(
+                (m) => m.id == editing.id ? m.copyWith(content: text) : m).toList();
+          });
+        }
+      } catch (_) {
+        if (mounted) _showError(context.l10n.roomErrEditMessage);
+      } finally {
+        if (mounted) setState(() => _sending = false);
+      }
+      return;
+    }
+
+    // ── Normal send ───────────────────────────────────────────────────────
+    final l = context.l10n;
     _textCtrl.clear();
     setState(() => _sending = true);
     try {
       await MessagingService.sendText(widget.sessionId, text);
-      _notifyOther(
-        _senderName(),
-        text.length > 60 ? '${text.substring(0, 60)}...' : text,
-      );
-    } catch (e) {
-      if (mounted) {
-        _textCtrl.text = text;
-        _showError('فشل إرسال الرسالة: $e');
-      }
+      _notifyOther(_senderName(), text.length > 60 ? '${text.substring(0, 60)}...' : text);
+    } catch (_) {
+      if (mounted) { _textCtrl.text = text; _showError(l.roomErrSendText); }
     } finally {
       if (mounted) setState(() => _sending = false);
     }
   }
 
   Future<void> _pickAndSendImage() async {
+    if (_sessionOver) return;
+    final l = context.l10n;
     try {
-      final file = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 75,
-      );
+      final file = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 75);
       if (file == null || !mounted) return;
-      final bytes = await file.readAsBytes();
-      final ext = file.path.split('.').last.toLowerCase();
       setState(() => _sending = true);
-      await MessagingService.sendImage(widget.sessionId, bytes, ext);
+      await MessagingService.sendImage(
+          widget.sessionId, await file.readAsBytes(), file.path.split('.').last.toLowerCase());
       _notifyOther(_senderName(), 'أرسل لك صورة 🖼️');
-    } catch (e) {
-      if (mounted) _showError('فشل إرسال الصورة: $e');
+    } catch (_) {
+      if (mounted) _showError(l.roomErrSendImage);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
   }
 
   Future<void> _pickAndSendFile() async {
+    if (_sessionOver) return;
+    final l = context.l10n;
     try {
       final result = await FilePicker.platform.pickFiles(withData: true);
       if (result == null || result.files.isEmpty || !mounted) return;
@@ -434,27 +542,24 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
       if (picked.bytes == null) return;
       setState(() => _sending = true);
       await MessagingService.sendFile(
-        widget.sessionId,
-        picked.bytes!,
-        picked.name,
-        picked.extension != null
-            ? 'application/${picked.extension}'
-            : 'application/octet-stream',
+        widget.sessionId, picked.bytes!, picked.name,
+        picked.extension != null ? 'application/${picked.extension}' : 'application/octet-stream',
       );
       _notifyOther(_senderName(), 'أرسل لك ملفاً 📎: ${picked.name}');
-    } catch (e) {
-      if (mounted) _showError('فشل إرسال الملف: $e');
+    } catch (_) {
+      if (mounted) _showError(l.roomErrSendFile);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
   }
 
-  // ── Audio recording ────────────────────────────────────────────────────────
   Future<void> _startRecording() async {
+    if (_sessionOver) return;
+    final l = context.l10n;
     try {
       _recorder ??= AudioRecorder();
       if (!await _recorder!.hasPermission()) {
-        if (mounted) _showError('يرجى السماح للتطبيق بالوصول إلى الميكروفون');
+        if (mounted) _showError(l.roomErrMicPermission);
         return;
       }
       final dir = await getTemporaryDirectory();
@@ -463,38 +568,44 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
       _recordStart = DateTime.now();
       setState(() => _isRecording = true);
       HapticFeedback.lightImpact();
-    } catch (e) {
-      if (mounted) _showError('فشل بدء التسجيل');
+    } catch (_) {
+      if (mounted) _showError(l.roomErrStartRecording);
     }
+  }
+
+  Future<void> _cancelRecording() async {
+    if (!_isRecording || _recorder == null) return;
+    try { await _recorder!.stop(); } catch (_) {}
+    setState(() { _isRecording = false; _recordingPath = null; _recordStart = null; });
+    HapticFeedback.lightImpact();
   }
 
   Future<void> _stopRecording() async {
     if (!_isRecording || _recorder == null) return;
     try {
       await _recorder!.stop();
-      final path = _recordingPath;
+      final path  = _recordingPath;
       final start = _recordStart;
       setState(() { _isRecording = false; _recordingPath = null; _recordStart = null; });
       if (path == null || start == null) return;
-      final durationSec = DateTime.now().difference(start).inSeconds;
-      if (durationSec < 1) return;
+      final dur = DateTime.now().difference(start).inSeconds;
+      if (dur < 1) return;
       final bytes = await File(path).readAsBytes();
       setState(() => _sending = true);
-      await MessagingService.sendAudio(widget.sessionId, bytes, durationSec);
+      await MessagingService.sendAudio(widget.sessionId, bytes, dur);
       _notifyOther(_senderName(), 'رسالة صوتية 🎤');
-    } catch (e) {
-      if (mounted) _showError('فشل إرسال التسجيل الصوتي: $e');
+    } catch (_) {
+      if (mounted) _showError(context.l10n.roomErrSendAudio);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
   }
 
-  // ── Audio playback ─────────────────────────────────────────────────────────
   Future<void> _toggleAudio(String msgId, String url) async {
     if (_currentlyPlayingId == msgId && _audioPlaying) {
       await _audioPlayer.pause();
     } else if (_currentlyPlayingId == msgId && !_audioPlaying) {
-      await _audioPlayer.resume(); // continue from where we paused
+      await _audioPlayer.resume();
     } else {
       await _audioPlayer.stop();
       setState(() { _currentlyPlayingId = msgId; _audioPos = Duration.zero; });
@@ -502,80 +613,172 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
     }
   }
 
-  // ── Notification helper ────────────────────────────────────────────────────
-  // Fire-and-forget: notifies the other party via FCM Edge Function.
+  // ── Save / Download ────────────────────────────────────────────────────────
+  Future<void> _saveImageToGallery(String url) async {
+    try {
+      final res = await http.get(Uri.parse(url));
+      await Gal.putImageBytes(res.bodyBytes);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.roomImageSaved),
+            backgroundColor: const Color(0xFF25D366)),
+      );
+    } catch (_) {
+      if (mounted) _showError(context.l10n.roomErrSaveImage);
+    }
+  }
+
+  Future<void> _downloadFile(String url, String fileName) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.roomDownloadingFile), duration: const Duration(seconds: 2)),
+      );
+      final res  = await http.get(Uri.parse(url));
+      final dir  = await getApplicationDocumentsDirectory();
+      final safe = fileName.replaceAll(RegExp(r'[^\w.\-]'), '_');
+      final file = File('${dir.path}/$safe');
+      await file.writeAsBytes(res.bodyBytes);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✓ $safe'),
+            backgroundColor: const Color(0xFF25D366),
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: context.l10n.roomOpenInBrowser,
+              textColor: Colors.white,
+              onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) _showError(context.l10n.roomErrDownloadFile);
+    }
+  }
+
+  // ── Image viewer ──────────────────────────────────────────────────────────
+  void _showImageViewer(String url) {
+    Navigator.of(context).push(PageRouteBuilder(
+      opaque: false,
+      barrierColor: Colors.black87,
+      pageBuilder: (_, __, ___) => _ImageViewerPage(
+        url: url,
+        onSave: () => _saveImageToGallery(url),
+      ),
+    ));
+  }
+
+  void _showImageOptions(String url) {
+    final l = context.l10n;
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(width: 36, height: 4,
+                decoration: BoxDecoration(color: Colors.black12,
+                    borderRadius: BorderRadius.circular(99))),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.save_alt_rounded, color: AppColors.primary),
+              title: Text(l.roomSaveToGallery),
+              onTap: () { Navigator.pop(context); _saveImageToGallery(url); },
+            ),
+            ListTile(
+              leading: const Icon(Icons.zoom_in_rounded),
+              title: Text(l.roomViewFullSize),
+              onTap: () { Navigator.pop(context); _showImageViewer(url); },
+            ),
+            ListTile(
+              leading: const Icon(Icons.open_in_browser_rounded),
+              title: Text(l.roomOpenInBrowser),
+              onTap: () {
+                Navigator.pop(context);
+                launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
   void _notifyOther(String title, String body, {String type = 'SESSION_MESSAGE'}) {
     final session = ref.read(sessionProvider(widget.sessionId)).valueOrNull;
     if (session == null) return;
-    final otherId = widget.isTeacher ? session.studentId : session.teacherId;
     MessagingService.notifyRecipient(
-      recipientId: otherId,
-      title:       title,
-      body:        body,
-      sessionId:   widget.sessionId,
-      type:        type,
-      extra:       {'role': widget.isTeacher ? 'student' : 'teacher'},
+      recipientId: widget.isTeacher ? session.studentId : session.teacherId,
+      title: title, body: body, sessionId: widget.sessionId, type: type,
+      extra: {'role': widget.isTeacher ? 'student' : 'teacher'},
     );
   }
 
   String _senderName() {
-    final session = ref.read(sessionProvider(widget.sessionId)).valueOrNull;
-    if (session == null) return widget.isTeacher ? 'الأستاذ' : 'الطالب';
-    return widget.isTeacher ? session.teacherName : session.studentName;
+    final s = ref.read(sessionProvider(widget.sessionId)).valueOrNull;
+    if (s == null) return widget.isTeacher ? 'الأستاذ' : 'الطالب';
+    return widget.isTeacher ? s.teacherName : s.studentName;
   }
 
-  // ── Error helper ───────────────────────────────────────────────────────────
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: AppColors.error),
-    );
+  String _otherName(Session? s) {
+    if (s == null) return widget.isTeacher ? 'الطالب' : 'الأستاذ';
+    return widget.isTeacher ? s.studentName : s.teacherName;
   }
 
-  // ── BUILD ──────────────────────────────────────────────────────────────────
+  String _otherInitial(Session? s) {
+    final name = _otherName(s);
+    return name.isNotEmpty ? name[0] : '؟';
+  }
+
+  String? _otherAvatarUrl(Session? s) {
+    if (s == null) return null;
+    return widget.isTeacher ? s.studentAvatarUrl : s.teacherAvatarUrl;
+  }
+
+  void _showError(String msg) => ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: AppColors.error));
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // BUILD
+  // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final sessionAsync = ref.watch(sessionProvider(widget.sessionId));
     return sessionAsync.when(
-      loading: () => const _DarkLoader(),
-      error: (e, _) => _DarkLoader(label: '$e'),
-      data: (session) {
-        if (session == null) return const _DarkLoader(label: 'الجلسة غير موجودة');
+      loading: () => const _ChatLoader(),
+      error:   (e, _) => _ChatLoader(label: '$e'),
+      data:    (session) {
+        if (session == null) return const _ChatLoader(label: 'الجلسة غير موجودة');
 
-        // In read-only (archive) mode skip all live features
-        if (widget.readOnly) {
-          return Scaffold(
-            backgroundColor: const Color(0xFF10171E),
-            resizeToAvoidBottomInset: false,
-            body: Column(
-              children: [
-                _buildTopBar(context, session),
-                Expanded(child: _buildMessagesList(session)),
-                _buildBottomBar(context, session),
-              ],
-            ),
-          );
-        }
-
-        // On first render, mark existing roomUrl as already acknowledged so we
-        // never show a banner for a call that happened before we entered the room.
         if (!_initialCallUrlCaptured) {
           _initialCallUrlCaptured = true;
           _acknowledgedCallUrl = session.roomUrl;
         }
 
-        // Compute before any early return so the banner works in pre-start too
         final incomingCall = session.roomUrl != null
             && session.roomUrl != _acknowledgedCallUrl
             && session.roomUrl != _myCallUrl;
 
-        // Auto-exit on terminal state — _exited guard prevents double navigation
+        if (widget.readOnly) {
+          return Scaffold(
+            backgroundColor: _kChatBg,
+            body: Column(children: [
+              _buildTopBar(context, session),
+              Expanded(child: _buildMessagesList(session)),
+              _buildArchiveBar(context, session),
+            ]),
+          );
+        }
+
         const terminal = {
-          SessionState.completed,
-          SessionState.teacherNoShow,
-          SessionState.studentNoShow,
-          SessionState.cancelled,
-          SessionState.dispute,
-          SessionState.teacherRejected,
+          SessionState.completed, SessionState.teacherNoShow,
+          SessionState.studentNoShow, SessionState.cancelled,
+          SessionState.dispute, SessionState.teacherRejected,
         };
         if (terminal.contains(session.state)) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -592,696 +795,859 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
         }
 
         return Scaffold(
-          backgroundColor: const Color(0xFF10171E),
-          resizeToAvoidBottomInset: false,
-          body: Stack(
-            children: [
-              Column(
-                children: [
-                  _buildTopBar(context, session),
-                  // Teacher start-session prompt when booking is confirmed but not yet active
-                  if (widget.isTeacher && session.state == SessionState.confirmedBooking)
-                    _buildStartBanner(),
-                  Expanded(child: _buildMessagesList(session)),
-                  _buildInputBar(context, session),
-                ],
-              ),
-              if (incomingCall) _buildIncomingCallBanner(session),
-            ],
-          ),
+          backgroundColor: _kChatBg,
+          resizeToAvoidBottomInset: true,
+          body: Stack(children: [
+            Column(children: [
+              _buildTopBar(context, session),
+              Expanded(child: _buildMessagesList(session)),
+              _buildInputBar(context, session),
+            ]),
+            if (incomingCall) _buildIncomingCallBanner(session),
+          ]),
         );
       },
     );
   }
 
-  // ── Teacher start-session banner (confirmedBooking, above messages) ─────────
-  Widget _buildStartBanner() {
-    return Container(
-      color: const Color(0xFF0D131A),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-      child: Row(
-        children: [
-          // Online status dot
-          Container(
-            width: 7, height: 7,
-            decoration: BoxDecoration(
-              color: _otherOnline ? const Color(0xFF10B981) : Colors.white24,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            _otherOnline ? 'الطالب متصل' : 'الطالب غير متصل',
-            style: TextStyle(
-              color: _otherOnline ? const Color(0xFF10B981) : Colors.white38,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const Spacer(),
-          GestureDetector(
-            onTap: _starting ? null : _startSession,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-              decoration: BoxDecoration(
-                color: const Color(0xFF7B61FF),
-                borderRadius: BorderRadius.circular(12),
+  // ── TOP BAR ───────────────────────────────────────────────────────────────
+  Widget _buildTopBar(BuildContext context, Session session) {
+    final l       = context.l10n;
+    final other   = _otherName(session);
+    final initial = _otherInitial(session);
+    final avatarUrl = _otherAvatarUrl(session);
+
+    return Material(
+      elevation: 2,
+      color: _kBarBg,
+      child: SafeArea(
+        bottom: false,
+        child: SizedBox(
+          height: 60,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Row(children: [
+              // Leave / back
+              IconButton(
+                icon: Icon(
+                  widget.readOnly ? Icons.arrow_back_rounded : Icons.call_end_rounded,
+                  color: widget.readOnly ? Colors.black54 : AppColors.error,
+                  size: 22,
+                ),
+                onPressed: widget.readOnly
+                    ? () => context.pop()
+                    : (widget.isTeacher ? _leaveTeacher : _leave),
               ),
-              child: _starting
-                  ? const SizedBox(
-                      width: 16, height: 16,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18),
-                        SizedBox(width: 4),
-                        Text('بدء الجلسة',
-                            style: TextStyle(
-                                color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
-                      ],
+
+              // Avatar (photo or initial)
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                backgroundImage: avatarUrl != null
+                    ? CachedNetworkImageProvider(avatarUrl)
+                    : null,
+                child: avatarUrl == null
+                    ? Text(initial,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
+                            color: AppColors.primary))
+                    : null,
+              ),
+              const SizedBox(width: 10),
+
+              // Name + status
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(other, style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87)),
+                    if (!widget.readOnly)
+                      Row(children: [
+                        Container(
+                          width: 6, height: 6,
+                          margin: const EdgeInsets.only(left: 4),
+                          decoration: BoxDecoration(
+                            color: _otherOnline ? const Color(0xFF25D366) : Colors.grey.shade400,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        Text(
+                          _otherOnline ? l.roomOnline : l.roomOffline,
+                          style: TextStyle(fontSize: 11,
+                              color: _otherOnline ? const Color(0xFF25D366) : Colors.black38),
+                        ),
+                      ]),
+                    if (widget.readOnly)
+                      Text(l.roomChatLog,
+                          style: const TextStyle(fontSize: 11, color: Colors.black38)),
+                  ],
+                ),
+              ),
+
+              // Subject chip
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(translateSubject(session.subject, Localizations.localeOf(context)),
+                    style: TextStyle(fontSize: 11, color: AppColors.primary,
+                        fontWeight: FontWeight.w600)),
+              ),
+              const SizedBox(width: 6),
+
+              // Timer
+              if (!widget.readOnly)
+                ValueListenableBuilder<int>(
+                  valueListenable: _elapsed,
+                  builder: (_, elapsed, __) {
+                    final hasLimit  = _sessionDurationSeconds > 0;
+                    final remaining = hasLimit
+                        ? (_sessionDurationSeconds - elapsed).clamp(0, _sessionDurationSeconds)
+                        : null;
+                    final isLow = remaining != null && remaining <= 300;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isLow
+                            ? AppColors.error.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        remaining != null ? _fmt(remaining) : _fmt(elapsed),
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w700,
+                            color: isLow ? AppColors.error : Colors.black54),
+                      ),
+                    );
+                  },
+                ),
+
+              // LIVE badge
+              if (!widget.readOnly && session.isLive) ...[
+                const SizedBox(width: 4),
+                AnimatedBuilder(
+                  animation: _liveCtrl,
+                  builder: (_, __) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [BoxShadow(
+                        color: Colors.red.withValues(alpha: 0.3 + _liveCtrl.value * 0.3),
+                        blurRadius: 6 + _liveCtrl.value * 6,
+                      )],
                     ),
-            ),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.circle, color: Colors.white, size: 6),
+                      SizedBox(width: 4),
+                      Text('LIVE',
+                          style: TextStyle(color: Colors.white, fontSize: 9,
+                              fontWeight: FontWeight.w800)),
+                    ]),
+                  ),
+                ),
+              ],
+            ]),
           ),
+        ),
+      ),
+    );
+  }
+
+  // ── START BANNER (teacher) ────────────────────────────────────────────────
+  // ── MESSAGES LIST ─────────────────────────────────────────────────────────
+  Widget _buildMessagesList(Session session) {
+    if (_messages.isEmpty) {
+      return Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.lock_outline_rounded, color: Colors.black26, size: 20),
+            const SizedBox(height: 6),
+            Text(
+              widget.readOnly
+                  ? context.l10n.roomNoMessagesReadOnly
+                  : context.l10n.roomNoMessages,
+              style: const TextStyle(color: Colors.black45, fontSize: 12),
+            ),
+          ]),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      controller: _scrollCtrl,
+      reverse: true,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      itemCount: _messages.length,
+      itemBuilder: (_, i) {
+        final msg  = _messages[_messages.length - 1 - i];
+        final prev = i < _messages.length - 1
+            ? _messages[_messages.length - 2 - i]
+            : null;
+        final isMine     = msg.senderId == _myId;
+        final showAvatar = !isMine &&
+            (prev == null || prev.senderId != msg.senderId);
+        return _buildBubbleRow(msg, isMine, showAvatar, session);
+      },
+    );
+  }
+
+  Widget _buildBubbleRow(SessionMessage msg, bool isMine, bool showAvatar, Session session) {
+    final avatarUrl = _otherAvatarUrl(session);
+    final bubble = isMine && !widget.readOnly
+        ? GestureDetector(
+            onLongPress: () => _showMessageOptions(msg),
+            child: _buildBubble(msg, isMine),
+          )
+        : _buildBubble(msg, isMine);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isMine) ...[
+            if (showAvatar)
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                backgroundImage: avatarUrl != null
+                    ? CachedNetworkImageProvider(avatarUrl)
+                    : null,
+                child: avatarUrl == null
+                    ? Text(_otherInitial(session),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+                            color: AppColors.primary))
+                    : null,
+              )
+            else
+              const SizedBox(width: 28),
+            const SizedBox(width: 6),
+          ],
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+            child: bubble,
+          ),
+          if (isMine) const SizedBox(width: 4),
         ],
       ),
     );
   }
 
-  // ── Read-only bottom bar (archive view) ───────────────────────────────────
-  Widget _buildBottomBar(BuildContext context, Session session) {
-    return Container(
-      color: const Color(0xFF0D131A),
-      padding: EdgeInsets.only(
-        left: 16, right: 16, top: 12,
-        bottom: MediaQuery.of(context).padding.bottom + 12,
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: () => context.push('/request-session/${session.teacherId}'),
-          icon: const Icon(Icons.calendar_today_rounded, size: 18),
-          label: const Text('حجز حصة جديدة'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-            elevation: 0,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Online/offline chip for the other party ───────────────────────────────
-  Widget _buildOtherOnlineChip() {
-    final label = _otherOnline
-        ? (widget.isTeacher ? 'الطالب متصل' : 'الأستاذ متصل')
-        : (widget.isTeacher ? 'الطالب غير متصل' : 'الأستاذ غير متصل');
-    final dotColor = _otherOnline ? const Color(0xFF10B981) : Colors.white24;
-    final textColor = _otherOnline ? const Color(0xFF10B981) : Colors.white38;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 6, height: 6,
-          decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 4),
-        Text(label,
-            style: TextStyle(color: textColor, fontSize: 10, fontWeight: FontWeight.w600)),
-      ],
-    );
-  }
-
-  // ── Top bar ────────────────────────────────────────────────────────────────
-  Widget _buildTopBar(BuildContext context, Session session) {
-    // Archive mode: simple header with back button
-    if (widget.readOnly) {
-      return SafeArea(
-        bottom: false,
-        child: Container(
-          color: const Color(0xFF0D131A),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            children: [
-              GestureDetector(
-                onTap: () => context.pop(),
-                child: const Icon(Icons.arrow_back_rounded, color: Colors.white54, size: 22),
-              ),
-              const SizedBox(width: 12),
-              const Text('سجل المحادثة',
-                  style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(session.subject,
-                    style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600)),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return SafeArea(
-      bottom: false,
-      child: Container(
-        color: const Color(0xFF0D131A),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            if (session.isLive)
-              AnimatedBuilder(
-                animation: _liveCtrl,
-                builder: (_, __) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: [BoxShadow(
-                      color: Colors.red.withValues(alpha: 0.3 + _liveCtrl.value * 0.3),
-                      blurRadius: 8 + _liveCtrl.value * 8,
-                    )],
-                  ),
-                  child: const Row(children: [
-                    Icon(Icons.circle, color: Colors.white, size: 7),
-                    SizedBox(width: 5),
-                    Text('LIVE', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
-                  ]),
-                ),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Text('في الانتظار',
-                    style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w600)),
-              ),
-            const SizedBox(width: 8),
-            ValueListenableBuilder<int>(
-              valueListenable: _elapsed,
-              builder: (_, elapsed, __) {
-                final hasLimit = _sessionDurationSeconds > 0;
-                final remaining = hasLimit
-                    ? (_sessionDurationSeconds - elapsed).clamp(0, _sessionDurationSeconds)
-                    : null;
-                final isLow = remaining != null && remaining <= 300;
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: isLow
-                        ? AppColors.error.withValues(alpha: 0.2)
-                        : Colors.black38,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    remaining != null ? _fmt(remaining) : _fmt(elapsed),
-                    style: TextStyle(
-                      color: isLow ? AppColors.error : Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(width: 8),
-            _buildOtherOnlineChip(),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(session.subject,
-                  style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600)),
-            ),
-            const SizedBox(width: 10),
-            GestureDetector(
-              onTap: widget.isTeacher ? _leaveTeacher : _leave,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                  color: AppColors.error,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Text(
-                  'مغادرة',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Messages list ──────────────────────────────────────────────────────────
-  Widget _buildMessagesList(Session session) {
-    if (_messages.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white12, size: 52),
-            const SizedBox(height: 12),
-            Text(
-              widget.readOnly ? 'لا توجد رسائل في هذه الجلسة' : 'ابدأ المحادثة',
-              style: const TextStyle(color: Colors.white38, fontSize: 13),
-            ),
-          ],
-        ),
-      );
-    }
-    return ListView.builder(
-      controller: _scrollCtrl,
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-      itemCount: _messages.length,
-      itemBuilder: (_, i) => _buildBubble(_messages[i]),
-    );
-  }
-
-  Widget _buildBubble(SessionMessage msg) {
-    final isMine = msg.senderId == _myId;
-    return Align(
-      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.76),
-        margin: const EdgeInsets.symmetric(vertical: 3),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        decoration: BoxDecoration(
-          color: isMine ? const Color(0xFF7B61FF) : const Color(0xFF1E293B),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(18),
-            topRight: const Radius.circular(18),
-            bottomLeft: Radius.circular(isMine ? 18 : 4),
-            bottomRight: Radius.circular(isMine ? 4 : 18),
-          ),
-        ),
-        child: _bubbleContent(msg),
-      ),
-    );
-  }
-
-  Widget _bubbleContent(SessionMessage msg) {
+  Widget _buildBubble(SessionMessage msg, bool isMine) {
     final time = '${msg.createdAt.toLocal().hour.toString().padLeft(2, '0')}:'
         '${msg.createdAt.toLocal().minute.toString().padLeft(2, '0')}';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isMine ? _kSentBg : _kRecvBg,
+        borderRadius: BorderRadius.only(
+          topLeft:     const Radius.circular(18),
+          topRight:    const Radius.circular(18),
+          bottomLeft:  Radius.circular(isMine ? 18 : 4),
+          bottomRight: Radius.circular(isMine ? 4  : 18),
+        ),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 4, offset: const Offset(0, 1)),
+        ],
+      ),
+      child: _bubbleContent(msg, time, isMine),
+    );
+  }
+
+  Widget _bubbleContent(SessionMessage msg, String time, bool isMine) {
     switch (msg.type) {
+      // ── Text ──────────────────────────────────────────────────────────────
       case 'text':
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(msg.content ?? '',
-                style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.45)),
-            const SizedBox(height: 2),
-            Text(time, style: const TextStyle(color: Colors.white38, fontSize: 10)),
-          ],
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(msg.content ?? '',
+                  textDirection: TextDirection.rtl,
+                  style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.45)),
+              const SizedBox(height: 3),
+              _timeTick(time, isMine),
+            ],
+          ),
         );
+
+      // ── Image ─────────────────────────────────────────────────────────────
       case 'image':
         return Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             if (msg.fileUrl != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.network(
-                  msg.fileUrl!,
-                  width: 210,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (_, child, p) => p == null
-                      ? child
-                      : const SizedBox(
-                          width: 210, height: 130,
-                          child: Center(child: CircularProgressIndicator(color: Colors.white54, strokeWidth: 2)),
-                        ),
-                  errorBuilder: (_, __, ___) => const SizedBox(
-                    width: 210, height: 80,
-                    child: Center(child: Icon(Icons.broken_image_rounded, color: Colors.white30)),
+              GestureDetector(
+                onTap:      () => _showImageViewer(msg.fileUrl!),
+                onLongPress: () => _showImageOptions(msg.fileUrl!),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(18), topRight: Radius.circular(18),
+                    bottomLeft: Radius.circular(4), bottomRight: Radius.circular(4),
                   ),
+                  child: Stack(children: [
+                    CachedNetworkImage(
+                      imageUrl: msg.fileUrl!,
+                      width: 220, height: 180, fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(
+                        width: 220, height: 180, color: Colors.black.withValues(alpha: 0.05),
+                        child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
+                        width: 220, height: 180, color: Colors.black.withValues(alpha: 0.05),
+                        child: const Icon(Icons.broken_image_rounded, color: Colors.black26, size: 36),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 6, right: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                            color: Colors.black45, borderRadius: BorderRadius.circular(8)),
+                        child: const Icon(Icons.zoom_in_rounded, color: Colors.white, size: 16),
+                      ),
+                    ),
+                  ]),
                 ),
               ),
-            const SizedBox(height: 4),
-            Text(time, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
+              child: _timeTick(time, isMine),
+            ),
           ],
         );
+
+      // ── Audio ─────────────────────────────────────────────────────────────
       case 'audio':
-        final isThis = _currentlyPlayingId == msg.id;
+        final isThis    = _currentlyPlayingId == msg.id;
         final isPlaying = isThis && _audioPlaying;
-        final dur = msg.durationSec ?? 0;
-        final progress = (isThis && dur > 0)
+        final dur       = msg.durationSec ?? 0;
+        final progress  = (isThis && dur > 0)
             ? (_audioPos.inMilliseconds / (dur * 1000)).clamp(0.0, 1.0)
             : 0.0;
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            GestureDetector(
-              onTap: () {
-                if (msg.fileUrl != null) _toggleAudio(msg.id, msg.fileUrl!);
-              },
-              child: Container(
-                width: 38, height: 38,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Icon(
-                  isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                  color: Colors.white, size: 22,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 100,
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.white24,
-                    color: Colors.white,
-                    minHeight: 3,
-                    borderRadius: BorderRadius.circular(999),
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                GestureDetector(
+                  onTap: () { if (msg.fileUrl != null) _toggleAudio(msg.id, msg.fileUrl!); },
+                  child: Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color: isMine ? const Color(0xFF128C7E) : AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      color: Colors.white, size: 24,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${dur ~/ 60}:${(dur % 60).toString().padLeft(2, '0')}',
-                  style: const TextStyle(color: Colors.white60, fontSize: 10),
-                ),
-              ],
-            ),
-            const SizedBox(width: 10),
-            Text(time, style: const TextStyle(color: Colors.white38, fontSize: 10)),
-          ],
-        );
-      case 'file':
-        return GestureDetector(
-          onTap: () async {
-            if (msg.fileUrl == null) return;
-            final uri = Uri.parse(msg.fileUrl!);
-            if (await canLaunchUrl(uri)) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            }
-          },
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.insert_drive_file_rounded, color: Colors.white70, size: 26),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(msg.content ?? 'ملف',
-                        style: const TextStyle(color: Colors.white, fontSize: 13),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis),
-                    const Text('اضغط للفتح',
-                        style: TextStyle(color: Colors.white38, fontSize: 10)),
-                    Text(time, style: const TextStyle(color: Colors.white38, fontSize: 10)),
-                  ],
-                ),
-              ),
+                const SizedBox(width: 10),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  SizedBox(
+                    width: 110, height: 26,
+                    child: CustomPaint(painter: _WaveformPainter(progress: progress.toDouble())),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    isThis
+                        ? '${_audioPos.inMinutes}:${(_audioPos.inSeconds % 60).toString().padLeft(2, '0')}'
+                        : '${dur ~/ 60}:${(dur % 60).toString().padLeft(2, '0')}',
+                    style: const TextStyle(fontSize: 10, color: Colors.black45),
+                  ),
+                ]),
+              ]),
+              const SizedBox(height: 4),
+              _timeTick(time, isMine),
             ],
           ),
         );
+
+      // ── File ─────────────────────────────────────────────────────────────
+      case 'file':
+        final fileName = msg.content ?? 'ملف';
+        final ext = fileName.contains('.')
+            ? fileName.split('.').last.toUpperCase()
+            : 'FILE';
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  width: 46, height: 46,
+                  decoration: BoxDecoration(
+                    color: isMine ? const Color(0xFF128C7E) : AppColors.primary,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    ext.length > 4 ? ext.substring(0, 4) : ext,
+                    style: const TextStyle(color: Colors.white, fontSize: 10,
+                        fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(fileName,
+                        style: const TextStyle(fontSize: 13, color: Colors.black87,
+                            fontWeight: FontWeight.w600),
+                        maxLines: 2, overflow: TextOverflow.ellipsis),
+                    Text(context.l10n.roomFileTapHint,
+                        style: const TextStyle(fontSize: 10, color: Colors.black38)),
+                  ]),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () { if (msg.fileUrl != null) _downloadFile(msg.fileUrl!, fileName); },
+                  child: Container(
+                    width: 32, height: 32,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.07),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.download_rounded, size: 18, color: Colors.black54),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 6),
+              _timeTick(time, isMine),
+            ],
+          ),
+        );
+
       default:
-        return Text(msg.content ?? '', style: const TextStyle(color: Colors.white));
+        return Padding(
+          padding: const EdgeInsets.all(10),
+          child: Text(msg.content ?? '', style: const TextStyle(color: Colors.black87)),
+        );
     }
   }
 
-  // ── Input bar ──────────────────────────────────────────────────────────────
+  Widget _timeTick(String time, bool isMine) {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Text(time, style: const TextStyle(fontSize: 10, color: Colors.black38)),
+      if (isMine) ...[
+        const SizedBox(width: 3),
+        const Icon(Icons.done_all_rounded, size: 14, color: Color(0xFF53BDEB)),
+      ],
+    ]);
+  }
+
+  // ── INPUT BAR ──────────────────────────────────────────────────────────────
   Widget _buildInputBar(BuildContext context, Session session) {
-    final bottom = MediaQuery.of(context).padding.bottom + MediaQuery.of(context).viewInsets.bottom;
-    return Container(
-      color: const Color(0xFF0D131A),
-      padding: EdgeInsets.fromLTRB(12, 10, 12, bottom + 10),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // ── Action toolbar ────────────────────────────────
-          if (_isRecording)
-            _buildRecordingIndicator()
-          else
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildActionBtn(
-                  icon: Icons.videocam_rounded,
-                  label: 'فيديو',
-                  color: session.isLive ? const Color(0xFF7B61FF) : Colors.white12,
-                  iconColor: session.isLive ? Colors.white : Colors.white24,
-                  onTap: session.isLive ? () => _callVideo(session) : null,
-                ),
-                _buildActionBtn(
-                  icon: Icons.mic_rounded,
-                  label: 'صوتي',
-                  color: const Color(0xFF1E293B),
-                  iconColor: Colors.white,
-                  onTap: _startRecording,
-                ),
-                _buildActionBtn(
-                  icon: Icons.attach_file_rounded,
-                  label: 'ملف',
-                  color: const Color(0xFF1E293B),
-                  iconColor: Colors.white,
-                  onTap: _pickAndSendFile,
-                ),
-                _buildActionBtn(
-                  icon: Icons.image_outlined,
-                  label: 'صورة',
-                  color: const Color(0xFF1E293B),
-                  iconColor: Colors.white,
-                  onTap: _pickAndSendImage,
-                ),
-              ],
+    final bottom = MediaQuery.of(context).padding.bottom;
+    if (_sessionOver) {
+      return Material(
+        elevation: 4,
+        color: _kBarBg,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16, 12, 16, bottom + 12),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.error.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
             ),
-          const SizedBox(height: 8),
-          // ── Text input row ────────────────────────────────
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _textCtrl,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: 'اكتب رسالة...',
-                    hintStyle: const TextStyle(color: Colors.white38),
-                    filled: true,
-                    fillColor: const Color(0xFF1E293B),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  textDirection: TextDirection.rtl,
-                  maxLines: 5,
-                  minLines: 1,
-                ),
-              ),
-              const SizedBox(width: 8),
-              ValueListenableBuilder<TextEditingValue>(
-                valueListenable: _textCtrl,
-                builder: (_, val, __) {
-                  final hasText = val.text.trim().isNotEmpty;
-                  return GestureDetector(
-                    onTap: hasText ? _sendText : null,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      width: 44, height: 44,
-                      decoration: BoxDecoration(
-                        color: hasText ? const Color(0xFF7B61FF) : const Color(0xFF1E293B),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Icon(Icons.send_rounded,
-                          color: hasText ? Colors.white : Colors.white24, size: 20),
-                    ),
-                  );
-                },
-              ),
-            ],
+            alignment: Alignment.center,
+            child: Text(
+              context.l10n.roomTimeUp,
+              style: const TextStyle(
+                color: AppColors.error, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionBtn({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required Color iconColor,
-    required VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 54, height: 54,
-            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(16)),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-          const SizedBox(height: 5),
-          Text(label,
-              style: TextStyle(
-                color: onTap != null ? Colors.white54 : Colors.white24,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              )),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRecordingIndicator() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.fiber_manual_record, color: Colors.red, size: 12),
-          const SizedBox(width: 8),
-          const Text('جاري التسجيل...',
-              style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w600)),
-          const Spacer(),
-          GestureDetector(
-            onTap: _stopRecording,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Row(
+        ),
+      );
+    }
+    return Material(
+      elevation: 4,
+      color: _kBarBg,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(8, 8, 8, bottom + 8),
+        child: _isRecording
+            ? _buildRecordingBar()
+            : Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.stop_rounded, color: Colors.white, size: 16),
-                  SizedBox(width: 4),
-                  Text('إيقاف وإرسال',
-                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                  // Edit banner
+                  if (_editingMsg != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      margin: const EdgeInsets.only(bottom: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.edit_rounded, size: 14, color: AppColors.primary),
+                        const SizedBox(width: 6),
+                        Text(context.l10n.roomEditMessage,
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600)),
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: _cancelEdit,
+                          child: const Icon(Icons.close_rounded,
+                              size: 16, color: AppColors.primary),
+                        ),
+                      ]),
+                    ),
+                  // Attachment row
+                  Row(children: [
+                    _actionBtn(Icons.image_outlined, context.l10n.roomAttachImage, _pickAndSendImage),
+                    _actionBtn(Icons.attach_file_rounded, context.l10n.roomAttachFile, _pickAndSendFile),
+                    _actionBtn(Icons.mic_rounded, context.l10n.roomAttachAudio, _startRecording),
+                    _actionBtn(
+                      Icons.videocam_rounded, context.l10n.roomAttachVideo,
+                      session.isLive ? () => _callVideo(session) : null,
+                      active: session.isLive,
+                    ),
+                    const Spacer(),
+                  ]),
+                  const SizedBox(height: 6),
+                  // Text + send row
+                  Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _kFieldBg,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: TextField(
+                          controller: _textCtrl,
+                          style: const TextStyle(fontSize: 14, color: Colors.black87),
+                          decoration: InputDecoration(
+                            hintText: context.l10n.roomTypeHint,
+                            hintStyle: const TextStyle(color: Colors.black38),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            border: InputBorder.none,
+                          ),
+                          textDirection: TextDirection.rtl,
+                          maxLines: 5, minLines: 1,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: _textCtrl,
+                      builder: (_, val, __) {
+                        final hasText = val.text.trim().isNotEmpty;
+                        final isEditing = _editingMsg != null;
+                        return GestureDetector(
+                          onTap: hasText ? _sendText : null,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            width: 44, height: 44,
+                            decoration: BoxDecoration(
+                              color: hasText ? AppColors.primary : Colors.grey.shade300,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isEditing ? Icons.check_rounded : Icons.send_rounded,
+                              color: hasText ? Colors.white : Colors.black26,
+                              size: 20,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ]),
                 ],
               ),
-            ),
-          ),
-        ],
       ),
     );
   }
 
-  // ── Incoming call banner ───────────────────────────────────────────────────
+  Widget _actionBtn(IconData icon, String label, VoidCallback? onTap,
+      {bool active = false}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 24,
+              color: onTap == null
+                  ? Colors.black12
+                  : (active ? AppColors.primary : Colors.black45)),
+          const SizedBox(height: 2),
+          Text(label, style: TextStyle(
+              fontSize: 10,
+              color: onTap == null ? Colors.black12 : Colors.black38)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildRecordingBar() {
+    return Container(
+      height: 54,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3F3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+      ),
+      child: Row(children: [
+        // Cancel recording
+        GestureDetector(
+          onTap: _cancelRecording,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.delete_outline_rounded, color: Colors.black54, size: 15),
+              const SizedBox(width: 4),
+              Text(context.l10n.commonCancel,
+                  style: const TextStyle(color: Colors.black54, fontSize: 12,
+                      fontWeight: FontWeight.w600)),
+            ]),
+          ),
+        ),
+        const SizedBox(width: 10),
+        const Icon(Icons.fiber_manual_record, color: Colors.red, size: 12),
+        const SizedBox(width: 6),
+        Text(context.l10n.roomRecording,
+            style: const TextStyle(
+                color: Colors.red, fontSize: 13, fontWeight: FontWeight.w600)),
+        const Spacer(),
+        // Stop + send
+        GestureDetector(
+          onTap: _stopRecording,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+                color: Colors.red, borderRadius: BorderRadius.circular(20)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.stop_rounded, color: Colors.white, size: 16),
+              const SizedBox(width: 4),
+              Text(context.l10n.roomStopSend,
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 12,
+                      fontWeight: FontWeight.w700)),
+            ]),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  // ── ARCHIVE BAR ───────────────────────────────────────────────────────────
+  Widget _buildArchiveBar(BuildContext context, Session session) {
+    return Material(
+      elevation: 4,
+      color: _kBarBg,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => context.push('/request-session/${session.teacherId}'),
+            icon: const Icon(Icons.calendar_today_rounded, size: 18),
+            label: Text(context.l10n.roomNewBooking),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              elevation: 0,
+              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── INCOMING CALL BANNER ──────────────────────────────────────────────────
   Widget _buildIncomingCallBanner(Session session) {
     return Positioned(
       top: 0, left: 0, right: 0,
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E293B),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFF7B61FF), width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF7B61FF).withValues(alpha: 0.25),
-                  blurRadius: 24,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
+          child: Material(
+            borderRadius: BorderRadius.circular(18),
+            elevation: 8,
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+              ),
+              child: Row(children: [
                 Container(
                   width: 44, height: 44,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF7B61FF).withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(999),
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.videocam_rounded, color: Color(0xFF7B61FF), size: 24),
+                  child: Icon(Icons.videocam_rounded, color: AppColors.primary, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('مكالمة فيديو واردة',
-                          style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
-                      Text(
-                        widget.isTeacher ? 'من الطالب' : 'من الأستاذ',
-                        style: const TextStyle(color: Colors.white54, fontSize: 12),
-                      ),
-                    ],
-                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(context.l10n.roomIncomingCall,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
+                            color: Colors.black87)),
+                    Text(widget.isTeacher ? context.l10n.roomCallFromStudent : context.l10n.roomCallFromTeacher,
+                        style: const TextStyle(fontSize: 12, color: Colors.black45)),
+                  ]),
                 ),
                 TextButton(
                   onPressed: () => _declineCall(session.roomUrl!),
-                  child: const Text('رفض', style: TextStyle(color: Colors.red, fontSize: 13)),
+                  child: Text(context.l10n.roomDeclineCall,
+                      style: const TextStyle(color: AppColors.error)),
                 ),
-                const SizedBox(width: 4),
                 ElevatedButton(
                   onPressed: () async {
                     final url = session.roomUrl!;
                     setState(() => _acknowledgedCallUrl = url);
-                    final uri = Uri.parse(url);
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
-                    }
+                    if (!mounted) return;
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => VideoCallScreen(url: url)),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7B61FF),
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
-                  child: const Text('قبول'),
+                  child: Text(context.l10n.roomAcceptCall),
                 ),
-              ],
+              ]),
             ),
           ),
         ),
       ),
     );
   }
-
 }
 
-// ── Shared helper widgets ──────────────────────────────────────────────────────
-
-class _DarkLoader extends StatelessWidget {
-  final String? label;
-  const _DarkLoader({this.label});
+// ─── Full-screen image viewer ─────────────────────────────────────────────────
+class _ImageViewerPage extends StatelessWidget {
+  final String url;
+  final VoidCallback onSave;
+  const _ImageViewerPage({required this.url, required this.onSave});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF10171E),
+      backgroundColor: Colors.black,
+      body: Stack(children: [
+        Center(
+          child: InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 6.0,
+            child: CachedNetworkImage(
+              imageUrl: url,
+              fit: BoxFit.contain,
+              placeholder: (_, __) => const Center(
+                  child: CircularProgressIndicator(color: Colors.white54)),
+              errorWidget: (_, __, ___) =>
+                  const Icon(Icons.broken_image_rounded, color: Colors.white30, size: 56),
+            ),
+          ),
+        ),
+        SafeArea(
+          child: Row(children: [
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 26),
+            ),
+            const Spacer(),
+            IconButton(
+              onPressed: onSave,
+              tooltip: 'حفظ في المعرض',
+              icon: const Icon(Icons.save_alt_rounded, color: Colors.white, size: 26),
+            ),
+            IconButton(
+              onPressed: () =>
+                  launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+              tooltip: 'فتح في المتصفح',
+              icon: const Icon(Icons.open_in_browser_rounded, color: Colors.white, size: 24),
+            ),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+// ─── Waveform custom painter ──────────────────────────────────────────────────
+class _WaveformPainter extends CustomPainter {
+  final double progress;
+  _WaveformPainter({required this.progress});
+
+  static const _h = [8.0, 14.0, 10.0, 18.0, 12.0, 20.0, 14.0, 10.0, 16.0, 12.0,
+                      8.0, 18.0, 14.0, 10.0, 20.0, 8.0, 16.0, 12.0, 10.0, 14.0];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final count   = _h.length;
+    final barW    = (size.width / count) * 0.55;
+    final spacing = size.width / count;
+    final played  = Paint()..color = const Color(0xFF128C7E)..style = PaintingStyle.fill;
+    final rest    = Paint()..color = Colors.black26..style = PaintingStyle.fill;
+
+    for (var i = 0; i < count; i++) {
+      final barH = _h[i] * (size.height / 24);
+      final x    = i * spacing + spacing / 2 - barW / 2;
+      final y    = (size.height - barH) / 2;
+      final rr   = Radius.circular(barW / 2);
+      canvas.drawRRect(
+          RRect.fromLTRBR(x, y, x + barW, y + barH, rr),
+          (i / count) <= progress ? played : rest);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_WaveformPainter old) => old.progress != progress;
+}
+
+// ─── Loading placeholder ──────────────────────────────────────────────────────
+class _ChatLoader extends StatelessWidget {
+  final String? label;
+  const _ChatLoader({this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _kChatBg,
       body: Center(
         child: label == null
-            ? const CircularProgressIndicator(color: Color(0xFF7B61FF))
-            : Text(label!, style: const TextStyle(color: Colors.white54, fontSize: 14)),
+            ? const CircularProgressIndicator(color: AppColors.primary)
+            : Text(label!, style: const TextStyle(color: Colors.black45, fontSize: 14)),
       ),
     );
   }

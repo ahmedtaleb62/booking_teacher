@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/locale_provider.dart';
@@ -326,7 +327,7 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
                       color: AppColors.textPrimary)),
               const SizedBox(height: 4),
               if (subjects.isNotEmpty)
-                Text(subjects.take(3).join(' · '),
+                Text(subjects.take(3).map((s) => translateSubject(s, Localizations.localeOf(context))).join(' · '),
                     style: const TextStyle(
                         fontSize: 13, color: AppColors.textSecondary)),
               const SizedBox(height: 10),

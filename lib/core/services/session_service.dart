@@ -36,6 +36,17 @@ class SessionService {
       'actor':      'student',
     });
 
+    SupabaseService.client.functions.invoke('notify-user', body: {
+      'user_id': teacherId,
+      'title':   'طلب جلسة جديد 📚',
+      'body':    'لديك طلب جلسة جديد في مادة $subject',
+      'data': {
+        'type':       'SESSION_REQUESTED',
+        'session_id': response['id'] as String,
+        'role':       'teacher',
+      },
+    }).then((_) {}, onError: (_) {});
+
     return response['id'] as String;
   }
 
@@ -46,10 +57,23 @@ class SessionService {
     if (!session.state.canStudentCancel) {
       throw Exception('لا يمكن إلغاء الجلسة في هذه المرحلة');
     }
-    await _db.from('sessions').update({
+    // State guard in UPDATE prevents TOCTOU race where session transitions
+    // to a non-cancellable state between the check above and the write below.
+    final updated = await _db.from('sessions').update({
       'state':      SessionState.cancelled.englishKey,
       'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', sessionId);
+    }).eq('id', sessionId)
+      .inFilter('state', [
+        SessionState.requested.englishKey,
+        SessionState.teacherApproved.englishKey,
+        SessionState.awaitingPayment.englishKey,
+        SessionState.paymentRejected.englishKey,
+      ])
+      .select('id');
+
+    if ((updated as List).isEmpty) {
+      throw Exception('لا يمكن إلغاء الجلسة — تغيرت حالتها');
+    }
     // Trigger logs CANCELLED (system)
   }
 
@@ -97,6 +121,9 @@ class SessionService {
   // DB trigger logs the resulting state change event.
   static Future<bool> teacherCancelOrDispute(String sessionId, {String? reason}) async {
     final session = await getSession(sessionId);
+
+    // Guard: already in DISPUTE — don't insert a second disputes row
+    if (session.state == SessionState.dispute) return false;
 
     final blockedStates = {
       SessionState.paymentConfirmed,
@@ -147,6 +174,18 @@ class SessionService {
     final reference = 'PAY-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
     final session = await getSession(sessionId);
 
+    // Validate that session is in a state that accepts payment proof
+    if (session.state != SessionState.awaitingPayment &&
+        session.state != SessionState.paymentRejected) {
+      throw Exception('لا يمكن إرسال إثبات الدفع في هذه المرحلة');
+    }
+
+    // Validate payment deadline has not expired
+    if (session.paymentDeadline != null &&
+        DateTime.now().isAfter(session.paymentDeadline!)) {
+      throw Exception('انتهت مهلة السداد — تواصل مع الأستاذ للحصول على موعد جديد');
+    }
+
     await _db.from('payments').insert({
       'session_id':      sessionId,
       'student_id':      SupabaseService.userId,
@@ -160,38 +199,16 @@ class SessionService {
     await _db.from('sessions').update({
       'state':      SessionState.paymentSubmitted.englishKey,
       'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', sessionId);
+    }).eq('id', sessionId)
+      .inFilter('state', [  // defense-in-depth: DB-level state guard
+        SessionState.awaitingPayment.englishKey,
+        SessionState.paymentRejected.englishKey,
+      ]);
     // Trigger logs PAYMENT_SUBMITTED event + notifies admin
   }
 
-  // ── Teacher: start session ────────────────────────────────────────────────────
-  // Guard: only allowed from CONFIRMED_BOOKING to prevent duplicate starts.
-  static Future<String> startSession(String sessionId) async {
-    final roomName = 'HajezUstad${sessionId.replaceAll('-', '').substring(0, 12)}';
-    final roomUrl  = 'https://meet.jit.si/$roomName'
-        '#config.disableDeepLinking=true'
-        '&config.prejoinPageEnabled=false'
-        '&config.startWithAudioMuted=false'
-        '&config.startWithVideoMuted=false'
-        '&userInfo.displayName=Ustaz';
-
-    final updated = await _db.from('sessions').update({
-      'state':      SessionState.activeSession.englishKey,
-      'room_url':   roomUrl,
-      'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', sessionId)
-      .eq('state', SessionState.confirmedBooking.englishKey) // guard: only from CONFIRMED_BOOKING
-      .select('id');
-
-    if ((updated as List).isEmpty) {
-      throw Exception('لا يمكن بدء الجلسة في حالتها الحالية');
-    }
-    // Trigger sets started_at + logs ACTIVE_SESSION + notifies student
-    return roomUrl;
-  }
-
-  // ── Teacher: activate session (room only — no Jitsi URL) ─────────────────────
-  // Used by SessionRoomScreen. Keeps startSession() intact for legacy screens.
+  // ── Teacher: activate session ─────────────────────────────────────────────────
+  // Called by SessionRoomScreen when scheduledAt is reached.
   static Future<void> activateSession(String sessionId) async {
     final now = DateTime.now().toIso8601String();
     final updated = await _db.from('sessions').update({
@@ -240,15 +257,29 @@ class SessionService {
   // Sets sessions.student_joined_at → prevents the cron job from firing
   // STUDENT_NO_SHOW for this session. Allowed in both confirmedBooking (early
   // arrival) and activeSession states so early arrivals are not penalised.
+  // Retries up to 3 times — a silent failure here means cron could flag absence.
   static Future<void> markStudentJoined(String sessionId) async {
-    await _db.from('sessions').update({
-      'student_joined_at': DateTime.now().toIso8601String(),
-    }).eq('id', sessionId)
-      .eq('student_id', SupabaseService.userId!)
-      .inFilter('state', [
-        SessionState.confirmedBooking.englishKey,
-        SessionState.activeSession.englishKey,
-      ]);
+    final uid = SupabaseService.userId;
+    if (uid == null) return;
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        await _db.from('sessions').update({
+          'student_joined_at': DateTime.now().toIso8601String(),
+        }).eq('id', sessionId)
+          .eq('student_id', uid)
+          .inFilter('state', [
+            SessionState.confirmedBooking.englishKey,
+            SessionState.activeSession.englishKey,
+          ]);
+        return; // success
+      } catch (_) {
+        if (attempt < 2) {
+          await Future.delayed(const Duration(seconds: 2));
+        } else {
+          rethrow; // propagate after final attempt so callers can decide
+        }
+      }
+    }
   }
 
   // ── Teacher: end session ──────────────────────────────────────────────────────
@@ -273,11 +304,13 @@ class SessionService {
   // Session closes authoritatively via pg_cron when time is up.
   // Teacher can leave early — we only record the timestamp for admin audit.
   static Future<void> recordTeacherLeft(String sessionId) async {
+    final uid = SupabaseService.userId;
+    if (uid == null) return;
     await _db.from('sessions').update({
       'teacher_left_at': DateTime.now().toIso8601String(),
       'updated_at':      DateTime.now().toIso8601String(),
     }).eq('id', sessionId)
-      .eq('teacher_id', SupabaseService.userId!);
+      .eq('teacher_id', uid);
   }
 
   // ── Student: request refund after teacher no-show ────────────────────────────
@@ -305,11 +338,29 @@ class SessionService {
 
   // ── Teacher: report student no-show ──────────────────────────────────────────
   static Future<void> reportStudentNoShow(String sessionId) async {
-    await _db.from('sessions').update({
+    // Guard: student_joined_at must be null — cannot mark absent if student already joined
+    final check = await _db
+        .from('sessions')
+        .select('student_joined_at')
+        .eq('id', sessionId)
+        .single();
+    if (check['student_joined_at'] != null) {
+      throw Exception('لا يمكن تسجيل الغياب — الطالب انضم بالفعل');
+    }
+
+    final updated = await _db.from('sessions').update({
       'state':      SessionState.studentNoShow.englishKey,
       'updated_at': DateTime.now().toIso8601String(),
     }).eq('id', sessionId)
-      .eq('state', SessionState.confirmedBooking.englishKey); // guard: only from CONFIRMED_BOOKING
+      .inFilter('state', [  // allowed from CONFIRMED_BOOKING or ACTIVE_SESSION
+        SessionState.confirmedBooking.englishKey,
+        SessionState.activeSession.englishKey,
+      ])
+      .select('id');
+
+    if ((updated as List).isEmpty) {
+      throw Exception('لا يمكن تسجيل الغياب — تغيرت حالة الجلسة');
+    }
     // Trigger logs STUDENT_NO_SHOW
   }
 
@@ -368,14 +419,16 @@ class SessionService {
   // ── Fetch single session ─────────────────────────────────────────────────────
   static Future<Session> getSession(String sessionId) async {
     final data = await _db.from('sessions')
-        .select('*, teacher:teacher_id(profiles(full_name)), student:student_id(full_name), payments(*), session_events(*)')
+        .select('*, teacher:teacher_id(profiles(full_name, avatar_url)), student:student_id(full_name, avatar_url), payments(*), session_events(*)')
         .eq('id', sessionId)
         .single();
     final raw = Map<String, dynamic>.from(data as Map);
     final teacherOuter = raw['teacher'] as Map? ?? {};
     final profileInner = teacherOuter['profiles'] as Map? ?? {};
-    raw['teacher']      = {'full_name': profileInner['full_name'] ?? ''};
-    raw['student_name'] = (raw['student'] as Map?)?['full_name'] ?? '';
+    raw['teacher']             = {'full_name': profileInner['full_name'] ?? ''};
+    raw['student_name']        = (raw['student'] as Map?)?['full_name'] ?? '';
+    raw['teacher_avatar_url']  = profileInner['avatar_url'] as String?;
+    raw['student_avatar_url']  = (raw['student'] as Map?)?['avatar_url'] as String?;
     return _parseSession(raw);
   }
 
@@ -385,7 +438,7 @@ class SessionService {
     if (uid == null) return [];
 
     final data = await _db.from('sessions')
-        .select('*, teacher:teacher_id(profiles(full_name)), student:student_id(full_name), payments(*), session_events(*)')
+        .select('*, teacher:teacher_id(profiles(full_name, avatar_url)), student:student_id(full_name, avatar_url), payments(*), session_events(*)')
         .eq('student_id', uid)
         .order('created_at', ascending: false);
 
@@ -393,8 +446,10 @@ class SessionService {
       final raw = Map<String, dynamic>.from(s as Map);
       final teacherOuter = raw['teacher'] as Map? ?? {};
       final profileInner = teacherOuter['profiles'] as Map? ?? {};
-      raw['teacher']      = {'full_name': profileInner['full_name'] ?? ''};
-      raw['student_name'] = (raw['student'] as Map?)?['full_name'] ?? '';
+      raw['teacher']            = {'full_name': profileInner['full_name'] ?? ''};
+      raw['student_name']       = (raw['student'] as Map?)?['full_name'] ?? '';
+      raw['teacher_avatar_url'] = profileInner['avatar_url'] as String?;
+      raw['student_avatar_url'] = (raw['student'] as Map?)?['avatar_url'] as String?;
       return _parseSession(raw);
     }).toList();
   }

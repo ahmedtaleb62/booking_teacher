@@ -126,6 +126,7 @@ class _OtpScreenState extends State<OtpScreen> {
         );
       } catch (_) {}
 
+      if (!mounted) return;
       if (widget.args.role == 'teacher') {
         context.go('/teacher/home');
       } else {
@@ -329,10 +330,10 @@ class _OtpBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 46, height: 56,
-      child: RawKeyboardListener(
+      child: KeyboardListener(
         focusNode: FocusNode(),
-        onKey: (event) {
-          if (event is RawKeyDownEvent &&
+        onKeyEvent: (event) {
+          if (event is KeyDownEvent &&
               event.logicalKey == LogicalKeyboardKey.backspace &&
               controller.text.isEmpty) {
             onBackspace();

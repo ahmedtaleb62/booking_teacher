@@ -85,20 +85,25 @@ Deno.serve(async (req) => {
       .eq('user_id', user_id)
 
     if (error || !tokens?.length) {
+      console.log(`[notify-user] No tokens for user ${user_id}`)
       return new Response('No tokens found', { status: 200 })
     }
+
+    console.log(`[notify-user] Found ${tokens.length} token(s) for user ${user_id}`)
 
     // Build FCM access token
     const sa          = JSON.parse(SERVICE_ACCOUNT_JSON)
     const accessToken = await getAccessToken(sa)
     const projectId   = sa.project_id
 
+    console.log(`[notify-user] Sending via project: ${projectId}`)
+
     const url = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`
 
-    // Send to every registered device
-    await Promise.allSettled(
-      tokens.map(({ token }) =>
-        fetch(url, {
+    // Send to every registered device, log results, remove stale tokens
+    const results = await Promise.allSettled(
+      tokens.map(async ({ token }) => {
+        const res = await fetch(url, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -108,8 +113,18 @@ Deno.serve(async (req) => {
             message: {
               token,
               notification: { title, body: body ?? '' },
-              data: data ?? {},
-              android: { priority: 'high' },
+              // FCM requires all data values to be strings
+              data: Object.fromEntries(
+                Object.entries(data ?? {}).map(([k, v]) => [k, String(v)])
+              ),
+              android: {
+                priority: 'high',
+                notification: {
+                  channel_id: 'hajez_ustad_channel',
+                  icon:        'ic_notification',
+                  color:       '#4F46E5',
+                },
+              },
               apns: {
                 headers: { 'apns-priority': '10' },
                 payload: { aps: { sound: 'default', badge: 1 } },
@@ -117,8 +132,26 @@ Deno.serve(async (req) => {
             },
           }),
         })
-      )
+        const json = await res.json()
+        if (!res.ok) {
+          console.error(`[notify-user] FCM error for token ${token.slice(-8)}: ${JSON.stringify(json)}`)
+          // Remove token that FCM says is no longer valid
+          const errCode = json?.error?.details?.[0]?.errorCode ?? json?.error?.status ?? ''
+          if (errCode === 'UNREGISTERED' || errCode === 'INVALID_ARGUMENT') {
+            await supabase.from('device_tokens').delete()
+              .eq('user_id', user_id).eq('token', token)
+            console.log(`[notify-user] Removed stale token ${token.slice(-8)}`)
+          }
+        } else {
+          console.log(`[notify-user] FCM OK for token ${token.slice(-8)}: ${json?.name ?? 'sent'}`)
+        }
+        return json
+      })
     )
+
+    const ok    = results.filter(r => r.status === 'fulfilled').length
+    const failed = results.filter(r => r.status === 'rejected').length
+    console.log(`[notify-user] Done: ${ok} sent, ${failed} failed`)
 
     return new Response('OK', { status: 200 })
   } catch (e) {

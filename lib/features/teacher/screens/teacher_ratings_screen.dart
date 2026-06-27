@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/services/supabase_service.dart';
 
@@ -310,7 +311,7 @@ class _ReviewCard extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary)),
                     if (review.subject != null && review.subject!.isNotEmpty)
-                      Text(review.subject!,
+                      Text(translateSubject(review.subject!, Localizations.localeOf(context)),
                           style: const TextStyle(
                               fontSize: 12, color: AppColors.textHint)),
                   ],

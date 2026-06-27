@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/levels.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/course.dart';
 import '../../../core/providers/courses_provider.dart';
@@ -108,7 +110,7 @@ class CourseDetailsScreen extends ConsumerWidget {
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: Text(course.level,
+                    child: Text(translateLevel(course.level, Localizations.localeOf(context)),
                         style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
                   ),
                 ],
@@ -164,7 +166,7 @@ class CourseDetailsScreen extends ConsumerWidget {
             children: [
               _statChip(Icons.play_circle_outline_rounded, l.homeLessonCount(course.totalLessons)),
               _statChip(Icons.schedule_rounded, hoursStr),
-              _statChip(Icons.book_outlined, course.subject),
+              _statChip(Icons.book_outlined, translateSubject(course.subject, Localizations.localeOf(context))),
             ],
           ),
 

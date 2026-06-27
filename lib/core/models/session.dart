@@ -1,4 +1,5 @@
 import '../constants/session_states.dart';
+import '../../l10n/app_localizations.dart';
 
 class Session {
   final String id;
@@ -22,6 +23,8 @@ class Session {
   final DateTime? paymentDeadline;
   final Payment? payment;
   final List<SessionEvent> events;
+  final String? teacherAvatarUrl;
+  final String? studentAvatarUrl;
   final String? cancellationReason;
   final String? refundStatus;
   final DateTime createdAt;
@@ -34,6 +37,8 @@ class Session {
     required this.teacherName,
     required this.teacherInitial,
     this.studentName = '',
+    this.teacherAvatarUrl,
+    this.studentAvatarUrl,
     required this.subject,
     required this.state,
     required this.scheduledAt,
@@ -84,6 +89,8 @@ class Session {
       teacherId: teacherId,
       teacherName: teacherName,
       teacherInitial: teacherInitial,
+      teacherAvatarUrl: teacherAvatarUrl,
+      studentAvatarUrl: studentAvatarUrl,
       subject: subject,
       state: state ?? this.state,
       scheduledAt: scheduledAt,
@@ -116,6 +123,8 @@ class Session {
           ? ((json['teacher_name'] as String?) ?? '?')[0]
           : '?',
       studentName: json['student_name'] as String? ?? '',
+      teacherAvatarUrl: json['teacher_avatar_url'] as String?,
+      studentAvatarUrl: json['student_avatar_url'] as String?,
       subject: json['subject'] as String? ?? '',
       state: SessionStateX.fromString(json['state'] as String? ?? 'REQUESTED'),
       scheduledAt: DateTime.parse(json['scheduled_at'] as String),
@@ -203,55 +212,53 @@ class SessionEvent {
     required this.createdAt,
   });
 
-  // Student perspective
-  String get label {
+  String labelFor(AppLocalizations l) {
     switch (eventType) {
-      case 'REQUESTED':        return 'أرسلت الطلب';
-      case 'TEACHER_APPROVED': return 'وافق الأستاذ على طلبك';
-      case 'TEACHER_REJECTED': return 'رفض الأستاذ الطلب';
-      case 'AWAITING_PAYMENT': return 'في انتظار الدفع';
-      case 'PAYMENT_SUBMITTED': return 'رفعت إثبات الدفع';
-      case 'PAYMENT_REJECTED':  return 'رُفض إثبات الدفع';
-      case 'PAYMENT_CONFIRMED': return 'أكّدت الإدارة الدفع';
-      case 'CONFIRMED_BOOKING':return 'تأكّد الحجز';
-      case 'SESSION_STARTED':   return 'بدأت الجلسة';
-      case 'SESSION_COMPLETED': return 'انتهت الجلسة';
-      case 'ACTIVE_SESSION':    return 'الجلسة مباشرة';
-      case 'COMPLETED':         return 'اكتملت الجلسة';
-      case 'TEACHER_NO_SHOW':   return 'لم يحضر الأستاذ';
-      case 'STUDENT_NO_SHOW':   return 'سُجّل غيابك';
-      case 'DISPUTE_OPENED':    return 'فُتح نزاع';
-      case 'CANCELLED':         return 'تم إلغاء الجلسة';
-      case 'RESCHEDULED':           return 'أُعيدت الجدولة';
-      case 'REFUND_REQUESTED':      return 'طلبت استرداد المبلغ';
-      case 'REFUND_PROCESSED':      return 'تم استرداد مبلغك';
-      default:                      return eventType;
+      case 'REQUESTED':         return l.evtRequested;
+      case 'TEACHER_APPROVED':  return l.evtTeacherApproved;
+      case 'TEACHER_REJECTED':  return l.evtTeacherRejected;
+      case 'AWAITING_PAYMENT':  return l.evtAwaitingPayment;
+      case 'PAYMENT_SUBMITTED': return l.evtPaymentSubmitted;
+      case 'PAYMENT_REJECTED':  return l.evtPaymentRejected;
+      case 'PAYMENT_CONFIRMED': return l.evtPaymentConfirmed;
+      case 'CONFIRMED_BOOKING': return l.evtConfirmedBooking;
+      case 'SESSION_STARTED':   return l.evtSessionStarted;
+      case 'SESSION_COMPLETED': return l.evtSessionCompleted;
+      case 'ACTIVE_SESSION':    return l.evtActiveSession;
+      case 'COMPLETED':         return l.evtCompleted;
+      case 'TEACHER_NO_SHOW':   return l.evtTeacherNoShow;
+      case 'STUDENT_NO_SHOW':   return l.evtStudentNoShow;
+      case 'DISPUTE_OPENED':    return l.evtDisputeOpened;
+      case 'CANCELLED':         return l.evtCancelled;
+      case 'RESCHEDULED':       return l.evtRescheduled;
+      case 'REFUND_REQUESTED':  return l.evtRefundRequested;
+      case 'REFUND_PROCESSED':  return l.evtRefundProcessed;
+      default:                  return eventType;
     }
   }
 
-  // Teacher perspective
-  String get teacherLabel {
+  String teacherLabelFor(AppLocalizations l) {
     switch (eventType) {
-      case 'REQUESTED':        return 'استقبلت طلب جلسة جديداً';
-      case 'TEACHER_APPROVED': return 'وافقت على الطلب';
-      case 'TEACHER_REJECTED': return 'رفضت الطلب';
-      case 'AWAITING_PAYMENT': return 'في انتظار دفع الطالب';
-      case 'PAYMENT_SUBMITTED': return 'رفع الطالب إثبات الدفع';
-      case 'PAYMENT_REJECTED':  return 'رُفض إثبات دفع الطالب';
-      case 'PAYMENT_CONFIRMED': return 'أكّدت الإدارة الدفع';
-      case 'CONFIRMED_BOOKING':return 'تأكّد الحجز — الجلسة محجوزة';
-      case 'SESSION_STARTED':   return 'بدأت الجلسة';
-      case 'SESSION_COMPLETED': return 'انتهت الجلسة بنجاح';
-      case 'ACTIVE_SESSION':    return 'الجلسة مباشرة';
-      case 'COMPLETED':         return 'اكتملت الجلسة';
-      case 'TEACHER_NO_SHOW':   return 'سُجّل غيابك عن الجلسة';
-      case 'STUDENT_NO_SHOW':   return 'سجّلت غياب الطالب';
-      case 'DISPUTE_OPENED':    return 'فُتح نزاع على الجلسة';
-      case 'CANCELLED':         return 'ألغى الطالب الجلسة';
-      case 'RESCHEDULED':           return 'أُعيدت الجدولة';
-      case 'REFUND_REQUESTED':      return 'طلب الطالب استرداد المبلغ';
-      case 'REFUND_PROCESSED':      return 'تم معالجة الاسترداد';
-      default:                      return eventType;
+      case 'REQUESTED':         return l.evtTRequested;
+      case 'TEACHER_APPROVED':  return l.evtTApproved;
+      case 'TEACHER_REJECTED':  return l.evtTRejected;
+      case 'AWAITING_PAYMENT':  return l.evtTAwaitingPayment;
+      case 'PAYMENT_SUBMITTED': return l.evtTPaymentSubmitted;
+      case 'PAYMENT_REJECTED':  return l.evtTPaymentRejected;
+      case 'PAYMENT_CONFIRMED': return l.evtTPaymentConfirmed;
+      case 'CONFIRMED_BOOKING': return l.evtTConfirmedBooking;
+      case 'SESSION_STARTED':   return l.evtTSessionStarted;
+      case 'SESSION_COMPLETED': return l.evtTSessionCompleted;
+      case 'ACTIVE_SESSION':    return l.evtTActiveSession;
+      case 'COMPLETED':         return l.evtTCompleted;
+      case 'TEACHER_NO_SHOW':   return l.evtTTeacherNoShow;
+      case 'STUDENT_NO_SHOW':   return l.evtTStudentNoShow;
+      case 'DISPUTE_OPENED':    return l.evtTDisputeOpened;
+      case 'CANCELLED':         return l.evtTCancelled;
+      case 'RESCHEDULED':       return l.evtTRescheduled;
+      case 'REFUND_REQUESTED':  return l.evtTRefundRequested;
+      case 'REFUND_PROCESSED':  return l.evtTRefundProcessed;
+      default:                  return eventType;
     }
   }
 

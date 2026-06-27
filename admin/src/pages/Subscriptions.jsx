@@ -2,16 +2,81 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useToast } from '../components/Toast'
 
+/* ── Rejection reason codes ─────────────────────────────────────── */
+// 2 outcomes only — INCOMPLETE_AMOUNT always auto-refunds (sent as REFUND:INCOMPLETE_AMOUNT)
+const REJECT_OPTIONS = [
+  { value: 'FAKE_PROOF',        label: 'الوصل مزيف',       sub: 'لا استرداد — الوصل غير حقيقي',          color: '#DC2626', bg: '#FFF5F5' },
+  { value: 'INCOMPLETE_AMOUNT', label: 'المبلغ غير مكتمل', sub: 'استرداد فوري — المبلغ أقل من المطلوب', color: '#7C3AED', bg: '#F5F3FF' },
+]
+
+const REASON_LABEL = {
+  FAKE_PROOF:         'الوصل مزيف',
+  INCOMPLETE_AMOUNT:  'المبلغ غير مكتمل',
+  STUDENT_CANCEL:     'ألغى الطالب الاشتراك',
+}
+
+/* ── Trail component ────────────────────────────────────────────── */
+function SubStatusTrail({ reason, status }) {
+  if (status === 'active')  return <span className="badge" style={{ background: '#D1FAE5', color: '#065F46' }}>نشط</span>
+  if (status === 'expired') return <span className="badge" style={{ background: '#F1F5F9', color: '#475569' }}>منتهي</span>
+  if (status === 'pending') return <span className="badge" style={{ background: '#EDE9FE', color: '#5B21B6' }}>قيد المراجعة</span>
+
+  if (!reason) return <span className="badge" style={{ background: '#FEE2E2', color: '#991B1B' }}>مرفوض</span>
+
+  if (reason === 'STUDENT_CANCEL') {
+    return (
+      <span className="badge" style={{ background: '#DBEAFE', color: '#1D4ED8' }}>
+        ألغى الطالب
+      </span>
+    )
+  }
+
+  const isRefund   = reason.startsWith('REFUND:')
+  const coreReason = isRefund ? reason.slice(7) : reason
+  const isFake     = coreReason === 'FAKE_PROOF'
+
+  if (isFake) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#FEE2E2', color: '#DC2626', whiteSpace: 'nowrap' }}>
+          مرفوض
+        </span>
+        <span style={{ fontSize: 9, color: '#94A3B8' }}>·</span>
+        <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#FFF5F5', color: '#991B1B', whiteSpace: 'nowrap' }}>
+          الوصل مزيف
+        </span>
+      </div>
+    )
+  }
+
+  // INCOMPLETE_AMOUNT — always refund
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#FEE2E2', color: '#DC2626', whiteSpace: 'nowrap' }}>
+        ملغى
+      </span>
+      <span style={{ fontSize: 9, color: '#94A3B8' }}>·</span>
+      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#F5F3FF', color: '#6D28D9', whiteSpace: 'nowrap' }}>
+        مبلغ ناقص
+      </span>
+      <span style={{ fontSize: 9, color: '#94A3B8' }}>·</span>
+      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#D1FAE5', color: '#065F46', whiteSpace: 'nowrap' }}>
+        مُسترد
+      </span>
+    </div>
+  )
+}
+
 export default function Subscriptions({ adminId }) {
   const toast = useToast()
-  const [rows, setRows]           = useState([])
-  const [stats, setStats]         = useState({})
-  const [loading, setLoading]     = useState(true)
-  const [modal, setModal]         = useState(null)
-  const [actionId, setActionId]   = useState(null)
-  const [showRejectInput, setShowRejectInput] = useState(false)
-  const [rejectReason, setRejectReason]       = useState('')
-  const [proofUrl, setProofUrl]               = useState(null)
+  const [rows, setRows]               = useState([])
+  const [stats, setStats]             = useState({})
+  const [loading, setLoading]         = useState(true)
+  const [modal, setModal]             = useState(null)
+  const [actionId, setActionId]       = useState(null)
+  const [rejectMode, setRejectMode]   = useState(false)
+  const [rejectValue, setRejectValue] = useState('')
+  const [proofUrl, setProofUrl]       = useState(null)
 
   useEffect(() => { loadData() }, [])
 
@@ -23,14 +88,15 @@ export default function Subscriptions({ adminId }) {
       .order('created_at', { ascending: false })
 
     const subs = data || []
-    const now = new Date()
+    const now  = new Date()
     const weekEnd = new Date(now); weekEnd.setDate(weekEnd.getDate() + 7)
 
     setStats({
       active:   subs.filter(s => s.status === 'active').length,
       pending:  subs.filter(s => s.status === 'pending').length,
       expiring: subs.filter(s => s.status === 'active' && s.expires_at && new Date(s.expires_at) <= weekEnd).length,
-      income:   subs.filter(s => s.status === 'active').reduce((t, s) => t + (s.amount || 0), 0),
+      rejected: subs.filter(s => s.status === 'rejected').length,
+      refunded: subs.filter(s => s.status === 'rejected' && s.reject_reason?.startsWith('REFUND:')).length,
     })
     setRows(subs)
     setLoading(false)
@@ -39,141 +105,167 @@ export default function Subscriptions({ adminId }) {
   async function openModal(row) {
     setModal({ row })
     setProofUrl(null)
-    setShowRejectInput(false)
-    setRejectReason('')
+    setRejectMode(false)
+    setRejectValue('')
     if (row.proof_image_url) {
-      if (row.proof_image_url.startsWith('http')) {
-        setProofUrl(row.proof_image_url)
+      const src = row.proof_image_url
+      if (src.startsWith('http')) {
+        setProofUrl(src)
       } else {
-        const { data } = await supabase.storage.from('subscription-proofs').createSignedUrl(row.proof_image_url, 3600)
+        const { data } = await supabase.storage.from('subscription-proofs').createSignedUrl(src, 3600)
         setProofUrl(data?.signedUrl || null)
       }
     }
   }
 
   function closeModal() {
-    setModal(null)
-    setProofUrl(null)
-    setShowRejectInput(false)
-    setRejectReason('')
+    setModal(null); setProofUrl(null); setRejectMode(false); setRejectValue('')
   }
 
   async function confirmSub(id) {
     setActionId(id)
     try {
       const months = modal?.row?.plan_type === 'yearly' ? 12 : 1
-      // admin_confirm_subscription(p_subscription_id, p_admin_id, p_months)
       const { error } = await supabase.rpc('admin_confirm_subscription', {
-        p_subscription_id: id,
-        p_admin_id:        adminId,
-        p_months:          months,
+        p_subscription_id: id, p_admin_id: adminId, p_months: months,
       })
       if (error) throw error
-      closeModal()
-      await loadData()
+      closeModal(); await loadData()
       toast('تم تأكيد الاشتراك وتفعيله بنجاح', 'success')
     } catch (err) {
-      toast('خطأ في تأكيد الاشتراك: ' + (err.message || 'حدث خطأ غير متوقع'), 'error')
-    } finally {
-      setActionId(null)
-    }
+      toast('خطأ: ' + (err.message || 'حدث خطأ'), 'error')
+    } finally { setActionId(null) }
   }
 
-  async function rejectSub(id, reason) {
+  async function rejectSub(id) {
+    if (!rejectValue) return
     setActionId(id)
     try {
-      // admin_reject_subscription(p_subscription_id, p_admin_id, p_reason)
+      // INCOMPLETE_AMOUNT always auto-refunds — send the REFUND: prefixed value
+      const reasonToSend = rejectValue === 'INCOMPLETE_AMOUNT' ? 'REFUND:INCOMPLETE_AMOUNT' : rejectValue
+      const isRefund = reasonToSend.startsWith('REFUND:')
       const { error } = await supabase.rpc('admin_reject_subscription', {
-        p_subscription_id: id,
-        p_admin_id:        adminId,
-        p_reason:          reason?.trim() || '',
+        p_subscription_id: id, p_admin_id: adminId, p_reason: reasonToSend,
       })
       if (error) throw error
-      closeModal()
-      await loadData()
-      toast('تم رفض الاشتراك وإشعار الطالب', 'success')
+      // DB trigger (notify_subscription_status_change) sends the rejection
+      // notification automatically — no manual insert needed here.
+
+      closeModal(); await loadData()
+      toast(isRefund ? 'تم الرفض واسترداد المبلغ للطالب' : 'تم رفض الاشتراك وإشعار الطالب', 'success')
     } catch (err) {
-      toast('خطأ في رفض الاشتراك: ' + (err.message || 'حدث خطأ غير متوقع'), 'error')
-    } finally {
-      setActionId(null)
-    }
+      toast('خطأ: ' + (err.message || 'حدث خطأ'), 'error')
+    } finally { setActionId(null) }
   }
 
-  const fmtDate = dt => dt ? new Date(dt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' }) : '—'
+  const fmtDate = dt => dt
+    ? new Date(dt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', year: 'numeric' })
+    : '—'
+
   const daysLeft = dt => {
-    if (!dt) return '—'
+    if (!dt) return null
     const d = Math.ceil((new Date(dt) - new Date()) / 86400000)
-    return d > 0 ? `${d} يوم` : 'منتهي'
-  }
-
-  const statusMap = {
-    pending:  ['قيد المراجعة', '#EDE9FE', '#5B21B6'],
-    active:   ['نشط',          '#D1FAE5', '#065F46'],
-    expired:  ['منتهي',        '#F1F5F9', '#475569'],
-    rejected: ['مرفوض',        '#FEE2E2', '#991B1B'],
+    return d > 0 ? `${d} يوم متبقي` : 'منتهي'
   }
 
   if (loading) return <div className="loading-center"><div className="spinner" /></div>
 
+  const COLS = '0.5fr 1fr 1.4fr 0.6fr 0.9fr 2fr 0.9fr'
+
   return (
     <div>
-      {/* Stats */}
+      {/* ── Stats ─────────────────────────────────────────────────── */}
       <div className="grid-4 mb-18">
-        <div className="card-sm"><div className="text-muted" style={{ fontSize: 12 }}>اشتراكات نشطة</div><div style={{ fontSize: 21, fontWeight: 700, color: '#059669', marginTop: 3 }}>{stats.active}</div></div>
-        <div className="card-sm"><div className="text-muted" style={{ fontSize: 12 }}>قيد المراجعة</div><div style={{ fontSize: 21, fontWeight: 700, color: '#7C3AED', marginTop: 3 }}>{stats.pending}</div></div>
-        <div className="card-sm"><div className="text-muted" style={{ fontSize: 12 }}>تنتهي هذا الأسبوع</div><div style={{ fontSize: 21, fontWeight: 700, color: '#D97706', marginTop: 3 }}>{stats.expiring}</div></div>
-        <div className="card-sm"><div className="text-muted" style={{ fontSize: 12 }}>دخل الاشتراكات</div><div style={{ fontSize: 21, fontWeight: 700, marginTop: 3 }}>{(stats.income || 0).toLocaleString('ar')}</div></div>
+        <div className="card-sm">
+          <div className="text-muted" style={{ fontSize: 12 }}>اشتراكات نشطة</div>
+          <div style={{ fontSize: 21, fontWeight: 700, color: '#059669', marginTop: 3 }}>{stats.active}</div>
+        </div>
+        <div className="card-sm">
+          <div className="text-muted" style={{ fontSize: 12 }}>قيد المراجعة</div>
+          <div style={{ fontSize: 21, fontWeight: 700, color: '#7C3AED', marginTop: 3 }}>{stats.pending}</div>
+        </div>
+        <div className="card-sm">
+          <div className="text-muted" style={{ fontSize: 12 }}>ملغية / مرفوضة</div>
+          <div style={{ fontSize: 21, fontWeight: 700, color: '#DC2626', marginTop: 3 }}>{stats.rejected}</div>
+        </div>
+        <div className="card-sm">
+          <div className="text-muted" style={{ fontSize: 12 }}>مُسترد منها</div>
+          <div style={{ fontSize: 21, fontWeight: 700, color: '#D97706', marginTop: 3 }}>{stats.refunded}</div>
+        </div>
       </div>
 
-      {/* Table */}
+      {/* ── Table ─────────────────────────────────────────────────── */}
       <div className="table-wrap">
-        <div className="table-head" style={{ gridTemplateColumns: '0.8fr 1fr 1.3fr 0.6fr 0.9fr 0.9fr 0.8fr 0.8fr 1fr' }}>
-          <span>المرجع</span><span>الطالب</span><span>المحتوى</span><span>الخطة</span>
-          <span>يبدأ</span><span>ينتهي</span><span>المتبقي</span><span>الحالة</span>
+        <div className="table-head" style={{ gridTemplateColumns: COLS }}>
+          <span>#</span>
+          <span>الطالب</span>
+          <span>المحتوى</span>
+          <span>الخطة</span>
+          <span>المبلغ</span>
+          <span>الحالة / مسار الإلغاء</span>
           <span style={{ textAlign: 'left' }}>إجراء</span>
         </div>
-        {rows.length === 0 && <div style={{ padding: 24, textAlign: 'center', color: 'var(--text3)' }}>لا توجد اشتراكات</div>}
+
+        {rows.length === 0 && (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--text3)' }}>لا توجد اشتراكات</div>
+        )}
+
         {rows.map(s => {
-          const [label, bg, fg] = statusMap[s.status] || ['—', '#F1F3F5', '#516170']
           const content = s.course?.title || s.package?.title || '—'
+          const days    = daysLeft(s.expires_at)
           return (
-            <div key={s.id} className="table-row" style={{ gridTemplateColumns: '0.8fr 1fr 1.3fr 0.6fr 0.9fr 0.9fr 0.8fr 0.8fr 1fr' }}>
-              <span className="fw-700 dir-ltr">{s.id.slice(0, 8)}</span>
-              <span>{s.student?.full_name || '—'}</span>
-              <span className="text-2">{content}</span>
-              <span className="text-2">{s.plan_type === 'yearly' ? 'سنوي' : 'شهري'}</span>
-              <span className="text-2 dir-ltr">{fmtDate(s.started_at)}</span>
-              <span className="text-2 dir-ltr">{fmtDate(s.expires_at)}</span>
-              <span className="fw-700 text-teal">{daysLeft(s.expires_at)}</span>
-              <span><span className="badge" style={{ background: bg, color: fg }}>{label}</span></span>
+            <div key={s.id} className="table-row" style={{ gridTemplateColumns: COLS }}>
+              <span className="fw-700 dir-ltr" style={{ fontSize: 11, color: 'var(--text3)' }}>{s.id.slice(0, 6)}</span>
+              <span className="fw-700" style={{ fontSize: 13 }}>{s.student?.full_name || '—'}</span>
+              <span className="text-2" style={{ fontSize: 12 }}>{content}</span>
+              <span className="text-2" style={{ fontSize: 12 }}>{s.plan_type === 'yearly' ? 'سنوي' : 'شهري'}</span>
+              <span className="fw-700" style={{ fontSize: 12 }}>{s.amount?.toLocaleString('ar')} أوق</span>
+              <span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <SubStatusTrail status={s.status} reason={s.reject_reason} />
+                  {s.status === 'active' && days && (
+                    <span style={{ fontSize: 11, color: 'var(--text3)' }}>{days} · ينتهي {fmtDate(s.expires_at)}</span>
+                  )}
+                  {s.status === 'pending' && (
+                    <span style={{ fontSize: 11, color: 'var(--text3)' }}>تاريخ الطلب: {fmtDate(s.created_at)}</span>
+                  )}
+                </div>
+              </span>
               <span style={{ textAlign: 'left' }}>
                 {s.status === 'pending' ? (
                   <button className="btn btn-sm btn-review" onClick={() => openModal(s)} disabled={actionId === s.id}>
                     🔍 مراجعة
                   </button>
-                ) : <span className="text-muted" style={{ fontSize: 12 }}>—</span>}
+                ) : (
+                  <span className="text-muted" style={{ fontSize: 12 }}>—</span>
+                )}
               </span>
             </div>
           )
         })}
       </div>
 
-      {/* Review modal */}
+      {/* ── Review modal ──────────────────────────────────────────── */}
       {modal && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(30,27,75,.45)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
           onClick={closeModal}
         >
-          <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: 440, maxWidth: '95vw' }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 16, color: 'var(--text)' }}>مراجعة الاشتراك</div>
+          <div
+            style={{ background: '#fff', borderRadius: 20, padding: 28, width: 460, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 16 }}>مراجعة الاشتراك</div>
 
             {/* Proof image */}
             {modal.row.proof_image_url && (
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>إثبات الدفع</div>
+                <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>🧾 إثبات الدفع</div>
                 {proofUrl
-                  ? <img src={proofUrl} alt="proof" style={{ width: '100%', borderRadius: 12, border: '1px solid var(--border)', maxHeight: 280, objectFit: 'contain' }} />
-                  : <div style={{ textAlign: 'center', padding: '18px 0', color: 'var(--text3)', fontSize: 13, background: '#F5F7FF', borderRadius: 12 }}>جارٍ تحميل إثبات الدفع…</div>
+                  ? <a href={proofUrl} target="_blank" rel="noreferrer">
+                      <img src={proofUrl} alt="proof" style={{ width: '100%', borderRadius: 12, border: '1px solid var(--border)', maxHeight: 280, objectFit: 'contain', cursor: 'zoom-in' }} />
+                    </a>
+                  : <div style={{ textAlign: 'center', padding: 18, color: 'var(--text3)', fontSize: 13, background: '#F5F7FF', borderRadius: 12 }}>جارٍ تحميل الإثبات…</div>
                 }
               </div>
             )}
@@ -182,65 +274,95 @@ export default function Subscriptions({ adminId }) {
             <div style={{ background: '#F5F7FF', borderRadius: 12, padding: 14, marginBottom: 20, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 7 }}>
               <div><b>الطالب:</b> {modal.row.student?.full_name || '—'}</div>
               <div><b>المحتوى:</b> {modal.row.course?.title || modal.row.package?.title || '—'}</div>
-              <div><b>نوع الاشتراك:</b> {modal.row.plan_type === 'yearly' ? 'سنوي (سنة كاملة)' : 'شهري (شهر واحد)'}</div>
+              <div><b>نوع الاشتراك:</b> {modal.row.plan_type === 'yearly' ? 'سنوي (12 شهراً)' : 'شهري'}</div>
               <div><b>المبلغ:</b> {modal.row.amount?.toLocaleString('ar')} أوقية</div>
-              <div><b>التاريخ:</b> {modal.row.created_at?.slice(0, 10)}</div>
+              <div><b>تاريخ الطلب:</b> {modal.row.created_at?.slice(0, 10)}</div>
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', gap: 10, flexDirection: 'column' }}>
-              {!showRejectInput ? (
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button
-                    className="btn btn-primary"
-                    style={{ flex: 1, justifyContent: 'center' }}
-                    disabled={!!actionId}
-                    onClick={() => confirmSub(modal.row.id)}
+            {!rejectMode ? (
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  className="btn btn-primary"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                  disabled={!!actionId}
+                  onClick={() => confirmSub(modal.row.id)}
+                >
+                  {actionId
+                    ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2, borderColor: 'rgba(255,255,255,.3)', borderTopColor: '#fff' }} />
+                    : '✓ تأكيد الاشتراك'}
+                </button>
+                <button
+                  className="btn btn-danger"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                  disabled={!!actionId}
+                  onClick={() => setRejectMode(true)}
+                >
+                  ✕ رفض
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)' }}>سبب الرفض</div>
+
+                {REJECT_OPTIONS.map(opt => (
+                  <label
+                    key={opt.value}
+                    style={{
+                      display: 'flex', flexDirection: 'column', gap: 3, padding: '12px 14px',
+                      borderRadius: 10, cursor: 'pointer',
+                      border: `1.5px solid ${rejectValue === opt.value ? opt.color : 'var(--border)'}`,
+                      background: rejectValue === opt.value ? opt.bg : '#FAFAFA',
+                    }}
                   >
-                    {actionId
-                      ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2, borderColor: 'rgba(255,255,255,.3)', borderTopColor: '#fff' }} />
-                      : '✓ تأكيد الاشتراك'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <input
+                        type="radio"
+                        name="rejectReason"
+                        value={opt.value}
+                        checked={rejectValue === opt.value}
+                        onChange={() => setRejectValue(opt.value)}
+                        style={{ accentColor: opt.color }}
+                      />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: opt.color }}>{opt.label}</span>
+                      {opt.value === 'INCOMPLETE_AMOUNT' && (
+                        <span style={{ marginRight: 'auto', fontSize: 11, background: '#D1FAE5', color: '#065F46', borderRadius: 6, padding: '2px 7px', fontWeight: 600 }}>استرداد فوري</span>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 11, color: 'var(--text3)', paddingRight: 22 }}>{opt.sub}</span>
+                  </label>
+                ))}
+
+                {/* Trail preview */}
+                {rejectValue && (
+                  <div style={{ background: '#F5F7FF', borderRadius: 10, padding: '10px 14px' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6 }}>ما سيظهر في السجل:</div>
+                    <SubStatusTrail
+                      status="rejected"
+                      reason={rejectValue === 'INCOMPLETE_AMOUNT' ? 'REFUND:INCOMPLETE_AMOUNT' : rejectValue}
+                    />
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ flex: 1 }}
+                    onClick={() => { setRejectMode(false); setRejectValue('') }}
+                  >
+                    رجوع
                   </button>
                   <button
                     className="btn btn-danger"
-                    style={{ flex: 1, justifyContent: 'center' }}
-                    disabled={!!actionId}
-                    onClick={() => setShowRejectInput(true)}
+                    style={{ flex: 1 }}
+                    disabled={!!actionId || !rejectValue}
+                    onClick={() => rejectSub(modal.row.id)}
                   >
-                    ✕ رفض
+                    {actionId ? '…' : 'تأكيد الرفض'}
                   </button>
                 </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 2 }}>سبب الرفض (سيُرسَل للطالب)</div>
-                  <textarea
-                    value={rejectReason}
-                    onChange={e => setRejectReason(e.target.value)}
-                    placeholder="مثال: الإثبات غير واضح أو لا يطابق المبلغ…"
-                    rows={2}
-                    autoFocus
-                    style={{ width: '100%', borderRadius: 8, border: '1px solid #E1E9EF', padding: '8px 10px', fontSize: 13, resize: 'none', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
-                  />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ flex: 1 }}
-                      onClick={() => { setShowRejectInput(false); setRejectReason('') }}
-                    >
-                      إلغاء
-                    </button>
-                    <button
-                      className="btn btn-danger"
-                      style={{ flex: 1 }}
-                      disabled={!!actionId || !rejectReason.trim()}
-                      onClick={() => rejectSub(modal.row.id, rejectReason)}
-                    >
-                      {actionId ? '…' : 'تأكيد الرفض'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       )}

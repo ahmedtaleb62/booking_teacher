@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/session_states.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/payment_methods_provider.dart';
 import '../../../core/providers/sessions_provider.dart';
@@ -231,7 +232,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Text('${session.subject} · ${l.sessionMinutes(session.durationMinutes)}',
+                          Text('${translateSubject(session.subject, Localizations.localeOf(context))} · ${l.sessionMinutes(session.durationMinutes)}',
                             style: const TextStyle(fontSize: 11, color: Color(0xFF9DB2B8))),
                         ],
                       ),

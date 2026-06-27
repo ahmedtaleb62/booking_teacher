@@ -1,7 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../l10n/app_localizations.dart';
@@ -334,7 +336,7 @@ class _SessionList extends StatelessWidget {
                       Text(studentName,
                         style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
-                      Text('$subject · ${l.dashMinutesShort(duration)}',
+                      Text('${translateSubject(subject, Localizations.localeOf(context))} · ${l.dashMinutesShort(duration)}',
                         style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
                     ],
                   ),
@@ -400,7 +402,7 @@ class _ActiveCard extends StatelessWidget {
             const SizedBox(height: 9),
             Align(
               alignment: Alignment.centerRight,
-              child: Text('$studentName · $subject',
+              child: Text('$studentName · ${translateSubject(subject, Localizations.localeOf(context))}',
                 style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
             ),
             const SizedBox(height: 11),
@@ -445,11 +447,13 @@ class _CompletedList extends StatelessWidget {
         final id          = s['id'] as String;
         final studentMap  = s['student'] as Map? ?? {};
         final studentName = (studentMap['full_name'] as String?) ?? l.authStudent;
+        final avatarUrl   = studentMap['avatar_url'] as String?;
         final subject     = (s['subject'] as String?) ?? '';
         final scheduled   = (s['scheduled_at'] as String?) ?? '';
         final state       = (s['state'] as String?) ?? '';
         final amount      = (s['amount'] as num?)?.toDouble() ?? 0;
         final badgeInfo   = _completedBadge(state, l);
+        final initial     = studentName.isNotEmpty ? studentName[0].toUpperCase() : '?';
 
         return GestureDetector(
           onTap: () => context.push('/teacher/session/$id'),
@@ -462,12 +466,17 @@ class _CompletedList extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Container(
-                  width: 42, height: 42,
-                  decoration: BoxDecoration(
-                    color: AppColors.accentLight, borderRadius: BorderRadius.circular(12)),
-                  child: const Icon(Icons.check_circle_outline_rounded,
-                    color: AppColors.primary, size: 22),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: avatarUrl != null && avatarUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: avatarUrl,
+                          width: 42, height: 42,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => _AvatarFallback(initial: initial),
+                          placeholder: (_, __) => _AvatarFallback(initial: initial),
+                        )
+                      : _AvatarFallback(initial: initial),
                 ),
                 const SizedBox(width: 11),
                 Expanded(
@@ -477,7 +486,7 @@ class _CompletedList extends StatelessWidget {
                       Text(studentName,
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
-                      Text('$subject · ${fmtDate(scheduled)} ${fmtTime(scheduled)}',
+                      Text('${translateSubject(subject, Localizations.localeOf(context))} · ${fmtDate(scheduled)} ${fmtTime(scheduled)}',
                         style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                     ],
                   ),
@@ -505,6 +514,23 @@ class _CompletedList extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _AvatarFallback extends StatelessWidget {
+  final String initial;
+  const _AvatarFallback({required this.initial});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 42, height: 42,
+      color: AppColors.accentLight,
+      alignment: Alignment.center,
+      child: Text(initial,
+        style: const TextStyle(
+          fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary)),
     );
   }
 }

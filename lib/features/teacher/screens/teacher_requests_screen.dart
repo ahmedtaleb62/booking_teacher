@@ -1,7 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../l10n/app_localizations.dart';
@@ -202,6 +204,7 @@ class _PendingCard extends StatelessWidget {
     final id = session['id'] as String;
     final studentMap  = session['student'] as Map? ?? {};
     final studentName = (studentMap['full_name'] as String?) ?? l.authStudent;
+    final avatarUrl   = studentMap['avatar_url'] as String?;
     final subject     = (session['subject'] as String?) ?? '';
     final scheduledAt = (session['scheduled_at'] as String?) ?? '';
     final duration    = (session['duration_minutes'] as int?) ?? 60;
@@ -218,14 +221,11 @@ class _PendingCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 42, height: 42,
-                decoration: BoxDecoration(color: AppColors.accentLight,
-                  borderRadius: BorderRadius.circular(12)),
-                alignment: Alignment.center,
-                child: Text(initial,
-                  style: const TextStyle(color: AppColors.primary,
-                    fontWeight: FontWeight.w700, fontSize: 17)),
+              _StudentAvatar(
+                initial: initial,
+                avatarUrl: avatarUrl,
+                bg: AppColors.accentLight,
+                fg: AppColors.primary,
               ),
               const SizedBox(width: 11),
               Expanded(
@@ -235,7 +235,7 @@ class _PendingCard extends StatelessWidget {
                     Text(studentName,
                       style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary)),
-                    Text('$subject · ${fmtDate(scheduledAt)} · ${l.dashMinutesShort(duration)}',
+                    Text('${translateSubject(subject, Localizations.localeOf(context))} · ${fmtDate(scheduledAt)} · ${l.dashMinutesShort(duration)}',
                       style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
                   ],
                 ),
@@ -287,6 +287,7 @@ class _InProgressCard extends StatelessWidget {
     final id          = session['id'] as String;
     final studentMap  = session['student'] as Map? ?? {};
     final studentName = (studentMap['full_name'] as String?) ?? l.authStudent;
+    final avatarUrl   = studentMap['avatar_url'] as String?;
     final subject     = (session['subject'] as String?) ?? '';
     final scheduledAt = (session['scheduled_at'] as String?) ?? '';
     final state       = (session['state'] as String?) ?? '';
@@ -304,14 +305,11 @@ class _InProgressCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 42, height: 42,
-              decoration: BoxDecoration(color: AppColors.accentLight,
-                borderRadius: BorderRadius.circular(12)),
-              alignment: Alignment.center,
-              child: Text(initial,
-                style: const TextStyle(color: AppColors.primary,
-                  fontWeight: FontWeight.w700, fontSize: 17)),
+            _StudentAvatar(
+              initial: initial,
+              avatarUrl: avatarUrl,
+              bg: AppColors.accentLight,
+              fg: AppColors.primary,
             ),
             const SizedBox(width: 11),
             Expanded(
@@ -321,7 +319,7 @@ class _InProgressCard extends StatelessWidget {
                   Text(studentName,
                     style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary)),
-                  Text('$subject · ${fmtDate(scheduledAt)}',
+                  Text('${translateSubject(subject, Localizations.localeOf(context))} · ${fmtDate(scheduledAt)}',
                     style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
                 ],
               ),
@@ -352,6 +350,7 @@ class _RejectedCard extends StatelessWidget {
     final l = context.l10n;
     final studentMap  = session['student'] as Map? ?? {};
     final studentName = (studentMap['full_name'] as String?) ?? l.authStudent;
+    final avatarUrl   = studentMap['avatar_url'] as String?;
     final subject     = (session['subject'] as String?) ?? '';
     final scheduledAt = (session['scheduled_at'] as String?) ?? '';
     final reason      = (session['rejection_reason'] as String?);
@@ -366,16 +365,11 @@ class _RejectedCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 42, height: 42,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8F8F8),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            alignment: Alignment.center,
-            child: Text(initial,
-              style: const TextStyle(color: AppColors.textHint,
-                fontWeight: FontWeight.w700, fontSize: 17)),
+          _StudentAvatar(
+            initial: initial,
+            avatarUrl: avatarUrl,
+            bg: const Color(0xFFF8F8F8),
+            fg: AppColors.textHint,
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -385,7 +379,7 @@ class _RejectedCard extends StatelessWidget {
                 Text(studentName,
                   style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary)),
-                Text('$subject · ${fmtDate(scheduledAt)}',
+                Text('${translateSubject(subject, Localizations.localeOf(context))} · ${fmtDate(scheduledAt)}',
                   style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
                 if (reason != null && reason.isNotEmpty)
                   Text(l.reqRejectedReason(reason),
@@ -404,6 +398,49 @@ class _RejectedCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Student avatar ────────────────────────────────────────────
+class _StudentAvatar extends StatelessWidget {
+  final String initial;
+  final String? avatarUrl;
+  final Color bg;
+  final Color fg;
+  const _StudentAvatar({
+    required this.initial,
+    this.avatarUrl,
+    required this.bg,
+    required this.fg,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 42, height: 42,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: avatarUrl != null && avatarUrl!.isNotEmpty
+          ? CachedNetworkImage(
+              imageUrl: avatarUrl!,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Center(
+                child: Text(initial,
+                  style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 17)),
+              ),
+              errorWidget: (_, __, ___) => Center(
+                child: Text(initial,
+                  style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 17)),
+              ),
+            )
+          : Center(
+              child: Text(initial,
+                style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 17)),
+            ),
     );
   }
 }

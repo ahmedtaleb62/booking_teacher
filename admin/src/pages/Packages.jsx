@@ -59,7 +59,7 @@ export default function Packages() {
   const [allCourses, setAllCourses]     = useState([])
   const [loading, setLoading]           = useState(true)
   const [showAdd, setShowAdd]           = useState(false)
-  const [form, setForm]                 = useState({ title: '', priceMonthly: '', courseIds: [] })
+  const [form, setForm]                 = useState({ title: '', priceMonthly: '', priceYearly: '', originalPrice: '', courseIds: [] })
   const [saving, setSaving]             = useState(false)
   const [editTarget, setEditTarget]     = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -96,31 +96,44 @@ export default function Packages() {
     if (!form.title || !form.priceMonthly) return
     setSaving(true)
     const { data: pkg, error } = await supabase.from('packages').insert({
-      title:         form.title,
-      price_monthly: parseFloat(form.priceMonthly),
-      is_active:     true,
+      title:          form.title,
+      price_monthly:  parseFloat(form.priceMonthly),
+      price_yearly:   form.priceYearly   ? parseFloat(form.priceYearly)   : null,
+      original_price: form.originalPrice ? parseFloat(form.originalPrice) : null,
+      is_active:      true,
     }).select().single()
     if (error) { toast('خطأ في الإضافة: ' + error.message, 'error'); setSaving(false); return }
 
     if (form.courseIds.length > 0) {
       const rows = form.courseIds.map(cid => ({ package_id: pkg.id, course_id: cid }))
       const { error: pcErr } = await supabase.from('package_courses').insert(rows)
-      if (pcErr) { toast('تمت إضافة الباقة لكن فشل ربط الدروس: ' + pcErr.message, 'error') }
+      if (pcErr) { toast('تمت إضافة الباقة لكن فشل ربط الدروس: ' + pcErr.message, 'error'); setSaving(false); return }
     }
+
+    await supabase.functions.invoke('notify-broadcast', {
+      body: {
+        role:  'student',
+        title: 'باقة جديدة متاحة 🎁',
+        body:  form.title || 'تحقق من الباقات الجديدة',
+        data:  { type: 'NEW_PACKAGE', package_id: pkg.id },
+      },
+    }).catch(() => {})
 
     setSaving(false)
     setShowAdd(false)
-    setForm({ title: '', priceMonthly: '', courseIds: [] })
+    setForm({ title: '', priceMonthly: '', priceYearly: '', originalPrice: '', courseIds: [] })
     toast('تمت إضافة الباقة بنجاح', 'success')
     await loadData()
   }
 
   function openEdit(p) {
     setEditTarget({
-      id:          p.id,
-      title:       p.title,
-      priceMonthly:String(p.price_monthly),
-      courseIds:   p.courseIds || [],
+      id:           p.id,
+      title:        p.title,
+      priceMonthly: String(p.price_monthly || ''),
+      priceYearly:  p.price_yearly   != null ? String(p.price_yearly)   : '',
+      originalPrice:p.original_price != null ? String(p.original_price) : '',
+      courseIds:    p.courseIds || [],
     })
   }
 
@@ -128,8 +141,10 @@ export default function Packages() {
     if (!editTarget.title || !editTarget.priceMonthly) return
     setSaving(true)
     const { error: updErr } = await supabase.from('packages').update({
-      title:         editTarget.title,
-      price_monthly: parseFloat(editTarget.priceMonthly),
+      title:          editTarget.title,
+      price_monthly:  parseFloat(editTarget.priceMonthly),
+      price_yearly:   editTarget.priceYearly   ? parseFloat(editTarget.priceYearly)   : null,
+      original_price: editTarget.originalPrice ? parseFloat(editTarget.originalPrice) : null,
     }).eq('id', editTarget.id)
     if (updErr) { toast('خطأ في التعديل: ' + updErr.message, 'error'); setSaving(false); return }
 
@@ -195,10 +210,22 @@ export default function Packages() {
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,.82)', marginTop: 8 }}>{p.subjects || 'مواد متعددة'}</div>
             </div>
             <div style={{ padding: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                 <div>
-                  <span style={{ fontSize: 19, fontWeight: 700 }}>{p.price_monthly?.toLocaleString('ar')}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text3)' }}> أوقية/شهر</span>
+                  {p.original_price && (
+                    <div style={{ fontSize: 11, color: '#B0BEC5', textDecoration: 'line-through', marginBottom: 1 }}>
+                      {p.original_price?.toLocaleString('ar')} أوقية
+                    </div>
+                  )}
+                  <div>
+                    <span style={{ fontSize: 19, fontWeight: 700 }}>{p.price_monthly?.toLocaleString('ar')}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text3)' }}> أوقية/شهر</span>
+                  </div>
+                  {p.price_yearly && (
+                    <div style={{ fontSize: 12, color: '#1B9E77', fontWeight: 600, marginTop: 2 }}>
+                      {p.price_yearly?.toLocaleString('ar')} أوقية/سنة
+                    </div>
+                  )}
                 </div>
                 <div style={{ textAlign: 'left' }}>
                   <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>{p.subsCount}</div>
@@ -235,16 +262,41 @@ export default function Packages() {
           <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: 560, maxWidth: '95vw', margin: 'auto' }} onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 20 }}>إضافة باقة جديدة</div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
-              <div>
-                <div className="field-label" style={{ marginBottom: 6 }}>اسم الباقة *</div>
-                <input className="field-input" placeholder="باقة العلوم الشاملة" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
-              </div>
+            <div style={{ marginBottom: 6 }}>
+              <div className="field-label" style={{ marginBottom: 6 }}>اسم الباقة *</div>
+              <input className="field-input" placeholder="باقة العلوم الشاملة" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20, marginTop: 14 }}>
               <div>
                 <div className="field-label" style={{ marginBottom: 6 }}>السعر الشهري * (أوقية)</div>
                 <input className="field-input" type="number" placeholder="12000" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} />
               </div>
+              <div>
+                <div className="field-label" style={{ marginBottom: 6 }}>السعر السنوي (أوقية)</div>
+                <input className="field-input" type="number" placeholder="110000" value={form.priceYearly} onChange={e => setForm(f => ({ ...f, priceYearly: e.target.value }))} />
+              </div>
+              <div>
+                <div className="field-label" style={{ marginBottom: 6 }}>سعر الخصم المشطوب</div>
+                <input className="field-input" type="number" placeholder="15000" value={form.originalPrice} onChange={e => setForm(f => ({ ...f, originalPrice: e.target.value }))} />
+              </div>
             </div>
+
+            {(form.priceMonthly || form.priceYearly || form.originalPrice) && (
+              <div style={{ background: '#F7F9FA', borderRadius: 10, padding: '9px 13px', marginBottom: 16, fontSize: 12.5 }}>
+                <span style={{ fontSize: 10.5, color: 'var(--text3)', fontWeight: 700, marginBottom: 4, display: 'block' }}>معاينة السعر</span>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                  {form.originalPrice && <span style={{ color: '#B0BEC5', textDecoration: 'line-through' }}>{Number(form.originalPrice).toLocaleString('ar')} أوقية</span>}
+                  {form.priceMonthly && <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 16 }}>{Number(form.priceMonthly).toLocaleString('ar')} أوقية<span style={{ fontSize: 10.5, fontWeight: 400 }}>/شهر</span></span>}
+                  {form.priceYearly && <span style={{ color: '#1B9E77', fontWeight: 700 }}>{Number(form.priceYearly).toLocaleString('ar')} أوقية/سنة</span>}
+                </div>
+                {form.originalPrice && form.priceMonthly && (
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#1B9E77', marginTop: 4 }}>
+                    🏷 خصم {Math.round((1 - parseFloat(form.priceMonthly) / parseFloat(form.originalPrice)) * 100)}%
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="field-label" style={{ marginBottom: 10 }}>
               الدروس المضمّنة في الباقة
@@ -279,16 +331,41 @@ export default function Packages() {
           <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: 560, maxWidth: '95vw', margin: 'auto' }} onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 20 }}>تعديل الباقة</div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
-              <div>
-                <div className="field-label" style={{ marginBottom: 6 }}>اسم الباقة *</div>
-                <input className="field-input" value={editTarget.title} onChange={e => setEditTarget(t => ({ ...t, title: e.target.value }))} />
-              </div>
+            <div style={{ marginBottom: 6 }}>
+              <div className="field-label" style={{ marginBottom: 6 }}>اسم الباقة *</div>
+              <input className="field-input" value={editTarget.title} onChange={e => setEditTarget(t => ({ ...t, title: e.target.value }))} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16, marginTop: 14 }}>
               <div>
                 <div className="field-label" style={{ marginBottom: 6 }}>السعر الشهري * (أوقية)</div>
                 <input className="field-input" type="number" value={editTarget.priceMonthly} onChange={e => setEditTarget(t => ({ ...t, priceMonthly: e.target.value }))} />
               </div>
+              <div>
+                <div className="field-label" style={{ marginBottom: 6 }}>السعر السنوي (أوقية)</div>
+                <input className="field-input" type="number" placeholder="110000" value={editTarget.priceYearly} onChange={e => setEditTarget(t => ({ ...t, priceYearly: e.target.value }))} />
+              </div>
+              <div>
+                <div className="field-label" style={{ marginBottom: 6 }}>سعر الخصم المشطوب</div>
+                <input className="field-input" type="number" placeholder="15000" value={editTarget.originalPrice} onChange={e => setEditTarget(t => ({ ...t, originalPrice: e.target.value }))} />
+              </div>
             </div>
+
+            {(editTarget.priceMonthly || editTarget.priceYearly || editTarget.originalPrice) && (
+              <div style={{ background: '#F7F9FA', borderRadius: 10, padding: '9px 13px', marginBottom: 16, fontSize: 12.5 }}>
+                <span style={{ fontSize: 10.5, color: 'var(--text3)', fontWeight: 700, marginBottom: 4, display: 'block' }}>معاينة السعر</span>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                  {editTarget.originalPrice && <span style={{ color: '#B0BEC5', textDecoration: 'line-through' }}>{Number(editTarget.originalPrice).toLocaleString('ar')} أوقية</span>}
+                  {editTarget.priceMonthly && <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 16 }}>{Number(editTarget.priceMonthly).toLocaleString('ar')} أوقية<span style={{ fontSize: 10.5, fontWeight: 400 }}>/شهر</span></span>}
+                  {editTarget.priceYearly && <span style={{ color: '#1B9E77', fontWeight: 700 }}>{Number(editTarget.priceYearly).toLocaleString('ar')} أوقية/سنة</span>}
+                </div>
+                {editTarget.originalPrice && editTarget.priceMonthly && (
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#1B9E77', marginTop: 4 }}>
+                    🏷 خصم {Math.round((1 - parseFloat(editTarget.priceMonthly) / parseFloat(editTarget.originalPrice)) * 100)}%
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="field-label" style={{ marginBottom: 10 }}>
               الدروس المضمّنة في الباقة

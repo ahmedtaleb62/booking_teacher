@@ -108,16 +108,26 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        automaticallyImplyLeading: false,
+        leading: Navigator.of(context).canPop()
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            : null,
         title: async.whenData((list) {
           final unread = list.where((n) => !n.isRead).length;
           return Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(l.notifTitle),
+              Flexible(
+                child: Text(l.notifTitle,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1),
+              ),
               if (unread > 0) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
                     color: AppColors.error,
                     borderRadius: BorderRadius.circular(999),
@@ -135,8 +145,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             if (unread == 0) return const SizedBox.shrink();
             return TextButton(
               onPressed: _markAllRead,
+              style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10)),
               child: Text(l.notifMarkAll,
-                style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
             );
           }).value ?? const SizedBox.shrink(),
         ],
@@ -206,14 +219,28 @@ class _NotifTile extends StatelessWidget {
 
   Color get _iconBg {
     switch (notification.type) {
+      case 'session_approved':
       case 'TEACHER_APPROVED':
+      case 'payment_confirmed':
       case 'PAYMENT_CONFIRMED':
-      case 'SESSION_CONFIRMED': return AppColors.statusConfirmedBg;
-      case 'TEACHER_REJECTED':  return AppColors.statusRejectedBg;
-      case 'PAYMENT_REQUIRED':  return AppColors.statusApprovedBg;
-      case 'SESSION_STARTING':  return AppColors.statusActiveBg;
-      case 'DISPUTE_OPENED':    return AppColors.statusDisputeBg;
-      default:                  return AppColors.accentLight;
+      case 'SESSION_CONFIRMED':
+      case 'dispute_resolved':
+      case 'refund_processed':
+      case 'subscription_refunded':
+      case 'teacher_approved':   return AppColors.statusConfirmedBg;
+      case 'session_rejected':
+      case 'TEACHER_REJECTED':
+      case 'payment_rejected':
+      case 'teacher_rejected':
+      case 'teacher_revoked':
+      case 'auto_cancelled':
+      case 'AUTO_CANCELLED':     return AppColors.statusRejectedBg;
+      case 'PAYMENT_REQUIRED':   return AppColors.statusApprovedBg;
+      case 'session_started':
+      case 'SESSION_STARTING':   return AppColors.statusActiveBg;
+      case 'dispute_opened':
+      case 'DISPUTE_OPENED':     return AppColors.statusDisputeBg;
+      default:                   return AppColors.accentLight;
     }
   }
 
@@ -257,7 +284,7 @@ class _NotifTile extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 3),
-                  Text(notification.body,
+                  Text(notification.localizedBody(context.l10n),
                     style: const TextStyle(fontSize: 12, height: 1.5, color: AppColors.textSecondary)),
                   const SizedBox(height: 5),
                   Text(timeStr,

@@ -12,6 +12,7 @@ import '../../../core/providers/locale_provider.dart';
 import '../../../core/models/course.dart' show SubscriptionStatus;
 import '../../../core/providers/courses_provider.dart';
 import '../../../core/providers/sessions_provider.dart';
+import '../../../core/services/fcm_service.dart';
 import '../../../core/services/supabase_service.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -344,7 +345,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _MenuItem(
                   icon: Icons.notifications_outlined,
                   label: l.profileNotifSettings,
-                  onTap: () {},
+                  onTap: () => FcmService.requestPermission(),
                 ),
               ],
             ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/levels.dart';
 import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/course.dart';
@@ -515,7 +516,7 @@ class _CourseCard extends StatelessWidget {
                           color: Colors.white.withValues(alpha: 0.88),
                           borderRadius: BorderRadius.circular(999),
                         ),
-                        child: Text(course.level,
+                        child: Text(translateLevel(course.level, Localizations.localeOf(context)),
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                                 color: AppColors.textPrimary, fontSize: 9,

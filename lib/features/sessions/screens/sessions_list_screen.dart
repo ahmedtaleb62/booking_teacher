@@ -1,8 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/session_states.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/session.dart';
 import '../../../core/providers/sessions_provider.dart';
@@ -85,7 +87,7 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen>
     final pending = sessions.where((s) =>
         [SessionState.requested, SessionState.teacherApproved,
          SessionState.awaitingPayment, SessionState.paymentSubmitted,
-         SessionState.paymentRejected, SessionState.paymentConfirmed].contains(s.state)).toList();
+         SessionState.paymentConfirmed].contains(s.state)).toList();
     final ended = sessions.where((s) =>
         [SessionState.completed, SessionState.teacherRejected, SessionState.cancelled,
          SessionState.teacherNoShow, SessionState.studentNoShow, SessionState.dispute].contains(s.state)).toList();
@@ -159,8 +161,7 @@ class _SessionCard extends StatelessWidget {
         if (s.state == SessionState.activeSession) {
           context.push('/live/${s.id}');
         } else if (s.state == SessionState.awaitingPayment ||
-                   s.state == SessionState.teacherApproved ||
-                   s.state == SessionState.paymentRejected) {
+                   s.state == SessionState.teacherApproved) {
           context.push('/payment/${s.id}');
         } else {
           context.push('/session/${s.id}');
@@ -183,13 +184,21 @@ class _SessionCard extends StatelessWidget {
               children: [
                 Container(
                   width: 42, height: 42,
+                  clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     color: AppColors.accentLight,
                     borderRadius: BorderRadius.circular(11),
                   ),
                   alignment: Alignment.center,
-                  child: Text(s.teacherInitial,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                  child: s.teacherAvatarUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: s.teacherAvatarUrl!,
+                          width: 42, height: 42, fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => Text(s.teacherInitial,
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                        )
+                      : Text(s.teacherInitial,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary)),
                 ),
                 const SizedBox(width: 11),
                 Expanded(
@@ -198,7 +207,7 @@ class _SessionCard extends StatelessWidget {
                     children: [
                       Text(s.teacherName,
                         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                      Text(s.subject,
+                      Text(translateSubject(s.subject, Localizations.localeOf(context)),
                         style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     ],
                   ),
@@ -256,26 +265,6 @@ class _SessionCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(l.sessionsCompletePayment,
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.statusApproved)),
-                  ],
-                ),
-              ),
-            ],
-            if (s.state == SessionState.paymentRejected) ...[
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                decoration: BoxDecoration(
-                  color: AppColors.statusRejectedBg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.upload_file_rounded, color: AppColors.error, size: 16),
-                    const SizedBox(width: 6),
-                    Text(l.sessionsProofRejected,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.error)),
                   ],
                 ),
               ),

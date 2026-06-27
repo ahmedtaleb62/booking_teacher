@@ -62,9 +62,10 @@ final teacherSessionsProvider = FutureProvider.autoDispose<List<Session>>((ref) 
   return (data as List).map((s) {
     final raw = Map<String, dynamic>.from(s as Map);
     final studentMap = raw['student'] as Map<String, dynamic>? ?? {};
-    raw['teacher_name'] = '';
-    raw['student_name'] = studentMap['full_name'] ?? '';
-    raw['events'] = raw['events'] ?? [];
+    raw['teacher_name']       = '';
+    raw['student_name']       = studentMap['full_name'] ?? '';
+    raw['student_avatar_url'] = studentMap['avatar_url'] as String?;
+    raw['events']             = raw['events'] ?? [];
     return Session.fromJson(raw);
   }).toList();
 });
@@ -153,13 +154,13 @@ final teacherDashboardProvider = FutureProvider.autoDispose<TeacherDashboardStat
         .maybeSingle(),
     SupabaseService.client
         .from('sessions')
-        .select('id, state, scheduled_at, duration_minutes, subject, student:student_id(full_name), student_note')
+        .select('id, state, scheduled_at, duration_minutes, subject, student:student_id(full_name, avatar_url), student_note')
         .eq('teacher_id', uid)
         .eq('state', SessionState.requested.englishKey)
         .order('scheduled_at'),
     SupabaseService.client
         .from('sessions')
-        .select('id, scheduled_at, duration_minutes, subject, state, student:student_id(full_name)')
+        .select('id, scheduled_at, duration_minutes, subject, state, student:student_id(full_name, avatar_url)')
         .eq('teacher_id', uid)
         .inFilter('state', [SessionState.confirmedBooking.englishKey, SessionState.activeSession.englishKey])
         .gte('scheduled_at', now.toIso8601String())
@@ -227,7 +228,7 @@ final teacherPendingRequestsProvider = FutureProvider.autoDispose<List<Map<Strin
   if (uid == null) return [];
   final data = await SupabaseService.client
       .from('sessions')
-      .select('id, scheduled_at, duration_minutes, subject, student_note, student:student_id(full_name)')
+      .select('id, scheduled_at, duration_minutes, subject, student_note, student:student_id(full_name, avatar_url)')
       .eq('teacher_id', uid)
       .eq('state', SessionState.requested.englishKey)
       .order('scheduled_at');
@@ -241,7 +242,7 @@ final teacherInProgressSessionsProvider = FutureProvider.autoDispose<List<Map<St
   if (uid == null) return [];
   final data = await SupabaseService.client
       .from('sessions')
-      .select('id, scheduled_at, duration_minutes, subject, state, student:student_id(full_name)')
+      .select('id, scheduled_at, duration_minutes, subject, state, student:student_id(full_name, avatar_url)')
       .eq('teacher_id', uid)
       .inFilter('state', [
         SessionState.teacherApproved.englishKey,
@@ -263,7 +264,7 @@ final teacherRejectedSessionsProvider = FutureProvider.autoDispose<List<Map<Stri
   if (uid == null) return [];
   final data = await SupabaseService.client
       .from('sessions')
-      .select('id, scheduled_at, duration_minutes, subject, rejection_reason, student:student_id(full_name)')
+      .select('id, scheduled_at, duration_minutes, subject, rejection_reason, student:student_id(full_name, avatar_url)')
       .eq('teacher_id', uid)
       .eq('state', SessionState.teacherRejected.englishKey)
       .order('created_at', ascending: false);
@@ -280,7 +281,7 @@ final teacherTodaySessionsProvider = FutureProvider.autoDispose<List<Map<String,
   final todayEnd   = DateTime(now.year, now.month, now.day + 1).toIso8601String();
   final data = await SupabaseService.client
       .from('sessions')
-      .select('id, scheduled_at, duration_minutes, subject, state, amount, student:student_id(full_name)')
+      .select('id, scheduled_at, duration_minutes, subject, state, amount, student:student_id(full_name, avatar_url)')
       .eq('teacher_id', uid)
       .inFilter('state', [
         SessionState.teacherApproved.englishKey,
@@ -307,7 +308,7 @@ final teacherUpcomingSessionsProvider = FutureProvider.autoDispose<List<Map<Stri
   final tomorrowStart = DateTime(now.year, now.month, now.day + 1).toIso8601String();
   final data = await SupabaseService.client
       .from('sessions')
-      .select('id, scheduled_at, duration_minutes, subject, state, amount, student:student_id(full_name)')
+      .select('id, scheduled_at, duration_minutes, subject, state, amount, student:student_id(full_name, avatar_url)')
       .eq('teacher_id', uid)
       .inFilter('state', [
         SessionState.teacherApproved.englishKey,
@@ -329,7 +330,7 @@ final teacherCompletedSessionsProvider = FutureProvider.autoDispose<List<Map<Str
   if (uid == null) return [];
   final data = await SupabaseService.client
       .from('sessions')
-      .select('id, scheduled_at, duration_minutes, subject, state, amount, student:student_id(full_name)')
+      .select('id, scheduled_at, duration_minutes, subject, state, amount, student:student_id(full_name, avatar_url)')
       .eq('teacher_id', uid)
       .inFilter('state', [
         SessionState.completed.englishKey,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/supabase_service.dart';
@@ -193,7 +194,7 @@ class MyRatingsScreen extends ConsumerWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 3),
-                        Text(item.subject,
+                        Text(translateSubject(item.subject, Localizations.localeOf(context)),
                             style: const TextStyle(
                                 fontSize: 12, color: AppColors.textHint)),
                         const SizedBox(height: 10),

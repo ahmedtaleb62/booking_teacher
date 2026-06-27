@@ -5,6 +5,9 @@ GoogleService-Info.plist
 *.p12
 *.p8
 *.mobileprovision
+android/key.properties
+*.jks
+*.keystore
 
 # Miscellaneous
 *.class

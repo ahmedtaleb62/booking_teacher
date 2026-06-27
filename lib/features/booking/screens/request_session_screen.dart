@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/levels.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/providers/teachers_provider.dart';
@@ -21,12 +22,12 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
   final _noteCtrl = TextEditingController();
   int     _selectedDay      = 0;
   int?    _selectedSlotIdx;
-  int     _selectedDuration = 1; // 0=30, 1=60, 2=90
+  int     _selectedDuration = 0; // 0=5(test), 1=30, 2=60, 3=90
   String? _selectedLevel;
   bool    _loading = false;
   String? _error;
 
-  static const _durations = [30, 60, 90];
+  static const _durations = [5, 30, 60, 90];
 
   List<DateTime> get _days {
     final today = DateTime.now();
@@ -77,7 +78,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
         if (isToday) {
           final slotDt = DateTime(day.year, day.month, day.day, h, m);
           if (slotDt.isBefore(now.add(const Duration(minutes: 30)))) {
-            m += 60; if (m >= 60) { h++; m -= 60; }
+            m += durationMinutes; h += m ~/ 60; m = m % 60;
             continue;
           }
         }
@@ -97,8 +98,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
           'booked': isBooked,
         });
 
-        m += 60;
-        if (m >= 60) { h++; m -= 60; }
+        m += durationMinutes; h += m ~/ 60; m = m % 60;
       }
     }
 
@@ -154,7 +154,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8, top: 4),
-                          child: Text(group.title,
+                          child: Text(translateLevelGroup(group.title, Localizations.localeOf(context)),
                               style: const TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
@@ -187,7 +187,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                               child: Row(
                                 children: [
                                   Expanded(
-                                    child: Text(lvl,
+                                    child: Text(translateLevel(lvl, Localizations.localeOf(context)),
                                         style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w600,
@@ -257,7 +257,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
       final msg = e.toString();
       setState(() => _error = msg.contains('double-booking') || msg.contains('conflict')
           ? context.l10n.reqSessionErrBooked
-          : context.l10n.reqSessionErrGeneral);
+          : msg); // DEBUG: show real error — revert to reqSessionErrGeneral after testing
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -364,7 +364,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                                 Text(teacher.name,
                                   style: const TextStyle(fontSize: 14,
                                     fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                                Text('${teacher.subject} · ${teacher.pricePerHour.toInt()} ${l.unitOugiyaPerHour}',
+                                Text('${translateSubject(teacher.subject, Localizations.localeOf(context))} · ${teacher.pricePerHour.toInt()} ${l.unitOugiyaPerHour}',
                                   style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                               ],
                             ),

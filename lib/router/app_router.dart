@@ -43,8 +43,6 @@ import '../features/teacher/screens/teacher_request_detail_screen.dart';
 import '../features/teacher/screens/teacher_session_status_screen.dart';
 import '../features/teacher/screens/teacher_sessions_screen.dart';
 import '../features/teacher/screens/teacher_earnings_screen.dart';
-import '../features/teacher/screens/teacher_dispute_screen.dart';
-import '../features/teacher/screens/teacher_no_show_screen.dart';
 import '../features/teacher/screens/teacher_profile_screen.dart' show TeacherSelfProfileScreen;
 import '../features/teacher/screens/teacher_onboarding_screen.dart';
 import '../features/teacher/screens/teacher_availability_screen.dart';
@@ -78,14 +76,31 @@ final routerProvider = Provider<GoRouter>((ref) {
     debugLogDiagnostics: false,
     refreshListenable: notifier,
     redirect: (context, state) {
-      final isAuth = SupabaseService.client.auth.currentSession != null;
-      final loc = state.matchedLocation;
+      final session = SupabaseService.client.auth.currentSession;
+      final isAuth  = session != null;
+      final loc     = state.matchedLocation;
+      final role    = SupabaseService.client.auth.currentUser
+          ?.userMetadata?['role'] as String?;
 
-      // Always allow public routes through
-      if (loc == '/splash' || loc == '/login' || loc == '/register' ||
-          loc == '/otp' || loc == '/forgot-password' || loc == '/reset-password') return null;
+      if (loc == '/splash') return null;
 
-      // Redirect unauthenticated users to login immediately
+      // These screens are always public (no auth required)
+      const publicPaths = {
+        '/login', '/register', '/otp',
+        '/forgot-password', '/reset-password',
+      };
+
+      if (publicPaths.contains(loc)) {
+        // Only redirect authenticated users away from login/register.
+        // /otp, /forgot-password, /reset-password must remain accessible even
+        // when auth state fires mid-flow (e.g. sendOtp creates a temporary session).
+        if (isAuth && (loc == '/login' || loc == '/register')) {
+          return role == 'teacher' ? '/teacher/home' : '/home';
+        }
+        return null;
+      }
+
+      // Protected route — must be authenticated
       if (!isAuth) return '/login';
 
       return null;
@@ -309,14 +324,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/teacher/live/:id',
         builder: (_, state) => SessionRoomScreen(sessionId: state.pathParameters['id']!, isTeacher: true),
-      ),
-      GoRoute(
-        path: '/teacher/dispute/:id',
-        builder: (_, state) => TeacherDisputeScreen(disputeId: state.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: '/teacher/no-show/:id',
-        builder: (_, state) => TeacherNoShowScreen(sessionId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/teacher/earnings',

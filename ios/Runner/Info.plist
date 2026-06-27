@@ -57,7 +57,14 @@
 	<string>نحتاج إلى الكاميرا لالتقاط صورة إثبات الدفع</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>نحتاج إلى الميكروفون للجلسات الصوتية المباشرة</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>نحتاج إلى حفظ صور إثبات الدفع في مكتبة الصور</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

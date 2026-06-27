@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:teacher_booking/l10n/app_localizations.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/course.dart';
 import '../../../core/providers/courses_provider.dart';
@@ -31,7 +33,8 @@ class MyCoursesScreen extends ConsumerWidget {
                   const Spacer(),
                   subsAsync.when(
                     data: (subs) {
-                      final active = subs.where((s) => s.status == SubscriptionStatus.active).length;
+                      final deduped = _dedupeSubscriptions(subs);
+                      final active = deduped.where((s) => s.status == SubscriptionStatus.active).length;
                       if (active == 0) return const SizedBox.shrink();
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -70,13 +73,14 @@ class MyCoursesScreen extends ConsumerWidget {
                   ),
                 ),
                 data: (subs) {
-                  if (subs.isEmpty) return _buildEmpty(context);
+                  final deduped = _dedupeSubscriptions(subs);
+                  if (deduped.isEmpty) return _buildEmpty(context);
                   return RefreshIndicator(
                     onRefresh: () => ref.refresh(mySubscriptionsProvider.future),
                     child: ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                      itemCount: subs.length,
-                      itemBuilder: (_, i) => _buildCard(context, subs[i]),
+                      itemCount: deduped.length,
+                      itemBuilder: (_, i) => _buildCard(context, deduped[i]),
                     ),
                   );
                 },
@@ -86,6 +90,24 @@ class MyCoursesScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  List<Subscription> _dedupeSubscriptions(List<Subscription> subs) {
+    const priority = {
+      SubscriptionStatus.active: 0,
+      SubscriptionStatus.pending: 1,
+      SubscriptionStatus.rejected: 2,
+      SubscriptionStatus.expired: 3,
+    };
+    final Map<String, Subscription> best = {};
+    for (final sub in subs) {
+      final key = sub.packageId != null ? 'pkg:${sub.packageId}' : 'crs:${sub.courseId}';
+      final existing = best[key];
+      if (existing == null || (priority[sub.status] ?? 99) < (priority[existing.status] ?? 99)) {
+        best[key] = sub;
+      }
+    }
+    return best.values.toList();
   }
 
   Widget _buildEmpty(BuildContext context) {
@@ -200,7 +222,7 @@ class MyCoursesScreen extends ConsumerWidget {
                                 style: const TextStyle(
                                     fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                             const SizedBox(height: 3),
-                            Text(sub.itemSubject,
+                            Text(translateSubject(sub.itemSubject, Localizations.localeOf(context)),
                                 style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
                           ],
                         ),
@@ -293,7 +315,7 @@ class MyCoursesScreen extends ConsumerWidget {
                           ),
                           if (sub.rejectReason != null) ...[
                             const SizedBox(height: 4),
-                            Text(sub.rejectReason!,
+                            Text(_friendlySubRejectReason(sub.rejectReason!, l),
                                 style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                           ],
                         ],
@@ -375,4 +397,11 @@ class MyCoursesScreen extends ConsumerWidget {
   }
 
   String _formatDate(DateTime dt) => '${dt.day}/${dt.month}/${dt.year}';
+
+  String _friendlySubRejectReason(String reason, AppLocalizations l) {
+    final r = reason.toUpperCase().replaceAll(RegExp(r'^REFUND:'), '');
+    if (r == 'FAKE_PROOF' || r.contains('FAKE')) return l.subRejectedFakeProofNote;
+    if (r == 'INCOMPLETE_AMOUNT' || r.contains('INCOMPLETE')) return l.subRejectedIncompleteAmountNote;
+    return reason.replaceAll(RegExp(r'^REFUND:', caseSensitive: false), '');
+  }
 }

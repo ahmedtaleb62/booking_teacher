@@ -127,6 +127,28 @@ class AppLocalizationsFr extends AppLocalizations {
   String get authLoginLink => 'Se connecter';
 
   @override
+  String get authPhone => 'Numéro de téléphone';
+
+  @override
+  String get authPhoneHint => 'Entrez votre numéro';
+
+  @override
+  String get authValidPhone => 'Entrez votre numéro de téléphone';
+
+  @override
+  String get authValidPhoneInvalid => 'Numéro de téléphone invalide';
+
+  @override
+  String get authSendOtp => 'Envoyer le code de vérification';
+
+  @override
+  String get authForgotTitle => 'Mot de passe oublié ?';
+
+  @override
+  String get authForgotSubtitle =>
+      'Entrez votre numéro, nous vous enverrons un code';
+
+  @override
   String get authValidEmail => 'Entrez votre adresse e-mail';
 
   @override
@@ -1401,6 +1423,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get stepConfirmed => 'Confirmé';
 
   @override
+  String get stepActive => 'En direct';
+
+  @override
   String get stepCompleted => 'Terminé';
 
   @override
@@ -1607,7 +1632,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get faqA3 =>
-      'En cas d\'absence du professeur, la session est reprogrammée ou le montant est intégralement remboursé. Veuillez nous contacter immédiatement.';
+      'En cas de problème avec le professeur, veuillez nous contacter immédiatement par téléphone ou e-mail et nous le résoudrons dans les plus brefs délais.';
 
   @override
   String get faqQ4 => 'Comment évaluer le professeur ?';
@@ -1982,6 +2007,16 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de charger l\'historique des paiements';
 
   @override
+  String get payHistRejectFake => 'Reçu falsifié — refusé définitivement';
+
+  @override
+  String get payHistRejectIncompleteRefund =>
+      'Montant incomplet — vous serez remboursé';
+
+  @override
+  String get payHistRejectIncomplete => 'Montant incomplet';
+
+  @override
   String get payHistStatusPending => 'En cours';
 
   @override
@@ -2066,6 +2101,96 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get changePassConfirmHint => 'Répétez le mot de passe';
+
+  @override
+  String get authBackToLogin => 'Retour à la connexion';
+
+  @override
+  String get authSendOtpError =>
+      'Échec d\'envoi du code — vérifiez votre connexion et réessayez';
+
+  @override
+  String get resetPassTitle => 'Nouveau mot de passe';
+
+  @override
+  String resetPassSubtitle(String phone) {
+    return 'Créez un nouveau mot de passe pour le numéro\n$phone';
+  }
+
+  @override
+  String get resetPassErrTooShort =>
+      'Le mot de passe doit comporter au moins 6 caractères';
+
+  @override
+  String get resetPassErrConfirmEmpty => 'Confirmez votre mot de passe';
+
+  @override
+  String get resetPassSaveBtn => 'Enregistrer le mot de passe';
+
+  @override
+  String get resetPassSuccessTitle => 'Mot de passe modifié';
+
+  @override
+  String get resetPassSuccessBody =>
+      'Vous pouvez maintenant vous connecter avec votre nouveau mot de passe';
+
+  @override
+  String get resetPassErrNotFound =>
+      'Ce numéro n\'est pas enregistré dans l\'application';
+
+  @override
+  String get resetPassErrGeneral =>
+      'Échec de la modification du mot de passe — réessayez';
+
+  @override
+  String get roomErrLoadMessages => 'Impossible de charger les messages';
+
+  @override
+  String get roomErrStartSession => 'Impossible de démarrer la session';
+
+  @override
+  String get roomErrStartCall => 'Échec du démarrage de l\'appel';
+
+  @override
+  String get roomErrSendText => 'Échec d\'envoi du message';
+
+  @override
+  String get roomErrSendImage => 'Échec d\'envoi de l\'image';
+
+  @override
+  String get roomErrSendFile => 'Échec d\'envoi du fichier';
+
+  @override
+  String get roomErrMicPermission =>
+      'Veuillez autoriser l\'accès au microphone';
+
+  @override
+  String get roomErrStartRecording => 'Échec du démarrage de l\'enregistrement';
+
+  @override
+  String get roomErrSendAudio => 'Échec d\'envoi du message vocal';
+
+  @override
+  String get roomErrSaveImage => 'Échec de la sauvegarde de l\'image';
+
+  @override
+  String get roomErrDownloadFile => 'Échec du téléchargement du fichier';
+
+  @override
+  String get roomEditMessage => 'Modifier le message';
+
+  @override
+  String get roomDeleteMessage => 'Supprimer le message';
+
+  @override
+  String get roomDeleteMessageConfirm =>
+      'Ce message sera supprimé pour tout le monde. Voulez-vous continuer ?';
+
+  @override
+  String get roomErrDeleteMessage => 'Impossible de supprimer le message';
+
+  @override
+  String get roomErrEditMessage => 'Impossible de modifier le message';
 
   @override
   String get myRatingsLoadError => 'Impossible de charger les évaluations';
@@ -2586,4 +2711,450 @@ class AppLocalizationsFr extends AppLocalizations {
   String teacherPublicReviews(int count) {
     return 'Avis des étudiants ($count)';
   }
+
+  @override
+  String get actionViewChat => 'Voir la conversation';
+
+  @override
+  String get actionEnterNow => 'Session en cours — Rejoindre';
+
+  @override
+  String get actionRequestRefund => 'Demander un remboursement';
+
+  @override
+  String get actionConfirmRequest => 'Confirmer la demande';
+
+  @override
+  String get sessionRefundPendingMsg =>
+      'Remboursement demandé — en attente de traitement.';
+
+  @override
+  String get dialogRefundTitle => 'Demande de remboursement';
+
+  @override
+  String get dialogRefundContent =>
+      'Votre demande sera envoyée à l\'administration.\n\nVous ne pourrez plus reprogrammer après cette demande.';
+
+  @override
+  String get cancelledNoPaymentTitle => 'Annulée — délai expiré';
+
+  @override
+  String get cancelledNoPaymentBody =>
+      'La preuve de paiement n\'a pas été envoyée dans le délai imparti, la session a été annulée automatiquement.';
+
+  @override
+  String get cancelledFakeProofTitle => 'Annulée — preuve falsifiée';
+
+  @override
+  String get cancelledFakeProofBody =>
+      'La preuve de paiement a été rejetée car incorrecte et le délai de correction est expiré.';
+
+  @override
+  String get cancelledInsufficientTitle => 'Annulée — montant insuffisant';
+
+  @override
+  String get cancelledInsufficientBody =>
+      'Le montant était incomplet et le délai a expiré. Le montant payé vous sera remboursé.';
+
+  @override
+  String get cancelledNoShowRefundTitle => 'Annulée — remboursement';
+
+  @override
+  String get cancelledNoShowRefundBody =>
+      'Le professeur était absent et vous avez demandé un remboursement. Le montant vous sera transféré.';
+
+  @override
+  String get cancelledDefaultTitle => 'Session annulée';
+
+  @override
+  String get cancelledDefaultBody => 'La session a été annulée.';
+
+  @override
+  String get cancelledAutoDeposit =>
+      'Le montant sera déposé automatiquement sur votre compte';
+
+  @override
+  String get evtRequested => 'Demande envoyée';
+
+  @override
+  String get evtTeacherApproved => 'Professeur a accepté';
+
+  @override
+  String get evtTeacherRejected => 'Professeur a refusé';
+
+  @override
+  String get evtAwaitingPayment => 'En attente du paiement';
+
+  @override
+  String get evtPaymentSubmitted => 'Preuve de paiement envoyée';
+
+  @override
+  String get evtPaymentRejected => 'Preuve refusée';
+
+  @override
+  String get evtPaymentConfirmed => 'Paiement confirmé par l\'admin';
+
+  @override
+  String get evtConfirmedBooking => 'Réservation confirmée';
+
+  @override
+  String get evtSessionStarted => 'Session commencée';
+
+  @override
+  String get evtSessionCompleted => 'Session terminée';
+
+  @override
+  String get evtActiveSession => 'Session en direct';
+
+  @override
+  String get evtCompleted => 'Session complétée';
+
+  @override
+  String get evtTeacherNoShow => 'Professeur absent';
+
+  @override
+  String get evtStudentNoShow => 'Absence enregistrée';
+
+  @override
+  String get evtDisputeOpened => 'Litige ouvert';
+
+  @override
+  String get evtCancelled => 'Session annulée';
+
+  @override
+  String get evtRescheduled => 'Reprogrammée';
+
+  @override
+  String get evtRefundRequested => 'Remboursement demandé';
+
+  @override
+  String get evtRefundProcessed => 'Remboursement traité';
+
+  @override
+  String get evtTRequested => 'Nouvelle demande reçue';
+
+  @override
+  String get evtTApproved => 'Demande acceptée';
+
+  @override
+  String get evtTRejected => 'Demande refusée';
+
+  @override
+  String get evtTAwaitingPayment => 'En attente du paiement';
+
+  @override
+  String get evtTPaymentSubmitted => 'Preuve envoyée par l\'étudiant';
+
+  @override
+  String get evtTPaymentRejected => 'Preuve refusée';
+
+  @override
+  String get evtTPaymentConfirmed => 'Paiement confirmé';
+
+  @override
+  String get evtTConfirmedBooking => 'Réservation confirmée';
+
+  @override
+  String get evtTSessionStarted => 'Session commencée';
+
+  @override
+  String get evtTSessionCompleted => 'Session terminée avec succès';
+
+  @override
+  String get evtTActiveSession => 'Session en direct';
+
+  @override
+  String get evtTCompleted => 'Session complétée';
+
+  @override
+  String get evtTTeacherNoShow => 'Votre absence a été enregistrée';
+
+  @override
+  String get evtTStudentNoShow => 'Absence de l\'étudiant enregistrée';
+
+  @override
+  String get evtTDisputeOpened => 'Litige ouvert';
+
+  @override
+  String get evtTCancelled => 'Session annulée par l\'étudiant';
+
+  @override
+  String get evtTRescheduled => 'Reprogrammée';
+
+  @override
+  String get evtTRefundRequested => 'Remboursement demandé par l\'étudiant';
+
+  @override
+  String get evtTRefundProcessed => 'Remboursement traité';
+
+  @override
+  String get notifBodySessionRequested =>
+      'Un nouvel étudiant souhaite réserver une session avec vous';
+
+  @override
+  String get notifBodyTeacherApproved =>
+      'Vous pouvez maintenant effectuer le paiement';
+
+  @override
+  String get notifBodyTeacherRejected =>
+      'Vous pouvez chercher un autre professeur';
+
+  @override
+  String get notifBodyPaymentRequired =>
+      'Envoyez la preuve de paiement pour confirmer la réservation';
+
+  @override
+  String get notifBodyPaymentConfirmed => 'Votre réservation est confirmée !';
+
+  @override
+  String get notifBodySessionConfirmed =>
+      'Votre session est confirmée — préparez-vous !';
+
+  @override
+  String get notifBodySessionStarting => 'La session commence très bientôt';
+
+  @override
+  String get notifBodyTeacherNoShow =>
+      'L\'absence du professeur a été enregistrée';
+
+  @override
+  String get notifBodyStudentNoShow =>
+      'L\'absence de l\'étudiant a été enregistrée';
+
+  @override
+  String get notifBodySessionCompleted =>
+      'La session est terminée — évaluez le professeur';
+
+  @override
+  String get notifBodyDisputeOpened =>
+      'Un litige a été ouvert — l\'administration va examiner la situation';
+
+  @override
+  String get notifBodyRescheduled => 'Votre session a été reprogrammée';
+
+  @override
+  String get notifBodySubPending =>
+      'Votre abonnement sera examiné et activé dans les 24h';
+
+  @override
+  String get notifBodySubActive =>
+      'Vous pouvez maintenant accéder à tout le contenu';
+
+  @override
+  String get notifBodySubRejected =>
+      'La preuve de paiement n\'a pas été acceptée — réessayez ou contactez le support';
+
+  @override
+  String get notifTypeSessionApproved =>
+      'Le professeur a accepté votre demande 🎉';
+
+  @override
+  String get notifBodySessionApproved =>
+      'Envoyez votre preuve de paiement pour confirmer la réservation';
+
+  @override
+  String get notifTypePaymentRejected => 'Preuve de paiement refusée';
+
+  @override
+  String get notifBodyPaymentRejected =>
+      'Renvoyez une preuve de paiement valide';
+
+  @override
+  String get notifTypeDisputeResolved => 'Litige résolu ✅';
+
+  @override
+  String get notifBodyDisputeResolved =>
+      'Le litige a été résolu en votre faveur';
+
+  @override
+  String get notifTypeRefundProcessed => 'Remboursement traité ✅';
+
+  @override
+  String get notifBodyRefundProcessed =>
+      'Le montant vous sera transféré prochainement';
+
+  @override
+  String get notifTypeSubscriptionRefunded =>
+      'Remboursement de votre abonnement 💰';
+
+  @override
+  String get notifBodySubscriptionRefunded =>
+      'Votre abonnement a été refusé et vous serez remboursé prochainement';
+
+  @override
+  String get notifTypeTeacherAccountApproved =>
+      'Félicitations ! Compte approuvé 🎉';
+
+  @override
+  String get notifBodyTeacherAccountApproved =>
+      'Vous pouvez désormais recevoir des demandes de sessions d\'étudiants';
+
+  @override
+  String get notifTypeTeacherAccountRejected => 'Demande non acceptée';
+
+  @override
+  String get notifBodyTeacherAccountRejected =>
+      'Votre demande n\'a pas pu être acceptée. Contactez-nous pour plus d\'informations';
+
+  @override
+  String get notifTypeTeacherRevoked => 'Compte suspendu';
+
+  @override
+  String get notifBodyTeacherRevoked =>
+      'Votre compte a été suspendu — contactez l\'administration';
+
+  @override
+  String get notifTypeAutoCancelled => 'Délai de paiement expiré';
+
+  @override
+  String get notifBodyAutoCancelled =>
+      'Votre demande a été annulée automatiquement — délai de paiement dépassé';
+
+  @override
+  String get subRejectedFakeProofNote =>
+      'Preuve de paiement incorrecte — veuillez vous réabonner avec une vraie preuve de virement';
+
+  @override
+  String get subRejectedIncompleteAmountNote =>
+      'Montant incomplet — vous serez remboursé automatiquement';
+
+  @override
+  String get paymentIncompleteLabel => 'Montant incomplet';
+
+  @override
+  String get subCancelledNoPaymentTitle => 'Abonnement annulé — délai expiré';
+
+  @override
+  String get subCancelledNoPaymentBody =>
+      'La preuve de paiement n\'a pas été envoyée dans le délai imparti, l\'abonnement a été annulé automatiquement.';
+
+  @override
+  String get subCancelledFakeProofTitle =>
+      'Abonnement annulé — preuve incorrecte';
+
+  @override
+  String get subCancelledFakeProofBody =>
+      'La preuve de paiement a été rejetée car incorrecte et le délai de correction est expiré.';
+
+  @override
+  String get subCancelledInsufficientTitle =>
+      'Abonnement annulé — montant insuffisant';
+
+  @override
+  String get subCancelledInsufficientBody =>
+      'Le montant était incomplet et le délai a expiré. Le montant payé vous sera remboursé.';
+
+  @override
+  String get subCancelledDefaultTitle => 'Abonnement annulé';
+
+  @override
+  String get subCancelledDefaultBody => 'Votre abonnement a été annulé.';
+
+  @override
+  String get subCancelledRefundNote =>
+      'Le montant sera déposé automatiquement sur votre compte';
+
+  @override
+  String get roomChatLog => 'Historique de la session';
+
+  @override
+  String get roomOnline => 'En ligne';
+
+  @override
+  String get roomOffline => 'Hors ligne';
+
+  @override
+  String get roomLeave => 'Quitter';
+
+  @override
+  String get roomLeaveTeacherTitle => 'Quitter la session ?';
+
+  @override
+  String get roomLeaveTeacherBody =>
+      'La session continuera et se terminera automatiquement à la fin du temps imparti.';
+
+  @override
+  String get roomLeaveStudentTitle => 'Quitter la session';
+
+  @override
+  String get roomLeaveStudentBody =>
+      'Vous pouvez revenir à tout moment tant que la session est active.';
+
+  @override
+  String get roomWarn5Min => 'Il reste 5 minutes avant la fin de la session';
+
+  @override
+  String get roomTimeUp => 'La session est terminée — fermeture en cours...';
+
+  @override
+  String get roomStartSession => 'Démarrer la session';
+
+  @override
+  String get roomStudentOnline => 'Étudiant en ligne';
+
+  @override
+  String get roomStudentOffline => 'Étudiant hors ligne';
+
+  @override
+  String get roomNoMessages => 'Messages sécurisés — commencez la conversation';
+
+  @override
+  String get roomNoMessagesReadOnly => 'Aucun message dans cette session';
+
+  @override
+  String get roomTypeHint => 'Écrire un message...';
+
+  @override
+  String get roomAttachImage => 'Image';
+
+  @override
+  String get roomAttachFile => 'Fichier';
+
+  @override
+  String get roomAttachAudio => 'Audio';
+
+  @override
+  String get roomAttachVideo => 'Vidéo';
+
+  @override
+  String get roomRecording => 'Enregistrement...';
+
+  @override
+  String get roomStopSend => 'Arrêter et envoyer';
+
+  @override
+  String get roomNewBooking => 'Réserver une nouvelle séance';
+
+  @override
+  String get roomIncomingCall => 'Appel vidéo entrant';
+
+  @override
+  String get roomCallFromStudent => 'De l\'étudiant';
+
+  @override
+  String get roomCallFromTeacher => 'Du professeur';
+
+  @override
+  String get roomDeclineCall => 'Refuser';
+
+  @override
+  String get roomAcceptCall => 'Accepter';
+
+  @override
+  String get roomSaveToGallery => 'Enregistrer dans la galerie';
+
+  @override
+  String get roomViewFullSize => 'Voir en plein écran';
+
+  @override
+  String get roomOpenInBrowser => 'Ouvrir dans le navigateur';
+
+  @override
+  String get roomFileTapHint => 'Appuyez pour ouvrir ou enregistrer';
+
+  @override
+  String get roomImageSaved => '✓ Image enregistrée dans la galerie';
+
+  @override
+  String get roomDownloadingFile => 'Téléchargement du fichier...';
 }

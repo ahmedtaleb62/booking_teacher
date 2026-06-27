@@ -38,17 +38,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   Future<void> _loadProfile() async {
     final uid = SupabaseService.userId;
-    if (uid == null) return;
-    final data = await SupabaseService.client
-        .from('profiles')
-        .select('full_name, avatar_url')
-        .eq('id', uid)
-        .maybeSingle();
-    if (mounted && data != null) {
-      _nameCtrl.text = data['full_name'] as String? ?? '';
-      _avatarUrl = data['avatar_url'] as String?;
+    if (uid == null) { if (mounted) setState(() => _loading = false); return; }
+    try {
+      final data = await SupabaseService.client
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('id', uid)
+          .maybeSingle();
+      if (mounted && data != null) {
+        _nameCtrl.text = data['full_name'] as String? ?? '';
+        _avatarUrl = data['avatar_url'] as String?;
+      }
+    } catch (e) {
+      if (mounted) setState(() => _errorMsg = e.toString());
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
-    if (mounted) setState(() => _loading = false);
   }
 
   Future<void> _pickAndUploadAvatar() async {

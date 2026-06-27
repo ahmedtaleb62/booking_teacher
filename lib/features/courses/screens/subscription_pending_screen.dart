@@ -191,7 +191,7 @@ class _SubscriptionPendingScreenState
                     fontSize: 14, color: AppColors.textSecondary, height: 1.6),
               ),
 
-              if (_rejected && _rejectReason != null && _rejectReason!.isNotEmpty) ...[
+              if (_rejected) ...[
                 const SizedBox(height: 14),
                 Container(
                   width: double.infinity,
@@ -204,12 +204,16 @@ class _SubscriptionPendingScreenState
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.info_outline_rounded,
-                          color: AppColors.error, size: 16),
+                      Icon(
+                        _isFakeProof(_rejectReason)
+                            ? Icons.gpp_bad_rounded
+                            : Icons.money_off_rounded,
+                        color: AppColors.error, size: 16,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          _rejectReason!,
+                          _friendlyRejectReason(_rejectReason),
                           style: const TextStyle(
                               fontSize: 13, color: AppColors.error, height: 1.5),
                         ),
@@ -278,32 +282,46 @@ class _SubscriptionPendingScreenState
     );
   }
 
+  bool _isFakeProof(String? reason) {
+    final r = (reason ?? '').toUpperCase().replaceAll(RegExp(r'^REFUND:'), '');
+    return r == 'FAKE_PROOF' || r.contains('FAKE');
+  }
+
+  String _friendlyRejectReason(String? reason) {
+    final l = context.l10n;
+    final r = (reason ?? '').toUpperCase().replaceAll(RegExp(r'^REFUND:'), '');
+    if (r == 'FAKE_PROOF' || r.contains('FAKE')) return l.subRejectedFakeProofNote;
+    if (r == 'INCOMPLETE_AMOUNT' || r.contains('INCOMPLETE')) return l.subRejectedIncompleteAmountNote;
+    return reason?.replaceAll(RegExp(r'^REFUND:', caseSensitive: false), '') ?? '';
+  }
+
   Widget _buildCancelledScreen(BuildContext context) {
+    final l = context.l10n;
     final reason = _cancellationReason ?? '';
     final bool withRefund = reason == 'insufficient_refund';
 
     final (String title, String body, IconData icon, Color color) = switch (reason) {
       'no_payment_deadline' => (
-        'ألغي الاشتراك — لم يُرسَل الدفع',
-        'انتهت المهلة المحددة دون إرسال إثبات الدفع، فأُلغي الاشتراك تلقائياً.',
+        l.subCancelledNoPaymentTitle,
+        l.subCancelledNoPaymentBody,
         Icons.timer_off_rounded,
         AppColors.error,
       ),
       'fake_proof' => (
-        'ألغي الاشتراك — إثبات مزيف',
-        'رُفض إثبات الدفع لأنه غير صحيح وانتهت المهلة المعطاة للتصحيح.',
+        l.subCancelledFakeProofTitle,
+        l.subCancelledFakeProofBody,
         Icons.gpp_bad_rounded,
         AppColors.error,
       ),
       'insufficient_refund' => (
-        'ألغي الاشتراك — مبلغ منقوص',
-        'لم يكتمل المبلغ المدفوع وانتهت المهلة. سيُعاد إليك المبلغ المدفوع قريباً.',
+        l.subCancelledInsufficientTitle,
+        l.subCancelledInsufficientBody,
         Icons.account_balance_wallet_outlined,
         const Color(0xFF7B61FF),
       ),
       _ => (
-        'ألغي الاشتراك',
-        'تم إلغاء اشتراكك.',
+        l.subCancelledDefaultTitle,
+        l.subCancelledDefaultBody,
         Icons.cancel_outlined,
         AppColors.error,
       ),
@@ -342,12 +360,12 @@ class _SubscriptionPendingScreenState
                     color: const Color(0xFFD1FAE5),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Row(children: [
-                    Icon(Icons.check_circle_outline_rounded, color: Color(0xFF059669), size: 16),
-                    SizedBox(width: 8),
+                  child: Row(children: [
+                    const Icon(Icons.check_circle_outline_rounded, color: Color(0xFF059669), size: 16),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: Text('سيُودَع المبلغ المدفوع في حسابك تلقائياً',
-                        style: TextStyle(fontSize: 12.5, color: Color(0xFF059669), fontWeight: FontWeight.w600)),
+                      child: Text(l.subCancelledRefundNote,
+                        style: const TextStyle(fontSize: 12.5, color: Color(0xFF059669), fontWeight: FontWeight.w600)),
                     ),
                   ]),
                 ),
@@ -366,7 +384,7 @@ class _SubscriptionPendingScreenState
                     }
                   },
                   icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('اشترك من جديد'),
+                  label: Text(l.coursesResub),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -380,8 +398,8 @@ class _SubscriptionPendingScreenState
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () => context.go('/home'),
-                child: const Text('العودة للرئيسية',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                child: Text(l.subPendingBackHome,
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
               ),
             ],
           ),

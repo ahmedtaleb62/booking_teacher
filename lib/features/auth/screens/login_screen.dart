@@ -154,7 +154,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         const SizedBox(height: 16),
                       ],
-                      _label('رقم الهاتف'),
+                      _label(l.authPhone),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _phoneCtrl,
@@ -162,13 +162,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         textDirection: TextDirection.ltr,
                         textInputAction: TextInputAction.next,
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        decoration: const InputDecoration(
-                          hintText: '44800028',
-                          prefixIcon: Icon(Icons.phone_outlined, color: AppColors.textHint),
+                        decoration: InputDecoration(
+                          hintText: l.authPhoneHint,
+                          prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.textHint),
                         ),
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'أدخل رقم الهاتف';
-                          if (v.trim().length < 7) return 'رقم الهاتف غير صحيح';
+                          if (v == null || v.trim().isEmpty) return l.authValidPhone;
+                          if (v.trim().length < 7) return l.authValidPhoneInvalid;
                           return null;
                         },
                       ),

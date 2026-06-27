@@ -6,6 +6,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/services/course_service.dart';
+import '../../../core/services/screen_secure_service.dart';
 
 class LessonPlayerScreen extends ConsumerStatefulWidget {
   final String lessonId;
@@ -53,6 +54,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
   @override
   void initState() {
     super.initState();
+    ScreenSecureService.enable();
     if (!_isQuiz) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       if (widget.videoUrl != null) _initWebView(_resolveUrl(widget.videoUrl!));
@@ -61,6 +63,7 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
 
   @override
   void dispose() {
+    ScreenSecureService.disable();
     if (!_isQuiz) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
@@ -82,9 +85,48 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
     )
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(NavigationDelegate(
-        onPageFinished: (_) => setState(() => _webReady = true),
+        onPageFinished: (_) {
+          _injectProtection();
+          setState(() => _webReady = true);
+        },
+        onNavigationRequest: (req) {
+          final uri = Uri.tryParse(req.url);
+          if (uri == null) return NavigationDecision.prevent;
+          // Block blob: URLs (browser-initiated file downloads)
+          if (uri.scheme == 'blob') return NavigationDecision.prevent;
+          // Block direct file download URLs
+          final path = uri.path.toLowerCase();
+          const blocked = ['.mp4', '.webm', '.mkv', '.pdf', '.doc',
+            '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.zip', '.rar', '.7z'];
+          final isDirect = blocked.any((e) => path.endsWith(e));
+          final isTrusted = uri.host.contains('docs.google.com') ||
+              uri.host.contains('youtube.com') ||
+              uri.host.contains('youtu.be') ||
+              uri.host.contains('googleapis.com') ||
+              uri.host.contains('supabase.co');
+          if (isDirect && !isTrusted) return NavigationDecision.prevent;
+          return NavigationDecision.navigate;
+        },
       ))
       ..loadRequest(Uri.parse(url));
+  }
+
+  void _injectProtection() {
+    _webCtrl?.runJavaScript('''
+      document.body.style.userSelect = "none";
+      document.body.style.webkitUserSelect = "none";
+      document.addEventListener("contextmenu", function(e){ e.preventDefault(); }, true);
+      document.addEventListener("selectstart",  function(e){ e.preventDefault(); }, true);
+      setTimeout(function(){
+        document.querySelectorAll(
+          '[aria-label="Download"],[data-tooltip="Download"],[aria-label="Print"],'
+          +'.ndfHFb-c4YZDc-Wrql6b,.ndfHFb-c4YZDc-to915-LgbsSe'
+        ).forEach(function(b){ b.style.display="none"; });
+        document.querySelectorAll('a[href*="export=download"],a[download]').forEach(function(a){
+          a.addEventListener("click", function(e){ e.preventDefault(); e.stopPropagation(); }, true);
+        });
+      }, 1500);
+    ''');
   }
 
   Future<void> _markCompleted() async {

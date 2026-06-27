@@ -3,45 +3,45 @@ import { supabase } from '../supabase'
 import { useToast } from '../components/Toast'
 
 const SETTING_META = {
+  session_commission_pct: {
+    label: 'عمولة الجلسات',
+    unit: '%',
+    desc: 'نسبة العمولة المخصومة من كل جلسة مباشرة مؤكّدة',
+    min: 0, max: 100,
+    displayFn: v => `${v}% من كل جلسة`,
+  },
+  subscription_commission_pct: {
+    label: 'عمولة الاشتراكات',
+    unit: '%',
+    desc: 'نسبة العمولة المخصومة من كل اشتراك في دورة أو باقة',
+    min: 0, max: 100,
+    displayFn: v => `${v}% من كل اشتراك`,
+  },
   payment_timeout_minutes: {
     label: 'مهلة الدفع',
     unit: 'دقيقة',
     desc: 'بعد قبول الطلب، ينتهي فيها وقت إرسال إثبات الدفع وإلا يُلغى',
-    displayFn: v => `${Math.round(v / 60)} ساعة`,
-  },
-  no_show_timeout_minutes: {
-    label: 'مهلة الغياب',
-    unit: 'دقيقة',
-    desc: 'بعد وقت الجلسة، يُسجَّل غياب الأستاذ أو الطالب تلقائياً',
-    displayFn: v => `${v} دقيقة`,
-  },
-  cancellation_window_hours: {
-    label: 'نافذة الإلغاء',
-    unit: 'ساعة',
-    desc: 'يحق للطالب الإلغاء قبل الموعد بهذه المدة بدون غرامة',
-    displayFn: v => `${v} ساعة`,
+    min: 1,
+    displayFn: v => v >= 60 ? `${Math.round(v / 60)} ساعة` : `${v} دقيقة`,
   },
   teacher_response_hours: {
     label: 'وقت رد الأستاذ',
     unit: 'ساعة',
     desc: 'أقصى مهلة لقبول أو رفض الطلب الجديد',
+    min: 1,
     displayFn: v => `${v} ساعة`,
-  },
-  min_session_price: {
-    label: 'الحد الأدنى للسعر',
-    unit: 'أوقية',
-    desc: 'أقل سعر مسموح به للجلسة الواحدة',
-    displayFn: v => `${v} أوقية`,
   },
 }
 
 const DEFAULTS = {
-  payment_timeout_minutes:   2880,
-  no_show_timeout_minutes:   15,
-  cancellation_window_hours: 24,
-  teacher_response_hours:    24,
-  min_session_price:         200,
+  session_commission_pct:      15,
+  subscription_commission_pct: 15,
+  payment_timeout_minutes:     60,
+  teacher_response_hours:      24,
 }
+
+// Commission fields get a special accent color
+const COMMISSION_KEYS = new Set(['session_commission_pct', 'subscription_commission_pct'])
 
 export default function Policy() {
   const toast = useToast()
@@ -53,7 +53,7 @@ export default function Policy() {
 
   async function loadSettings() {
     setLoading(true)
-    const { data } = await supabase.from('system_settings').select('key, value')
+    const { data } = await supabase.rpc('get_system_settings')
     if (data) {
       const overrides = Object.fromEntries(
         data
@@ -67,100 +67,118 @@ export default function Policy() {
 
   async function handleSave() {
     setSaving(true)
+    // Validate commission bounds
+    if (values.session_commission_pct < 0 || values.session_commission_pct > 100 ||
+        values.subscription_commission_pct < 0 || values.subscription_commission_pct > 100) {
+      toast('نسبة العمولة يجب أن تكون بين 0 و 100', 'error')
+      setSaving(false)
+      return
+    }
     const entries = Object.entries(values).map(([key, value]) => ({
       key, value: String(value),
     }))
-    for (const entry of entries) {
-      const { error } = await supabase
-        .from('system_settings')
-        .upsert(entry, { onConflict: 'key' })
-      if (error) {
-        toast('خطأ في الحفظ: ' + error.message, 'error')
-        setSaving(false)
-        return
-      }
-    }
+    const { error } = await supabase.rpc('admin_upsert_settings', { p_entries: entries })
     setSaving(false)
-    toast('تم حفظ السياسات بنجاح ✓', 'success')
+    if (error) {
+      toast('خطأ في الحفظ: ' + error.message, 'error')
+    } else {
+      toast('تم حفظ السياسات بنجاح ✓', 'success')
+    }
   }
 
   if (loading) return <div className="loading-center"><div className="spinner" /></div>
 
+  const commPct   = values.session_commission_pct ?? 15
+  const subCommPct = values.subscription_commission_pct ?? 15
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, maxWidth: 1000 }}>
-      {/* Session commission — display only */}
-      <div className="card">
-        <div className="flex items-center gap-10 mb-14" style={{ marginBottom: 6 }}>
-          <span style={{ width: 36, height: 36, borderRadius: 10, background: '#E0E7FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>💼</span>
-          <span className="card-title">عمولة الجلسات</span>
+    <div style={{ maxWidth: 1000 }}>
+
+      {/* ── Commission preview cards ─────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginBottom: 18 }}>
+        {/* Session commission preview */}
+        <div className="card">
+          <div className="flex items-center gap-10" style={{ marginBottom: 6 }}>
+            <span style={{ width: 36, height: 36, borderRadius: 10, background: '#E0E7FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>💼</span>
+            <span className="card-title">عمولة الجلسات الحالية</span>
+          </div>
+          <div style={{ fontSize: 12.5, color: 'var(--text3)', marginBottom: 14 }}>تُخصم من كل جلسة مباشرة مؤكّدة</div>
+          <div className="flex items-center" style={{ alignItems: 'flex-end', gap: 4 }}>
+            <span style={{ fontSize: 46, fontWeight: 700, color: 'var(--primary)' }}>{commPct}</span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary)', paddingBottom: 9 }}>%</span>
+          </div>
+          <div style={{ background: '#F5F7FF', borderRadius: 11, padding: 13, fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.7, marginTop: 12 }}>
+            جلسة بـ <b style={{ color: 'var(--text)' }}>500 أوقية</b> ← عمولة <b style={{ color: 'var(--text)' }}>{Math.round(500 * commPct / 100)}</b> · صافي الأستاذ <b style={{ color: '#059669' }}>{Math.round(500 * (1 - commPct / 100))}</b>
+          </div>
         </div>
-        <div style={{ fontSize: 12.5, color: 'var(--text3)', marginBottom: 18 }}>تُخصم من كل جلسة مباشرة مؤكّدة</div>
-        <div className="flex items-center gap-8" style={{ alignItems: 'flex-end', gap: 5 }}>
-          <span style={{ fontSize: 46, fontWeight: 700, color: 'var(--primary)' }}>15</span>
-          <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary)', paddingBottom: 9 }}>%</span>
-        </div>
-        <div style={{ height: 6, background: '#E6E9ED', borderRadius: 3, position: 'relative', margin: '16px 4px 18px' }}>
-          <div style={{ position: 'absolute', right: 0, width: '30%', top: 0, bottom: 0, background: 'var(--primary)', borderRadius: 3 }} />
-          <span style={{ position: 'absolute', right: '30%', top: '50%', transform: 'translate(50%,-50%)', width: 20, height: 20, borderRadius: '50%', background: '#fff', border: '3px solid var(--primary)', boxShadow: '0 2px 6px rgba(0,0,0,.15)', display: 'block' }} />
-        </div>
-        <div style={{ background: '#F5F7FF', borderRadius: 11, padding: 13, fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.7 }}>
-          جلسة بـ <b style={{ color: 'var(--text)' }}>500 أوقية</b> ← عمولة <b style={{ color: 'var(--text)' }}>75</b> · صافي الأستاذ <b style={{ color: '#059669' }}>425</b>.
+
+        {/* Subscription commission preview */}
+        <div className="card">
+          <div className="flex items-center gap-10" style={{ marginBottom: 6 }}>
+            <span style={{ width: 36, height: 36, borderRadius: 10, background: '#EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📚</span>
+            <span className="card-title">عمولة الاشتراكات الحالية</span>
+          </div>
+          <div style={{ fontSize: 12.5, color: 'var(--text3)', marginBottom: 14 }}>تُخصم من كل اشتراك في درس أو باقة</div>
+          <div className="flex items-center" style={{ alignItems: 'flex-end', gap: 4 }}>
+            <span style={{ fontSize: 46, fontWeight: 700, color: '#7C3AED' }}>{subCommPct}</span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: '#7C3AED', paddingBottom: 9 }}>%</span>
+          </div>
+          <div style={{ background: '#F5F7FF', borderRadius: 11, padding: 13, fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.7, marginTop: 12 }}>
+            اشتراك بـ <b style={{ color: 'var(--text)' }}>12,000 أوقية</b> ← عمولة <b style={{ color: 'var(--text)' }}>{(12000 * subCommPct / 100).toLocaleString('ar')}</b> · صافي الأستاذ <b style={{ color: '#059669' }}>{(12000 * (1 - subCommPct / 100)).toLocaleString('ar')}</b>
+          </div>
         </div>
       </div>
 
-      {/* Subscription commission — display only */}
+      {/* ── Editable settings ────────────────────────────────────── */}
       <div className="card">
-        <div className="flex items-center gap-10 mb-14" style={{ marginBottom: 6 }}>
-          <span style={{ width: 36, height: 36, borderRadius: 10, background: '#EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📚</span>
-          <span className="card-title">عمولة الاشتراكات في الدروس</span>
-        </div>
-        <div style={{ fontSize: 12.5, color: 'var(--text3)', marginBottom: 18 }}>تُخصم من كل اشتراك في درس أو باقة</div>
-        <div className="flex items-center gap-8" style={{ alignItems: 'flex-end', gap: 5 }}>
-          <span style={{ fontSize: 46, fontWeight: 700, color: '#7C3AED' }}>20</span>
-          <span style={{ fontSize: 20, fontWeight: 700, color: '#7C3AED', paddingBottom: 9 }}>%</span>
-        </div>
-        <div style={{ height: 6, background: '#E6E9ED', borderRadius: 3, position: 'relative', margin: '16px 4px 18px' }}>
-          <div style={{ position: 'absolute', right: 0, width: '40%', top: 0, bottom: 0, background: '#7C3AED', borderRadius: 3 }} />
-          <span style={{ position: 'absolute', right: '40%', top: '50%', transform: 'translate(50%,-50%)', width: 20, height: 20, borderRadius: '50%', background: '#fff', border: '3px solid #7C3AED', boxShadow: '0 2px 6px rgba(0,0,0,.15)', display: 'block' }} />
-        </div>
-        <div style={{ background: '#F5F7FF', borderRadius: 11, padding: 13, fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.7 }}>
-          اشتراك بـ <b style={{ color: 'var(--text)' }}>12,000 أوقية</b> ← عمولة <b style={{ color: 'var(--text)' }}>2,400</b> · صافي الأستاذ <b style={{ color: '#059669' }}>9,600</b>.
-        </div>
-      </div>
-
-      {/* Editable operational settings */}
-      <div className="card" style={{ gridColumn: '1/3' }}>
-        <div className="card-title" style={{ marginBottom: 20 }}>سياسات التشغيل</div>
+        <div className="card-title" style={{ marginBottom: 20 }}>جميع السياسات</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 16, marginBottom: 24 }}>
-          {Object.entries(SETTING_META).map(([key, meta]) => (
-            <div key={key} style={{ border: '1px solid var(--border-table)', borderRadius: 12, padding: 16 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4, color: 'var(--text)' }}>{meta.label}</div>
-              <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 12, lineHeight: 1.5 }}>{meta.desc}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input
-                  type="number"
-                  min="0"
-                  value={values[key]}
-                  onChange={e => setValues(v => ({ ...v, [key]: parseFloat(e.target.value) || 0 }))}
-                  style={{
-                    flex: 1, minWidth: 0,
-                    padding: '8px 10px',
-                    border: '1.5px solid var(--border)',
-                    borderRadius: 8,
-                    fontSize: 15,
-                    fontWeight: 700,
-                    fontFamily: 'inherit',
-                    color: 'var(--primary)',
-                  }}
-                />
-                <span style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{meta.unit}</span>
+          {Object.entries(SETTING_META).map(([key, meta]) => {
+            const isComm  = COMMISSION_KEYS.has(key)
+            const accent  = isComm ? (key === 'session_commission_pct' ? 'var(--primary)' : '#7C3AED') : 'var(--primary)'
+            return (
+              <div key={key} style={{
+                border: `1.5px solid ${isComm ? (key === 'session_commission_pct' ? '#C7D2FE' : '#DDD6FE') : 'var(--border-table)'}`,
+                borderRadius: 12, padding: 16,
+                background: isComm ? (key === 'session_commission_pct' ? '#FAFAFE' : '#FDFAFF') : '#fff',
+              }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {isComm && <span style={{ fontSize: 14 }}>{key === 'session_commission_pct' ? '💼' : '📚'}</span>}
+                  {meta.label}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 12, lineHeight: 1.5 }}>{meta.desc}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="number"
+                    min={meta.min ?? 0}
+                    max={meta.max}
+                    value={values[key]}
+                    onChange={e => setValues(v => ({ ...v, [key]: parseFloat(e.target.value) || 0 }))}
+                    style={{
+                      flex: 1, minWidth: 0,
+                      padding: '8px 10px',
+                      border: `1.5px solid ${isComm ? accent : 'var(--border)'}`,
+                      borderRadius: 8,
+                      fontSize: 15,
+                      fontWeight: 700,
+                      fontFamily: 'inherit',
+                      color: accent,
+                    }}
+                  />
+                  <span style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{meta.unit}</span>
+                </div>
+                <div style={{ marginTop: 8, fontSize: 11.5, color: '#059669', fontWeight: 700 }}>
+                  ← {meta.displayFn(values[key])}
+                </div>
               </div>
-              <div style={{ marginTop: 8, fontSize: 11.5, color: '#059669', fontWeight: 700 }}>
-                ← {meta.displayFn(values[key])}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
+
+        <div style={{ background: '#FEF3C7', borderRadius: 10, padding: '10px 14px', marginBottom: 18, fontSize: 12, color: '#92400E' }}>
+          ⚠ تغيير العمولة يؤثر على الحسابات الجديدة فقط — المعاملات السابقة لا تتأثر.
+        </div>
+
         <button
           className="btn btn-primary"
           style={{ padding: '12px 32px', fontSize: 13.5 }}

@@ -130,7 +130,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                   ...AppLevels.groups.map((group) => Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(group.title,
+                      Text(translateLevelGroup(group.title, Localizations.localeOf(context)),
                           style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -142,7 +142,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                         children: group.levels.map((lvl) {
                           final sel = _level == lvl;
                           return _chip(
-                            label: lvl,
+                            label: translateLevel(lvl, Localizations.localeOf(context)),
                             selected: sel,
                             onTap: () => setState(
                                 () => _level = sel ? null : lvl),

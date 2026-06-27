@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../l10n/app_localizations.dart';
@@ -31,6 +33,23 @@ class TeacherEarningsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        title: Text(l.teacherEarningsTitle,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/teacher/home');
+            }
+          },
+        ),
+      ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (e, _) => Center(
@@ -48,12 +67,9 @@ class TeacherEarningsScreen extends ConsumerWidget {
         data: (data) => RefreshIndicator(
           onRefresh: () async => ref.invalidate(teacherEarningsProvider),
           child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 22),
             children: [
-              SizedBox(height: MediaQuery.of(context).padding.top + 16),
-              Text(l.teacherEarningsTitle,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary)),
               const SizedBox(height: 16),
               _BalanceCard(balance: data.totalBalance, fmtAmount: _fmtAmount),
               const SizedBox(height: 16),
@@ -340,7 +356,8 @@ class _LedgerRow extends StatelessWidget {
     final isPayout  = type == 'payout_sent';
 
     final sessionMap  = entry['session'] as Map?;
-    final subject     = (sessionMap?['subject'] as String?) ?? '';
+    final rawSubject  = (sessionMap?['subject'] as String?) ?? '';
+    final subject     = translateSubject(rawSubject, Localizations.localeOf(context));
     final studentMap  = sessionMap?['student'] as Map?;
     final studentName = (studentMap?['full_name'] as String?) ?? '';
 

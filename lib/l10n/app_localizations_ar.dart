@@ -126,6 +126,27 @@ class AppLocalizationsAr extends AppLocalizations {
   String get authLoginLink => 'تسجيل الدخول';
 
   @override
+  String get authPhone => 'رقم الهاتف';
+
+  @override
+  String get authPhoneHint => 'أدخل رقم هاتفك';
+
+  @override
+  String get authValidPhone => 'أدخل رقم الهاتف';
+
+  @override
+  String get authValidPhoneInvalid => 'رقم الهاتف غير صحيح';
+
+  @override
+  String get authSendOtp => 'إرسال رمز التحقق';
+
+  @override
+  String get authForgotTitle => 'نسيت كلمة المرور؟';
+
+  @override
+  String get authForgotSubtitle => 'أدخل رقم هاتفك وسنرسل لك رمز التحقق';
+
+  @override
   String get authValidEmail => 'أدخل البريد الإلكتروني';
 
   @override
@@ -1372,6 +1393,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get stepConfirmed => 'مؤكّد';
 
   @override
+  String get stepActive => 'مباشر';
+
+  @override
   String get stepCompleted => 'مكتمل';
 
   @override
@@ -1575,7 +1599,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get faqA3 =>
-      'في حال تغيّب الأستاذ، يتم إعادة جدولة الجلسة أو استرداد المبلغ كاملاً. يُرجى التواصل معنا فوراً.';
+      'في حال واجهتَ أي مشكلة مع الأستاذ يُرجى التواصل معنا فوراً عبر الهاتف أو البريد الإلكتروني وسنعمل على حلّها.';
 
   @override
   String get faqQ4 => 'كيف أُقيّم الأستاذ؟';
@@ -1938,6 +1962,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get payHistLoadError => 'تعذّر تحميل سجل المدفوعات';
 
   @override
+  String get payHistRejectFake => 'الوصل مزيف — مرفوض نهائياً';
+
+  @override
+  String get payHistRejectIncompleteRefund =>
+      'المبلغ غير مكتمل — سيُسترد مبلغك';
+
+  @override
+  String get payHistRejectIncomplete => 'المبلغ غير مكتمل';
+
+  @override
   String get payHistStatusPending => 'قيد المراجعة';
 
   @override
@@ -2022,6 +2056,93 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get changePassConfirmHint => 'أعد كتابة كلمة المرور';
+
+  @override
+  String get authBackToLogin => 'العودة إلى تسجيل الدخول';
+
+  @override
+  String get authSendOtpError =>
+      'تعذّر إرسال رمز التحقق — تحقق من الاتصال وحاول مجدداً';
+
+  @override
+  String get resetPassTitle => 'كلمة المرور الجديدة';
+
+  @override
+  String resetPassSubtitle(String phone) {
+    return 'أنشئ كلمة مرور جديدة لرقم\n$phone';
+  }
+
+  @override
+  String get resetPassErrTooShort => 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+
+  @override
+  String get resetPassErrConfirmEmpty => 'أدخل تأكيد كلمة المرور';
+
+  @override
+  String get resetPassSaveBtn => 'حفظ كلمة المرور';
+
+  @override
+  String get resetPassSuccessTitle => 'تم تغيير كلمة المرور';
+
+  @override
+  String get resetPassSuccessBody =>
+      'يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة';
+
+  @override
+  String get resetPassErrNotFound => 'رقم الهاتف غير مسجّل في التطبيق';
+
+  @override
+  String get resetPassErrGeneral => 'فشل تغيير كلمة المرور — حاول مجدداً';
+
+  @override
+  String get roomErrLoadMessages => 'تعذّر تحميل الرسائل';
+
+  @override
+  String get roomErrStartSession => 'تعذّر بدء الجلسة';
+
+  @override
+  String get roomErrStartCall => 'فشل بدء المكالمة';
+
+  @override
+  String get roomErrSendText => 'فشل إرسال الرسالة';
+
+  @override
+  String get roomErrSendImage => 'فشل إرسال الصورة';
+
+  @override
+  String get roomErrSendFile => 'فشل إرسال الملف';
+
+  @override
+  String get roomErrMicPermission =>
+      'يرجى السماح للتطبيق بالوصول إلى الميكروفون';
+
+  @override
+  String get roomErrStartRecording => 'فشل بدء التسجيل';
+
+  @override
+  String get roomErrSendAudio => 'فشل إرسال التسجيل الصوتي';
+
+  @override
+  String get roomErrSaveImage => 'فشل حفظ الصورة';
+
+  @override
+  String get roomErrDownloadFile => 'فشل تحميل الملف';
+
+  @override
+  String get roomEditMessage => 'تعديل الرسالة';
+
+  @override
+  String get roomDeleteMessage => 'حذف الرسالة';
+
+  @override
+  String get roomDeleteMessageConfirm =>
+      'سيتم حذف هذه الرسالة للجميع. هل تريد المتابعة؟';
+
+  @override
+  String get roomErrDeleteMessage => 'تعذّر حذف الرسالة';
+
+  @override
+  String get roomErrEditMessage => 'تعذّر تعديل الرسالة';
 
   @override
   String get myRatingsLoadError => 'تعذّر تحميل التقييمات';
@@ -2527,4 +2648,430 @@ class AppLocalizationsAr extends AppLocalizations {
   String teacherPublicReviews(int count) {
     return 'تقييمات الطلاب ($count)';
   }
+
+  @override
+  String get actionViewChat => 'عرض المحادثة';
+
+  @override
+  String get actionEnterNow => 'الجلسة جارية — ادخل الآن';
+
+  @override
+  String get actionRequestRefund => 'استرداد المبلغ';
+
+  @override
+  String get actionConfirmRequest => 'تأكيد الطلب';
+
+  @override
+  String get sessionRefundPendingMsg =>
+      'طلبت استرداد المبلغ — بانتظار معالجة الإدارة.';
+
+  @override
+  String get dialogRefundTitle => 'طلب استرداد المبلغ';
+
+  @override
+  String get dialogRefundContent =>
+      'سيتم إرسال طلبك إلى الإدارة لمعالجته.\n\nلن تتمكن من إعادة الجدولة بعد هذا الطلب.';
+
+  @override
+  String get cancelledNoPaymentTitle => 'ألغيت — انتهت مهلة الدفع';
+
+  @override
+  String get cancelledNoPaymentBody =>
+      'لم يُرسَل إثبات الدفع خلال المهلة المحددة فأُلغيت الجلسة تلقائياً.';
+
+  @override
+  String get cancelledFakeProofTitle => 'ألغيت — إثبات دفع مزيف';
+
+  @override
+  String get cancelledFakeProofBody =>
+      'رُفض إثبات الدفع لأنه غير صحيح وانتهت المهلة المعطاة للتصحيح.';
+
+  @override
+  String get cancelledInsufficientTitle => 'ألغيت — مبلغ منقوص (استرداد)';
+
+  @override
+  String get cancelledInsufficientBody =>
+      'لم يكتمل المبلغ وانتهت المهلة. سيُعاد إليك المبلغ المدفوع قريباً.';
+
+  @override
+  String get cancelledNoShowRefundTitle => 'ألغيت — استرداد مبلغك';
+
+  @override
+  String get cancelledNoShowRefundBody =>
+      'غاب الأستاذ وطلبت الاسترداد. ستُحوَّل قيمة الجلسة إليك قريباً.';
+
+  @override
+  String get cancelledDefaultTitle => 'الجلسة ملغاة';
+
+  @override
+  String get cancelledDefaultBody => 'تم إلغاء الجلسة.';
+
+  @override
+  String get cancelledAutoDeposit => 'سيُودَع المبلغ في حسابك تلقائياً';
+
+  @override
+  String get evtRequested => 'أرسلت الطلب';
+
+  @override
+  String get evtTeacherApproved => 'وافق الأستاذ على طلبك';
+
+  @override
+  String get evtTeacherRejected => 'رفض الأستاذ الطلب';
+
+  @override
+  String get evtAwaitingPayment => 'في انتظار الدفع';
+
+  @override
+  String get evtPaymentSubmitted => 'رفعت إثبات الدفع';
+
+  @override
+  String get evtPaymentRejected => 'رُفض إثبات الدفع';
+
+  @override
+  String get evtPaymentConfirmed => 'أكّدت الإدارة الدفع';
+
+  @override
+  String get evtConfirmedBooking => 'تأكّد الحجز';
+
+  @override
+  String get evtSessionStarted => 'بدأت الجلسة';
+
+  @override
+  String get evtSessionCompleted => 'انتهت الجلسة';
+
+  @override
+  String get evtActiveSession => 'الجلسة مباشرة';
+
+  @override
+  String get evtCompleted => 'اكتملت الجلسة';
+
+  @override
+  String get evtTeacherNoShow => 'لم يحضر الأستاذ';
+
+  @override
+  String get evtStudentNoShow => 'سُجّل غيابك';
+
+  @override
+  String get evtDisputeOpened => 'فُتح نزاع';
+
+  @override
+  String get evtCancelled => 'تم إلغاء الجلسة';
+
+  @override
+  String get evtRescheduled => 'أُعيدت الجدولة';
+
+  @override
+  String get evtRefundRequested => 'طلبت استرداد المبلغ';
+
+  @override
+  String get evtRefundProcessed => 'تم استرداد مبلغك';
+
+  @override
+  String get evtTRequested => 'استقبلت طلب جلسة جديداً';
+
+  @override
+  String get evtTApproved => 'وافقت على الطلب';
+
+  @override
+  String get evtTRejected => 'رفضت الطلب';
+
+  @override
+  String get evtTAwaitingPayment => 'في انتظار دفع الطالب';
+
+  @override
+  String get evtTPaymentSubmitted => 'رفع الطالب إثبات الدفع';
+
+  @override
+  String get evtTPaymentRejected => 'رُفض إثبات دفع الطالب';
+
+  @override
+  String get evtTPaymentConfirmed => 'أكّدت الإدارة الدفع';
+
+  @override
+  String get evtTConfirmedBooking => 'تأكّد الحجز — الجلسة محجوزة';
+
+  @override
+  String get evtTSessionStarted => 'بدأت الجلسة';
+
+  @override
+  String get evtTSessionCompleted => 'انتهت الجلسة بنجاح';
+
+  @override
+  String get evtTActiveSession => 'الجلسة مباشرة';
+
+  @override
+  String get evtTCompleted => 'اكتملت الجلسة';
+
+  @override
+  String get evtTTeacherNoShow => 'سُجّل غيابك عن الجلسة';
+
+  @override
+  String get evtTStudentNoShow => 'سجّلت غياب الطالب';
+
+  @override
+  String get evtTDisputeOpened => 'فُتح نزاع على الجلسة';
+
+  @override
+  String get evtTCancelled => 'ألغى الطالب الجلسة';
+
+  @override
+  String get evtTRescheduled => 'أُعيدت الجدولة';
+
+  @override
+  String get evtTRefundRequested => 'طلب الطالب استرداد المبلغ';
+
+  @override
+  String get evtTRefundProcessed => 'تم معالجة الاسترداد';
+
+  @override
+  String get notifBodySessionRequested => 'طالب جديد يريد حجز جلسة معك';
+
+  @override
+  String get notifBodyTeacherApproved => 'يمكنك الآن إتمام الدفع';
+
+  @override
+  String get notifBodyTeacherRejected => 'يمكنك البحث عن أستاذ آخر';
+
+  @override
+  String get notifBodyPaymentRequired => 'أرسل إثبات الدفع لتأكيد الحجز';
+
+  @override
+  String get notifBodyPaymentConfirmed => 'تم تأكيد حجزك!';
+
+  @override
+  String get notifBodySessionConfirmed => 'جلستك مؤكدة — استعد!';
+
+  @override
+  String get notifBodySessionStarting => 'جلستك ستبدأ قريباً';
+
+  @override
+  String get notifBodyTeacherNoShow => 'تم تسجيل غياب الأستاذ';
+
+  @override
+  String get notifBodyStudentNoShow => 'تم تسجيل غياب الطالب';
+
+  @override
+  String get notifBodySessionCompleted => 'اكتملت جلستك — قيّم الأستاذ';
+
+  @override
+  String get notifBodyDisputeOpened => 'تم فتح نزاع — ستراجع الإدارة الأمر';
+
+  @override
+  String get notifBodyRescheduled => 'تم إعادة جدولة جلستك';
+
+  @override
+  String get notifBodySubPending =>
+      'اشتراكك قيد المراجعة وسيُفعَّل خلال 24 ساعة';
+
+  @override
+  String get notifBodySubActive => 'يمكنك الآن الوصول إلى جميع المحتوى';
+
+  @override
+  String get notifBodySubRejected =>
+      'لم يُقبل إثبات الدفع — أعد المحاولة أو تواصل مع الدعم';
+
+  @override
+  String get notifTypeSessionApproved => 'وافق الأستاذ على طلبك 🎉';
+
+  @override
+  String get notifBodySessionApproved => 'أرسل إثبات الدفع لتأكيد الحجز';
+
+  @override
+  String get notifTypePaymentRejected => 'تم رفض إثبات الدفع';
+
+  @override
+  String get notifBodyPaymentRejected => 'أعِد إرسال إثبات الدفع الصحيح';
+
+  @override
+  String get notifTypeDisputeResolved => 'تم حل النزاع ✅';
+
+  @override
+  String get notifBodyDisputeResolved => 'تم حل النزاع لصالحك';
+
+  @override
+  String get notifTypeRefundProcessed => 'تم معالجة الاسترداد ✅';
+
+  @override
+  String get notifBodyRefundProcessed => 'سيُحوَّل المبلغ إليك قريباً';
+
+  @override
+  String get notifTypeSubscriptionRefunded => 'سيُسترد مبلغك 💰';
+
+  @override
+  String get notifBodySubscriptionRefunded =>
+      'تم رفض الاشتراك وسيُسترد مبلغك قريباً';
+
+  @override
+  String get notifTypeTeacherAccountApproved => 'تهانينا! تم اعتماد حسابك 🎉';
+
+  @override
+  String get notifBodyTeacherAccountApproved =>
+      'يمكنك الآن استقبال طلبات الجلسات من الطلاب';
+
+  @override
+  String get notifTypeTeacherAccountRejected => 'اعتذرنا عن طلبك';
+
+  @override
+  String get notifBodyTeacherAccountRejected =>
+      'لا يمكن قبول طلبك حالياً. تواصل معنا للمزيد';
+
+  @override
+  String get notifTypeTeacherRevoked => 'تم إيقاف حسابك مؤقتاً';
+
+  @override
+  String get notifBodyTeacherRevoked =>
+      'تم إلغاء اعتماد حسابك. تواصل مع الإدارة للاستفسار';
+
+  @override
+  String get notifTypeAutoCancelled => 'انتهت مهلة الدفع';
+
+  @override
+  String get notifBodyAutoCancelled =>
+      'تم إلغاء طلبك تلقائياً لعدم إتمام الدفع في الوقت المحدد';
+
+  @override
+  String get subRejectedFakeProofNote =>
+      'الوصل مزيف — يرجى الاشتراك من جديد برفع وصل دفع حقيقي';
+
+  @override
+  String get subRejectedIncompleteAmountNote =>
+      'المبلغ غير مكتمل — سيُعاد إليك المبلغ المدفوع تلقائياً';
+
+  @override
+  String get paymentIncompleteLabel => 'المبلغ غير مكتمل';
+
+  @override
+  String get subCancelledNoPaymentTitle => 'ألغي الاشتراك — لم يُرسَل الدفع';
+
+  @override
+  String get subCancelledNoPaymentBody =>
+      'انتهت المهلة المحددة دون إرسال إثبات الدفع، فأُلغي الاشتراك تلقائياً.';
+
+  @override
+  String get subCancelledFakeProofTitle => 'ألغي الاشتراك — إثبات مزيف';
+
+  @override
+  String get subCancelledFakeProofBody =>
+      'رُفض إثبات الدفع لأنه غير صحيح وانتهت المهلة المعطاة للتصحيح.';
+
+  @override
+  String get subCancelledInsufficientTitle => 'ألغي الاشتراك — مبلغ منقوص';
+
+  @override
+  String get subCancelledInsufficientBody =>
+      'لم يكتمل المبلغ المدفوع وانتهت المهلة. سيُعاد إليك المبلغ المدفوع قريباً.';
+
+  @override
+  String get subCancelledDefaultTitle => 'ألغي الاشتراك';
+
+  @override
+  String get subCancelledDefaultBody => 'تم إلغاء اشتراكك.';
+
+  @override
+  String get subCancelledRefundNote =>
+      'سيُودَع المبلغ المدفوع في حسابك تلقائياً';
+
+  @override
+  String get roomChatLog => 'سجل المحادثة';
+
+  @override
+  String get roomOnline => 'متصل الآن';
+
+  @override
+  String get roomOffline => 'غير متصل';
+
+  @override
+  String get roomLeave => 'مغادرة';
+
+  @override
+  String get roomLeaveTeacherTitle => 'مغادرة الجلسة؟';
+
+  @override
+  String get roomLeaveTeacherBody =>
+      'الجلسة ستستمر وتُغلق تلقائياً عند انتهاء وقتها.';
+
+  @override
+  String get roomLeaveStudentTitle => 'مغادرة الجلسة';
+
+  @override
+  String get roomLeaveStudentBody =>
+      'يمكنك العودة في أي وقت أثناء بقاء الجلسة نشطة.';
+
+  @override
+  String get roomWarn5Min => 'تبقّى 5 دقائق على انتهاء الجلسة';
+
+  @override
+  String get roomTimeUp => 'انتهى وقت الجلسة — جارٍ الإغلاق...';
+
+  @override
+  String get roomStartSession => 'بدء الجلسة';
+
+  @override
+  String get roomStudentOnline => 'الطالب متصل';
+
+  @override
+  String get roomStudentOffline => 'الطالب غير متصل';
+
+  @override
+  String get roomNoMessages => 'الرسائل مؤمّنة — ابدأ المحادثة';
+
+  @override
+  String get roomNoMessagesReadOnly => 'لا توجد رسائل في هذه الجلسة';
+
+  @override
+  String get roomTypeHint => 'اكتب رسالة...';
+
+  @override
+  String get roomAttachImage => 'صورة';
+
+  @override
+  String get roomAttachFile => 'ملف';
+
+  @override
+  String get roomAttachAudio => 'صوتي';
+
+  @override
+  String get roomAttachVideo => 'فيديو';
+
+  @override
+  String get roomRecording => 'جارٍ التسجيل...';
+
+  @override
+  String get roomStopSend => 'إيقاف وإرسال';
+
+  @override
+  String get roomNewBooking => 'حجز حصة جديدة';
+
+  @override
+  String get roomIncomingCall => 'مكالمة فيديو واردة';
+
+  @override
+  String get roomCallFromStudent => 'من الطالب';
+
+  @override
+  String get roomCallFromTeacher => 'من الأستاذ';
+
+  @override
+  String get roomDeclineCall => 'رفض';
+
+  @override
+  String get roomAcceptCall => 'قبول';
+
+  @override
+  String get roomSaveToGallery => 'حفظ في المعرض';
+
+  @override
+  String get roomViewFullSize => 'عرض بالحجم الكامل';
+
+  @override
+  String get roomOpenInBrowser => 'فتح في المتصفح';
+
+  @override
+  String get roomFileTapHint => 'اضغط للفتح أو الحفظ';
+
+  @override
+  String get roomImageSaved => '✓ تم حفظ الصورة في المعرض';
+
+  @override
+  String get roomDownloadingFile => 'جارٍ تحميل الملف...';
 }

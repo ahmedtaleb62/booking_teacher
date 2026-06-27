@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/teacher.dart';
 import '../../../core/providers/teachers_provider.dart';
@@ -300,7 +301,7 @@ class _TeacherProfileBody extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${t.subject} · ${l.teacherYearsExpBadge(t.yearsExperience)}',
+                          '${translateSubject(t.subject, Localizations.localeOf(context))} · ${l.teacherYearsExpBadge(t.yearsExperience)}',
                           style: const TextStyle(
                               fontSize: 13, color: Color(0xFFCFE6EA))),
                         const SizedBox(height: 8),
@@ -370,7 +371,7 @@ class _TeacherProfileBody extends StatelessWidget {
           const SizedBox(height: 9),
           Wrap(
             spacing: 8, runSpacing: 8,
-            children: t.subjects.map((s) => _Chip(label: s)).toList(),
+            children: t.subjects.map((s) => _Chip(label: translateSubject(s, Localizations.localeOf(context)))).toList(),
           ),
           const SizedBox(height: 20),
 

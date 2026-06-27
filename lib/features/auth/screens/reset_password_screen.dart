@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/app_button.dart';
 
@@ -13,9 +14,9 @@ class ResetPasswordScreen extends StatefulWidget {
 }
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
-  final _formKey      = GlobalKey<FormState>();
-  final _passCtrl     = TextEditingController();
-  final _confirmCtrl  = TextEditingController();
+  final _formKey     = GlobalKey<FormState>();
+  final _passCtrl    = TextEditingController();
+  final _confirmCtrl = TextEditingController();
   bool _obscure1 = true;
   bool _obscure2 = true;
   bool _loading  = false;
@@ -30,6 +31,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   Future<void> _reset() async {
     if (!_formKey.currentState!.validate()) return;
+    final l = context.l10n;
     setState(() { _loading = true; _error = null; });
     try {
       await SupabaseService.client.rpc('reset_password_by_phone', params: {
@@ -41,9 +43,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     } catch (e) {
       final msg = e.toString();
       if (msg.contains('غير مسجل') || msg.contains('not registered')) {
-        setState(() => _error = 'رقم الهاتف غير مسجّل في التطبيق');
+        setState(() => _error = l.resetPassErrNotFound);
+      } else if (msg.contains('Could not find the function') ||
+                 msg.contains('function') && msg.contains('does not exist')) {
+        setState(() => _error = 'خطأ في الإعداد — تواصل مع الدعم (RPC missing)');
       } else {
-        setState(() => _error = 'فشل تغيير كلمة المرور — حاول مجدداً');
+        setState(() => _error = '${l.resetPassErrGeneral}\n$msg');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -51,6 +56,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 
   void _showSuccess() {
+    final l = context.l10n;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -68,16 +74,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               child: const Icon(Icons.check_rounded, color: Color(0xFF2E7D32), size: 34),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'تم تغيير كلمة المرور',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-            ),
+            Text(l.resetPassSuccessTitle,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             const SizedBox(height: 8),
-            const Text(
-              'يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة',
+            Text(l.resetPassSuccessBody,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.5),
-            ),
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.5)),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
@@ -91,8 +93,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   Navigator.pop(context);
                   context.go('/login');
                 },
-                child: const Text('تسجيل الدخول',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                child: Text(l.authLoginBtn,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ),
           ],
@@ -103,6 +105,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.primaryDark,
       body: SafeArea(
@@ -126,16 +129,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text(
-                      'كلمة المرور الجديدة',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white),
-                    ),
+                    Text(l.resetPassTitle,
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white)),
                     const SizedBox(height: 8),
-                    Text(
-                      'أنشئ كلمة مرور جديدة لرقم\n${widget.phone}',
+                    Text(l.resetPassSubtitle(widget.phone),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 14, color: Color(0xFF9DB2B8), height: 1.5),
-                    ),
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF9DB2B8), height: 1.5)),
                   ],
                 ),
               ),
@@ -169,11 +168,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         const SizedBox(height: 20),
                       ],
 
-                      const Text(
-                        'كلمة المرور الجديدة',
-                        style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                      ),
+                      Text(l.changePassNewLabel,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _passCtrl,
@@ -189,17 +185,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           ),
                         ),
                         validator: (v) {
-                          if (v == null || v.length < 6) return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+                          if (v == null || v.length < 6) return l.resetPassErrTooShort;
                           return null;
                         },
                       ),
                       const SizedBox(height: 18),
 
-                      const Text(
-                        'تأكيد كلمة المرور',
-                        style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                      ),
+                      Text(l.changePassConfirmLabel,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _confirmCtrl,
@@ -215,17 +208,30 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           ),
                         ),
                         validator: (v) {
-                          if (v == null || v.isEmpty) return 'أدخل تأكيد كلمة المرور';
-                          if (v != _passCtrl.text) return 'كلمتا المرور غير متطابقتين';
+                          if (v == null || v.isEmpty) return l.resetPassErrConfirmEmpty;
+                          if (v != _passCtrl.text) return l.changePassErrMismatch;
                           return null;
                         },
                       ),
                       const SizedBox(height: 28),
 
                       AppButton(
-                        label: 'حفظ كلمة المرور',
+                        label: l.resetPassSaveBtn,
                         isLoading: _loading,
                         onTap: _reset,
+                      ),
+                      const SizedBox(height: 20),
+                      GestureDetector(
+                        onTap: () => context.go('/login'),
+                        child: Center(
+                          child: Text(l.authBackToLogin,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),

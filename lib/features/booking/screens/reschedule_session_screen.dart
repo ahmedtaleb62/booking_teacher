@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/session_states.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/providers/teachers_provider.dart';
@@ -26,7 +27,7 @@ class _RescheduleSessionScreenState extends ConsumerState<RescheduleSessionScree
   bool _loading = false;
   String? _error;
 
-  static const _durations = [30, 60, 90];
+  static const _durations = [5, 30, 60, 90];
 
   List<DateTime> get _availableDays {
     final now = DateTime.now();
@@ -220,7 +221,7 @@ class _RescheduleSessionScreenState extends ConsumerState<RescheduleSessionScree
                           Text(session.teacherName,
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary)),
-                          Text(session.subject,
+                          Text(translateSubject(session.subject, Localizations.localeOf(context)),
                             style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                         ],
                       ),

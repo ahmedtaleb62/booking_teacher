@@ -10,11 +10,18 @@ export default function Disputes() {
   const [loading, setLoading]   = useState(true)
   const [modal, setModal]       = useState(null)
   const [resolving, setResolving] = useState(null)
+  const [commission, setCommission] = useState(0.15)
 
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
     setLoading(true)
+    try {
+    const { data: settingsData } = await supabase.rpc('get_system_settings')
+    if (settingsData) {
+      const s = Object.fromEntries(settingsData.map(r => [r.key, parseFloat(r.value)]))
+      if (!isNaN(s.session_commission_pct)) setCommission(s.session_commission_pct / 100)
+    }
 
     const [sessRes, refundRes] = await Promise.all([
       // Active disputes / no-shows
@@ -75,6 +82,10 @@ export default function Disputes() {
     })))
 
     setLoading(false)
+    } catch (e) {
+      console.error('Disputes loadData error:', e)
+      setLoading(false)
+    }
   }
 
   function timeAgo(dt) {
@@ -119,6 +130,29 @@ export default function Disputes() {
           user_id:    sess.student_id,
           title:      'تم استرداد مبلغك ✅',
           body:       'تم حل النزاع لصالحك وسيتم تحويل المبلغ قريباً.',
+          type:       'dispute_resolved',
+          session_id: sessionId,
+        })
+      }
+
+      if (newState === 'COMPLETED') {
+        const sess = modal.raw
+        const commAmt = Math.round((sess.amount || 0) * commission)
+        const netAmt  = (sess.amount || 0) - commAmt
+        await supabase.from('ledger_entries').insert({
+          session_id: sessionId,
+          student_id: sess.student_id,
+          teacher_id: sess.teacher_id,
+          type:        'session_payment',
+          amount:      sess.amount || 0,
+          commission:  commAmt,
+          net_amount:  netAmt,
+          description: 'جلسة مكتملة — نزاع محلول لصالح الأستاذ',
+        })
+        await supabase.from('notifications').insert({
+          user_id:    sess.teacher_id,
+          title:      'تم إيداع مستحقاتك ✅',
+          body:       'تم حل النزاع لصالحك وسيُحوَّل مستحقك قريباً.',
           type:       'dispute_resolved',
           session_id: sessionId,
         })
@@ -295,16 +329,18 @@ export default function Disputes() {
               <div><b>العمر:</b> {modal.age}</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <button
-                className="btn btn-primary"
-                style={{ justifyContent: 'center' }}
-                disabled={!!resolving}
-                onClick={() => resolve(modal.sessionId, 'COMPLETED')}
-              >
-                {resolving === modal.sessionId
-                  ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2, borderColor: 'rgba(255,255,255,.3)', borderTopColor: '#fff' }} />
-                  : '✓ حلّ النزاع — الجلسة مكتملة'}
-              </button>
+              {modal.raw.state !== 'TEACHER_NO_SHOW' && (
+                <button
+                  className="btn btn-primary"
+                  style={{ justifyContent: 'center' }}
+                  disabled={!!resolving}
+                  onClick={() => resolve(modal.sessionId, 'COMPLETED')}
+                >
+                  {resolving === modal.sessionId
+                    ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2, borderColor: 'rgba(255,255,255,.3)', borderTopColor: '#fff' }} />
+                    : '✓ حلّ النزاع — الجلسة مكتملة (يُدفع الأستاذ)'}
+                </button>
+              )}
               <button
                 className="btn"
                 style={{ background: '#FDECEC', color: '#C0392B', justifyContent: 'center' }}

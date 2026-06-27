@@ -1,14 +1,34 @@
 -- ─────────────────────────────────────────────────────────────────
--- 1. Fix course_lessons RLS: all authenticated users can read lesson
---    metadata (title, type, duration) so non-subscribers see locked list.
---    Video protection stays at the app layer.
+-- 1. Fix course_lessons RLS:
+--    Preview lessons → visible to all authenticated users (for course listing).
+--    Locked lessons → only visible to active subscribers or admins.
+--    This prevents video_url of locked lessons leaking via direct API calls.
 -- ─────────────────────────────────────────────────────────────────
 DROP POLICY IF EXISTS "course_lessons_select" ON public.course_lessons;
 DROP POLICY IF EXISTS "lessons_preview_only"  ON public.course_lessons;
 DROP POLICY IF EXISTS "select_lessons"        ON public.course_lessons;
+DROP POLICY IF EXISTS "lessons_read"          ON public.course_lessons;
 
 CREATE POLICY "course_lessons_select" ON public.course_lessons
-  FOR SELECT TO authenticated USING (true);
+  FOR SELECT TO authenticated USING (
+    is_preview = TRUE
+    OR EXISTS (
+      SELECT 1 FROM public.subscriptions s
+      WHERE s.student_id = auth.uid()
+        AND s.status = 'active'
+        AND (s.expires_at IS NULL OR s.expires_at > NOW())
+        AND (
+          s.course_id = course_lessons.course_id
+          OR s.package_id IN (
+            SELECT pc.package_id FROM public.package_courses pc
+            WHERE pc.course_id = course_lessons.course_id
+          )
+        )
+    )
+    OR EXISTS (
+      SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
 
 -- ─────────────────────────────────────────────────────────────────
 -- 2. Add ratings_count column to courses

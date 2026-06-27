@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -20,11 +21,6 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
   bool _loading = false;
   String? _error;
 
-  static const _subjectOptions = [
-    'العربية', 'الفرنسية', 'الإنجليزية', 'الرياضيات',
-    'التاريخ و الجغرافيا', 'الفلسفة', 'العلوم الطبيعية',
-    'التربية الإسلامية', 'التربية المدنية',
-  ];
   static const _maxSubjects = 2;
 
   @override
@@ -182,7 +178,7 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 8, runSpacing: 8,
-                  children: _subjectOptions.map((s) {
+                  children: kSubjects.map((s) {
                     final sel = _selectedSubjects.contains(s);
                     final maxReached = _selectedSubjects.length >= _maxSubjects && !sel;
                     return GestureDetector(
@@ -204,7 +200,8 @@ class _TeacherOnboardingScreenState extends State<TeacherOnboardingScreen> {
                             width: sel ? 1.5 : 1,
                           ),
                         ),
-                        child: Text(s,
+                        child: Text(
+                          translateSubject(s, Localizations.localeOf(context)),
                           style: TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w600,
                             color: sel

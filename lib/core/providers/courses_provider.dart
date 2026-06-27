@@ -55,27 +55,41 @@ final packageDetailsProvider =
 
 // ── Has active sub ────────────────────────────────────────────────
 
+// True only if status=active AND not past expires_at
+bool _isActiveAndNotExpired(Subscription s) =>
+    s.status == SubscriptionStatus.active && !s.isExpired;
+
 final hasCourseSubscriptionProvider =
     FutureProvider.autoDispose.family<bool, String>((ref, courseId) async {
   final subs = await ref.watch(mySubscriptionsProvider.future);
   return subs.any((s) =>
-      s.courseId == courseId && s.status == SubscriptionStatus.active);
+      _isActiveAndNotExpired(s) &&
+      (s.courseId == courseId ||
+       s.package?.courses.any((c) => c.id == courseId) == true));
 });
 
 final hasPackageSubscriptionProvider =
     FutureProvider.autoDispose.family<bool, String>((ref, packageId) async {
   final subs = await ref.watch(mySubscriptionsProvider.future);
   return subs.any((s) =>
-      s.packageId == packageId && s.status == SubscriptionStatus.active);
+      s.packageId == packageId && _isActiveAndNotExpired(s));
 });
 
-// Returns the active Subscription for a course — used to pass subscriptionId to lesson player
+// Returns the active Subscription for a course (direct or via package)
+// — used to pass subscriptionId to lesson player
 final courseActiveSubscriptionProvider =
     FutureProvider.autoDispose.family<Subscription?, String>((ref, courseId) async {
   final subs = await ref.watch(mySubscriptionsProvider.future);
+  // Prefer direct course subscription
   try {
     return subs.firstWhere((s) =>
-        s.courseId == courseId && s.status == SubscriptionStatus.active);
+        s.courseId == courseId && _isActiveAndNotExpired(s));
+  } catch (_) {}
+  // Fall back to package subscription that includes this course
+  try {
+    return subs.firstWhere((s) =>
+        _isActiveAndNotExpired(s) &&
+        s.package?.courses.any((c) => c.id == courseId) == true);
   } catch (_) {
     return null;
   }
@@ -86,11 +100,18 @@ final courseActiveSubscriptionProvider =
 final courseSubStatusProvider =
     FutureProvider.autoDispose.family<String?, String>((ref, courseId) async {
   final subs = await ref.watch(mySubscriptionsProvider.future);
-  final courseSubs = subs.where((s) => s.courseId == courseId).toList();
-  if (courseSubs.isEmpty) return null;
-  if (courseSubs.any((s) => s.status == SubscriptionStatus.active)) return 'active';
-  if (courseSubs.any((s) => s.status == SubscriptionStatus.pending)) return 'pending';
-  if (courseSubs.any((s) => s.status == SubscriptionStatus.expired)) return 'expired';
+  // Include direct course subs AND package subs that contain this course
+  final relevant = subs.where((s) =>
+      s.courseId == courseId ||
+      (s.packageId != null &&
+       s.package?.courses.any((c) => c.id == courseId) == true)).toList();
+  if (relevant.isEmpty) return null;
+  // DB may still say 'active' after expiry if cron hasn't run — treat as expired
+  if (relevant.any(_isActiveAndNotExpired)) return 'active';
+  if (relevant.any((s) => s.status == SubscriptionStatus.pending)) return 'pending';
+  if (relevant.any((s) =>
+      s.status == SubscriptionStatus.expired ||
+      (s.status == SubscriptionStatus.active && s.isExpired))) return 'expired';
   return 'rejected';
 });
 
@@ -99,8 +120,10 @@ final packageSubStatusProvider =
   final subs = await ref.watch(mySubscriptionsProvider.future);
   final pkgSubs = subs.where((s) => s.packageId == packageId).toList();
   if (pkgSubs.isEmpty) return null;
-  if (pkgSubs.any((s) => s.status == SubscriptionStatus.active)) return 'active';
+  if (pkgSubs.any(_isActiveAndNotExpired)) return 'active';
   if (pkgSubs.any((s) => s.status == SubscriptionStatus.pending)) return 'pending';
-  if (pkgSubs.any((s) => s.status == SubscriptionStatus.expired)) return 'expired';
+  if (pkgSubs.any((s) =>
+      s.status == SubscriptionStatus.expired ||
+      (s.status == SubscriptionStatus.active && s.isExpired))) return 'expired';
   return 'rejected';
 });

@@ -1,7 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/services/supabase_service.dart';
@@ -376,6 +378,7 @@ class _RequestCard extends StatelessWidget {
     final scheduledAt = (session['scheduled_at'] as String?) ?? '';
     final duration = (session['duration_minutes'] as int?) ?? 60;
     final initial = studentName.isNotEmpty ? studentName[0] : l.authStudent[0];
+    final studentAvatarUrl = studentMap['avatar_url'] as String?;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 22, vertical: 5),
@@ -391,12 +394,21 @@ class _RequestCard extends StatelessWidget {
             children: [
               Container(
                 width: 42, height: 42,
+                clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(color: AppColors.accentLight,
                   borderRadius: BorderRadius.circular(12)),
                 alignment: Alignment.center,
-                child: Text(initial,
-                  style: const TextStyle(color: AppColors.primary,
-                    fontWeight: FontWeight.w700, fontSize: 17)),
+                child: studentAvatarUrl != null
+                    ? CachedNetworkImage(
+                        imageUrl: studentAvatarUrl,
+                        width: 42, height: 42, fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => Text(initial,
+                            style: const TextStyle(color: AppColors.primary,
+                                fontWeight: FontWeight.w700, fontSize: 17)),
+                      )
+                    : Text(initial,
+                        style: const TextStyle(color: AppColors.primary,
+                            fontWeight: FontWeight.w700, fontSize: 17)),
               ),
               const SizedBox(width: 11),
               Expanded(
@@ -406,7 +418,7 @@ class _RequestCard extends StatelessWidget {
                     Text(studentName,
                       style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary)),
-                    Text('$subject · ${fmtDate(scheduledAt)} · ${l.dashMinutesShort(duration)}',
+                    Text('${translateSubject(subject, Localizations.localeOf(context))} · ${fmtDate(scheduledAt)} · ${l.dashMinutesShort(duration)}',
                       style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
                   ],
                 ),
@@ -466,11 +478,13 @@ class _UpcomingCard extends StatelessWidget {
 
     final dt = DateTime.tryParse(scheduledAt);
     final diffMin = dt != null ? dt.difference(DateTime.now()).inMinutes : 0;
-    final timeLabel = diffMin < 60
-        ? l.dashInMinutes(diffMin)
-        : diffMin < 1440
-            ? l.dashInHours(diffMin ~/ 60)
-            : fmtDate(scheduledAt);
+    final timeLabel = diffMin <= 0
+        ? fmtDate(scheduledAt)          // past/now: show absolute time, not negative countdown
+        : diffMin < 60
+            ? l.dashInMinutes(diffMin)
+            : diffMin < 1440
+                ? l.dashInHours(diffMin ~/ 60)
+                : fmtDate(scheduledAt);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 22, vertical: 5),
@@ -505,7 +519,7 @@ class _UpcomingCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('$studentName · $subject',
+                Text('$studentName · ${translateSubject(subject, Localizations.localeOf(context))}',
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary)),
                 Text('${l.sessionMinutes(duration)} · $timeLabel',
