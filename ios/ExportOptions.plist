@@ -15,7 +15,7 @@
     <key>provisioningProfiles</key>
     <dict>
         <key>com.example.teacherBooking</key>
-        <string>HajezUstad AppStore</string>
+        <string>Teacher_booking</string>
     </dict>
 
     <key>uploadBitcode</key>
