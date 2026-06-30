@@ -19,6 +19,7 @@ class Course {
   final String level;
   final String? teacherId;
   final String teacherName;
+  final String? teacherAvatarUrl;
   final int totalLessons;
   final double totalHours;
   final double priceMonthly;
@@ -41,6 +42,7 @@ class Course {
     required this.level,
     this.teacherId,
     this.teacherName = '',
+    this.teacherAvatarUrl,
     required this.totalLessons,
     required this.totalHours,
     required this.priceMonthly,
@@ -60,8 +62,9 @@ class Course {
       teacherName.isNotEmpty ? teacherName[0] : '؟';
 
   factory Course.fromJson(Map<String, dynamic> json) {
-    final teacherMap  = json['teacher'] as Map?;
-    final teacherName = (teacherMap?['full_name'] as String?) ?? '';
+    final teacherMap      = json['teacher'] as Map?;
+    final teacherName     = (teacherMap?['full_name'] as String?) ?? '';
+    final teacherAvatarUrl = teacherMap?['avatar_url'] as String?;
 
     final lessonsJson = json['lessons'] as List<dynamic>? ?? [];
     final parsedLessons = lessonsJson
@@ -83,8 +86,9 @@ class Course {
       description:      json['description'] as String?,
       subject:          json['subject'] as String,
       level:            json['level'] as String? ?? 'مبتدئ',
-      teacherId:        json['teacher_id'] as String?,
-      teacherName:      teacherName,
+      teacherId:          json['teacher_id'] as String?,
+      teacherName:        teacherName,
+      teacherAvatarUrl:   teacherAvatarUrl,
       totalLessons:     json['total_lessons'] as int? ?? parsedLessons.length,
       totalHours:       totalHours,
       priceMonthly:     (json['price_monthly'] as num).toDouble(),

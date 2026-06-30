@@ -6,6 +6,7 @@ import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../l10n/app_localizations.dart';
 
 // ── Model ─────────────────────────────────────────────────────────
@@ -23,6 +24,8 @@ class _PayItem {
   final String? reference;
   final DateTime date;
   final String? navPath;
+  final String? disputeStatus;        // 'confirmed' | 'frozen' | 'refunded'
+  final double? disputeRefundAmount;
 
   const _PayItem({
     required this.id,
@@ -35,6 +38,8 @@ class _PayItem {
     this.reference,
     required this.date,
     this.navPath,
+    this.disputeStatus,
+    this.disputeRefundAmount,
   });
 
   Color get statusColor {
@@ -140,6 +145,10 @@ final _paymentHistoryProvider =
       reference: m['reference'] as String?,
       date: DateTime.parse(m['created_at'] as String),
       navPath: sessionId != null ? '/session/$sessionId' : null,
+      disputeStatus: m['dispute_status'] as String?,
+      disputeRefundAmount: m['dispute_refund_amount'] != null
+          ? (m['dispute_refund_amount'] as num).toDouble()
+          : null,
     ));
   }
 
@@ -524,6 +533,55 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
                     ],
                   ),
 
+                  // Dispute status badge
+                  if (item.type == _ItemType.session &&
+                      item.disputeStatus != null &&
+                      item.disputeStatus != 'confirmed') ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: item.disputeStatus == 'frozen'
+                            ? const Color(0xFFFEF3C7)
+                            : const Color(0xFFF0EDFF),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: item.disputeStatus == 'frozen'
+                              ? const Color(0xFFFCD34D)
+                              : const Color(0xFFC4B5FD),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            item.disputeStatus == 'frozen'
+                                ? Icons.lock_outline_rounded
+                                : Icons.undo_rounded,
+                            size: 13,
+                            color: item.disputeStatus == 'frozen'
+                                ? const Color(0xFF92400E)
+                                : const Color(0xFF5A3B95),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              item.disputeStatus == 'frozen'
+                                  ? 'المبلغ مجمّد للتحقيق — سنُعلمك بالنتيجة'
+                                  : 'تم استرداد ${item.disputeRefundAmount?.toInt() ?? ''} أوقية بعد التحقيق',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: item.disputeStatus == 'frozen'
+                                    ? const Color(0xFF92400E)
+                                    : const Color(0xFF5A3B95),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   if (item.reference != null && item.reference!.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Row(
@@ -678,7 +736,7 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 6),
-            Text(e.toString(),
+            Text(AppErrors.friendly(e, l),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
             const SizedBox(height: 16),

@@ -6,10 +6,10 @@ const LEVELS = [
   { group: 'إعدادية',  items: ['سنة أولى إعدادي','سنة ثانية إعدادي','سنة ثالثة إعدادي','سنة رابعة (Brevet)'] },
   { group: 'ثانوية',   items: ['سنة خامسة ثانوي','سنة سادسة ثانوي','BAC C','BAC D','BAC LO','BAC LA','BAC TGM'] },
 ]
-const SUBJECTS = ['العربية','الفرنسية','الإنجليزية','الرياضيات','التاريخ و الجغرافيا','الفلسفة','العلوم الطبيعية','التربية الإسلامية','التربية المدنية']
-const LTYPES   = [{ id:'video',icon:'🎬',label:'فيديو'},{id:'file',icon:'📄',label:'ملف'},{id:'exercise',icon:'📝',label:'تمرين'},{id:'summary',icon:'📋',label:'ملخّص'}]
+const SUBJECTS = ['العربية','الفرنسية','الإنجليزية','الرياضيات','الفيزياء والكيمياء','التاريخ والجغرافيا','الفلسفة','العلوم الطبيعية','التربية الإسلامية','التربية المدنية']
+const LTYPES   = [{ id:'video',icon:'🎬',label:'فيديو' }]
 const uid      = () => Math.random().toString(36).slice(2)
-const newLesson  = () => ({ id:uid(), title:'', type:'video', url:'', file:null, uploadUrl:'', isPreview:false, exerciseKind:'file', quizQuestions:[], duration:'', pages:'' })
+const newLesson  = () => ({ id:uid(), title:'', type:'video', url:'', file:null, uploadUrl:'', isPreview:false, duration:'' })
 const newChapter = n  => ({ id:uid(), title:'الفصل '+n, expanded:true, lessons:[newLesson()] })
 const newQuestion= () => ({ id:uid(), text:'', answers:['',''], correct:0 })
 
@@ -86,8 +86,8 @@ function DropZone({ accept, icon, hint, file, existingUrl, onChange }) {
 }
 
 /* ── Lesson Item ──────────────────────────────────── */
-const LTYPE_COLORS = { video:'#1B6B7A', file:'#7B61FF', exercise:'#C77A1A', summary:'#15805F' }
-const LTYPE_BG    = { video:'#E7F1F2', file:'#F0EDFF', exercise:'#FEF3E2', summary:'#E3F6EF' }
+const LTYPE_COLORS = { video:'#0E7C66' }
+const LTYPE_BG    = { video:'#E3F4EF' }
 
 function LessonItem({ lesson, ci, li, onUpdate, onDelete }) {
   const [collapsed, setCollapsed] = useState(false)
@@ -108,15 +108,15 @@ function LessonItem({ lesson, ci, li, onUpdate, onDelete }) {
           onChange={e=>set({title:e.target.value})}
           style={{flex:'1 1 200px',fontSize:13,fontWeight:600,padding:'6px 10px',minWidth:0}}
         />
-        {/* Duration / pages */}
+        {/* Duration */}
         <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
           <input
             type="number" min="0" placeholder="0"
-            value={lesson.type==='file'?(lesson.pages||''):(lesson.duration||'')}
-            onChange={e=>lesson.type==='file'?set({pages:e.target.value}):set({duration:e.target.value})}
+            value={lesson.duration||''}
+            onChange={e=>set({duration:e.target.value})}
             style={{width:50,padding:'6px 7px',borderRadius:8,border:'1.5px solid #D6DFE6',fontSize:12,fontWeight:700,textAlign:'center',fontFamily:'inherit'}}
           />
-          <span style={{fontSize:11,color:'#8A96A3'}}>{lesson.type==='file'?'ص':'د'}</span>
+          <span style={{fontSize:11,color:'#8A96A3'}}>د</span>
         </div>
         {/* Preview toggle */}
         <label style={{display:'flex',alignItems:'center',gap:5,cursor:'pointer',userSelect:'none',padding:'5px 10px',borderRadius:20,border:'1.5px solid '+(lesson.isPreview?'#1B9E77':'#DDE3E8'),background:lesson.isPreview?'#E3F6EF':'#fff',color:lesson.isPreview?'#15805F':'#8A96A3',fontSize:11.5,fontWeight:700,flexShrink:0}}>
@@ -128,69 +128,24 @@ function LessonItem({ lesson, ci, li, onUpdate, onDelete }) {
         {/* Delete */}
         {confirmDel
           ? <div style={{display:'flex',gap:5,flexShrink:0}}>
-              <button onClick={()=>onDelete(ci,li)} style={{padding:'5px 11px',borderRadius:8,border:'none',background:'#DC2626',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>تأكيد</button>
+              <button onClick={()=>onDelete(ci,li)} style={{padding:'5px 11px',borderRadius:8,border:'none',background:'#A12B1D',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>تأكيد</button>
               <button onClick={()=>setConfirmDel(false)} style={{padding:'5px 11px',borderRadius:8,border:'1.5px solid #DDE3E8',background:'#fff',color:'#516170',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>إلغاء</button>
             </div>
-          : <button onClick={()=>setConfirmDel(true)} style={{padding:'5px 10px',borderRadius:8,border:'1.5px solid #FCA5A5',background:'#FEF2F2',color:'#DC2626',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'inherit',flexShrink:0}}>🗑</button>
+          : <button onClick={()=>setConfirmDel(true)} style={{padding:'5px 10px',borderRadius:8,border:'1.5px solid #F3C5BD',background:'#FBE0DB',color:'#A12B1D',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'inherit',flexShrink:0}}>🗑</button>
         }
       </div>
 
-      {/* ─ Body: type selector + content fields ─ */}
+      {/* ─ Body: video content ─ */}
       {!collapsed && (
         <div style={{padding:'14px 14px 16px'}}>
-          {/* Type selector */}
-          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:7,marginBottom:14}}>
-            {LTYPES.map(t=>{
-              const sel=lesson.type===t.id
-              return <button key={t.id} onClick={()=>set({type:t.id})}
-                style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,padding:'9px 4px',borderRadius:10,border:'2px solid '+(sel?LTYPE_COLORS[t.id]:'#DDE3E8'),background:sel?LTYPE_BG[t.id]:'#FAFBFC',color:sel?LTYPE_COLORS[t.id]:'#7A8FA0',fontWeight:700,fontSize:11.5,cursor:'pointer',fontFamily:'inherit',transition:'all .12s'}}>
-                <span style={{fontSize:19}}>{t.icon}</span>{t.label}
-              </button>
-            })}
-          </div>
-
-          {/* Video */}
-          {lesson.type==='video' && (
-            <div style={{display:'flex',flexDirection:'column',gap:10}}>
-              <div>
-                <div className="field-label" style={{marginBottom:6}}>🔗 رابط الفيديو (YouTube / Vimeo / مباشر)</div>
-                <input className="field-input" dir="ltr" placeholder="https://youtube.com/watch?v=..." value={lesson.url} onChange={e=>set({url:e.target.value,uploadUrl:''})} style={{fontSize:12.5}} />
-              </div>
-              <div style={{textAlign:'center',fontSize:12,color:'#A0B4BE',fontWeight:700}}>— أو رفع ملف فيديو مباشرة —</div>
-              <DropZone accept="video/*" icon="🎬" hint="MP4، MOV — حتى 500 MB" file={lesson.file} existingUrl={lesson.uploadUrl&&!lesson.url?lesson.uploadUrl:null} onChange={f=>set({file:f,url:'',uploadUrl:''})} />
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            <div>
+              <div className="field-label" style={{marginBottom:6}}>🔗 رابط الفيديو (YouTube / Vimeo / مباشر)</div>
+              <input className="field-input" dir="ltr" placeholder="https://youtube.com/watch?v=..." value={lesson.url} onChange={e=>set({url:e.target.value,uploadUrl:''})} style={{fontSize:12.5}} />
             </div>
-          )}
-
-          {/* File / Summary */}
-          {(lesson.type==='file'||lesson.type==='summary') && (
-            <DropZone
-              accept=".pdf,.doc,.docx,.ppt,.pptx"
-              icon={lesson.type==='summary'?'📋':'📄'}
-              hint="PDF، Word، PowerPoint"
-              file={lesson.file}
-              existingUrl={lesson.uploadUrl||null}
-              onChange={f=>set({file:f,uploadUrl:''})}
-            />
-          )}
-
-          {/* Exercise */}
-          {lesson.type==='exercise' && (
-            <>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
-                {[{id:'file',icon:'📄',label:'ملف تمرين',sub:'PDF أو Word'},{id:'quiz',icon:'❓',label:'كويز',sub:'أسئلة متعددة'}].map(k=>{
-                  const sel=lesson.exerciseKind===k.id
-                  return <button key={k.id} onClick={()=>set({exerciseKind:k.id})}
-                    style={{display:'flex',alignItems:'center',gap:9,padding:'11px 12px',borderRadius:10,border:'2px solid '+(sel?'#C77A1A':'#DDE3E8'),background:sel?'#FEF3E2':'#FAFBFC',color:sel?'#C77A1A':'#516170',fontWeight:700,fontSize:12.5,cursor:'pointer',fontFamily:'inherit',transition:'all .12s'}}>
-                    <span style={{fontSize:20}}>{k.icon}</span><div><div>{k.label}</div><div style={{fontSize:10.5,fontWeight:400,color:sel?'#A0682A':'#A0B4BE'}}>{k.sub}</div></div>
-                  </button>
-                })}
-              </div>
-              {lesson.exerciseKind==='file'
-                ? <DropZone accept=".pdf,.doc,.docx" icon="📝" hint="PDF أو Word" file={lesson.file} existingUrl={lesson.uploadUrl||null} onChange={f=>set({file:f,uploadUrl:''})} />
-                : <QuizBuilder questions={lesson.quizQuestions} onChange={q=>set({quizQuestions:q})} />
-              }
-            </>
-          )}
+            <div style={{textAlign:'center',fontSize:12,color:'#A0B4BE',fontWeight:700}}>— أو رفع ملف فيديو مباشرة —</div>
+            <DropZone accept="video/*" icon="🎬" hint="MP4، MOV — حتى 500 MB" file={lesson.file} existingUrl={lesson.uploadUrl&&!lesson.url?lesson.uploadUrl:null} onChange={f=>set({file:f,url:'',uploadUrl:''})} />
+          </div>
         </div>
       )}
     </div>
@@ -224,10 +179,10 @@ function ChapterBlock({ chapter, idx, onUpdate, onDelete, onLessonUpdate, onLess
           <button onClick={()=>setEditTitle(true)} style={{display:'flex',alignItems:'center',gap:5,padding:'7px 13px',borderRadius:9,border:'1.5px solid rgba(255,255,255,.4)',background:'rgba(255,255,255,.12)',color:'#fff',fontSize:12.5,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}>✏️ تعديل الاسم</button>
           {confirmDel
             ? <div style={{display:'flex',gap:6}}>
-                <button onClick={()=>onDelete(idx)} style={{padding:'7px 14px',borderRadius:9,border:'none',background:'#DC2626',color:'#fff',fontSize:12.5,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}>✓ تأكيد الحذف</button>
+                <button onClick={()=>onDelete(idx)} style={{padding:'7px 14px',borderRadius:9,border:'none',background:'#A12B1D',color:'#fff',fontSize:12.5,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}>✓ تأكيد الحذف</button>
                 <button onClick={()=>setConfirmDel(false)} style={{padding:'7px 14px',borderRadius:9,border:'1.5px solid rgba(255,255,255,.35)',background:'rgba(255,255,255,.1)',color:'#fff',fontSize:12.5,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>إلغاء</button>
               </div>
-            : <button onClick={()=>setConfirmDel(true)} style={{display:'flex',alignItems:'center',gap:5,padding:'7px 13px',borderRadius:9,border:'1.5px solid #FCA5A5',background:'rgba(220,38,38,.18)',color:'#FCA5A5',fontSize:12.5,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}>🗑 حذف الفصل</button>
+            : <button onClick={()=>setConfirmDel(true)} style={{display:'flex',alignItems:'center',gap:5,padding:'7px 13px',borderRadius:9,border:'1.5px solid #F3C5BD',background:'rgba(161,43,29,.18)',color:'#F3C5BD',fontSize:12.5,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}>🗑 حذف الفصل</button>
           }
           <button onClick={()=>upd({expanded:!chapter.expanded})} style={{width:36,height:36,borderRadius:9,border:'1.5px solid rgba(255,255,255,.3)',background:'rgba(255,255,255,.1)',color:'#fff',fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',transform:chapter.expanded?'rotate(180deg)':'none',transition:'transform .2s'}}>▼</button>
         </div>
@@ -255,6 +210,7 @@ export default function AddCourse({ onNavigate, courseId }) {
   const isEdit = !!courseId
 
   const [form, setForm]         = useState({title:'',description:'',subject:'',level:'',priceMonthly:'',priceYearly:'',originalPrice:'',teacherId:''})
+  const [isFree, setIsFree]     = useState(false)
   const [chapters, setChapters] = useState([newChapter(1)])
   const [teachers, setTeachers] = useState([])
   const [saving, setSaving]     = useState(false)
@@ -283,14 +239,16 @@ export default function AddCourse({ onNavigate, courseId }) {
     ])
     if (!course) { setLoadingCourse(false); return }
 
+    const free = course.price_monthly === 0
+    setIsFree(free)
     setForm({
       title:         course.title         || '',
       description:   course.description   || '',
       subject:       course.subject       || '',
       level:         course.level         || '',
-      priceMonthly:  course.price_monthly  != null ? String(course.price_monthly)  : '',
-      priceYearly:   course.price_yearly   != null ? String(course.price_yearly)   : '',
-      originalPrice: course.original_price != null ? String(course.original_price) : '',
+      priceMonthly:  !free && course.price_monthly  != null ? String(course.price_monthly)  : '',
+      priceYearly:   !free && course.price_yearly   != null ? String(course.price_yearly)   : '',
+      originalPrice: !free && course.original_price != null ? String(course.original_price) : '',
       teacherId:     course.teacher_id    || '',
     })
 
@@ -333,8 +291,8 @@ export default function AddCourse({ onNavigate, courseId }) {
   const delLesson  = (ci,li)   => setChapters(c=>c.map((ch,i)=>i===ci?{...ch,lessons:ch.lessons.filter((_,j)=>j!==li)}:ch))
 
   async function save(isDraft) {
-    if(!form.title||!form.subject||!form.level||!form.priceMonthly||!form.teacherId){
-      setMsg('يرجى تعبئة جميع الحقول المطلوبة (العنوان، المادة، المستوى، السعر الشهري، الأستاذ)')
+    if(!form.title||!form.subject||!form.level||(!isFree&&!form.priceMonthly)||!form.teacherId){
+      setMsg('يرجى تعبئة جميع الحقول المطلوبة (العنوان، المادة، المستوى، السعر أو مجاني، الأستاذ)')
       return
     }
     setSaving(true); setMsg('')
@@ -358,9 +316,9 @@ export default function AddCourse({ onNavigate, courseId }) {
         description:   form.description,
         subject:       form.subject,
         level:         form.level,
-        price_monthly: parseFloat(form.priceMonthly),
-        price_yearly:  form.priceYearly   ? parseFloat(form.priceYearly)   : null,
-        original_price:form.originalPrice ? parseFloat(form.originalPrice) : null,
+        price_monthly: isFree ? 0 : parseFloat(form.priceMonthly),
+        price_yearly:  isFree ? null : (form.priceYearly   ? parseFloat(form.priceYearly)   : null),
+        original_price:isFree ? null : (form.originalPrice ? parseFloat(form.originalPrice) : null),
         teacher_id:    form.teacherId,
         is_active:     !isDraft,
         total_lessons: total,
@@ -401,6 +359,16 @@ export default function AddCourse({ onNavigate, courseId }) {
       if(lessonRows.length>0){
         const{error:le}=await supabase.from('course_lessons').insert(lessonRows)
         if(le) throw le
+      }
+      if (!isDraft && !isEdit) {
+        try {
+          await supabase.rpc('send_admin_notification', {
+            p_target_type: 'students',
+            p_title: 'درس جديد متاح 📖',
+            p_body:  form.title,
+            p_type:  'NEW_COURSE',
+          })
+        } catch (_) {}
       }
       onNavigate('courses')
     } catch(err){
@@ -492,37 +460,54 @@ export default function AddCourse({ onNavigate, courseId }) {
         {/* RIGHT */}
         <div style={{display:'flex',flexDirection:'column',gap:18}}>
           <div className="card">
-            <div className="card-title" style={{marginBottom:16}}>الأسعار</div>
-            <div className="field-label" style={{marginBottom:6}}>السعر الشهري <span style={{color:'#E53E3E'}}>*</span></div>
-            <div style={{display:'flex',alignItems:'center',border:'1.5px solid #E1E5E9',borderRadius:10,overflow:'hidden',background:'#FCFCFD',marginBottom:12}}>
-              <input type="number" style={{border:'none',background:'transparent',fontSize:17,fontWeight:700,padding:'11px 13px',width:'100%',outline:'none',fontFamily:'inherit'}} placeholder="1200" value={form.priceMonthly} onChange={e=>set('priceMonthly',e.target.value)} />
-              <span style={{padding:'0 13px',fontSize:12,color:'var(--text3)',fontWeight:600,whiteSpace:'nowrap',borderRight:'1px solid #E1E5E9'}}>أوقية/شهر</span>
-            </div>
-            <div className="field-label" style={{marginBottom:6}}>السعر السنوي <span style={{fontSize:10.5,color:'var(--text3)',fontWeight:400}}>(اختياري)</span></div>
-            <div style={{display:'flex',alignItems:'center',border:'1.5px solid #E1E5E9',borderRadius:10,overflow:'hidden',background:'#FCFCFD',marginBottom:12}}>
-              <input type="number" style={{border:'none',background:'transparent',fontSize:17,fontWeight:700,padding:'11px 13px',width:'100%',outline:'none',fontFamily:'inherit'}} placeholder="11000" value={form.priceYearly} onChange={e=>set('priceYearly',e.target.value)} />
-              <span style={{padding:'0 13px',fontSize:12,color:'var(--text3)',fontWeight:600,whiteSpace:'nowrap',borderRight:'1px solid #E1E5E9'}}>أوقية/سنة</span>
-            </div>
-            <div className="field-label" style={{marginBottom:6}}>السعر الأصلي قبل الخصم <span style={{fontSize:10.5,color:'var(--text3)',fontWeight:400}}>(اختياري)</span></div>
-            <div style={{display:'flex',alignItems:'center',border:'1.5px solid #E1E5E9',borderRadius:10,overflow:'hidden',background:'#FCFCFD'}}>
-              <input type="number" style={{border:'none',background:'transparent',fontSize:17,fontWeight:700,padding:'11px 13px',width:'100%',outline:'none',fontFamily:'inherit'}} placeholder="1600" value={form.originalPrice} onChange={e=>set('originalPrice',e.target.value)} />
-              <span style={{padding:'0 13px',fontSize:12,color:'var(--text3)',fontWeight:600,whiteSpace:'nowrap',borderRight:'1px solid #E1E5E9'}}>أوقية</span>
-            </div>
-            {(form.priceMonthly||form.priceYearly||form.originalPrice) && (
-              <div style={{marginTop:13,padding:'11px 13px',background:'#F7F9FA',borderRadius:10,border:'1px solid #EFF2F4'}}>
-                <div style={{fontSize:10.5,color:'var(--text3)',fontWeight:700,marginBottom:7}}>معاينة عرض السعر</div>
-                <div style={{display:'flex',alignItems:'baseline',gap:8,flexWrap:'wrap'}}>
-                  {form.originalPrice&&<span style={{fontSize:13,color:'#B0BEC5',textDecoration:'line-through'}}>{form.originalPrice} أوقية</span>}
-                  {form.priceMonthly&&<span style={{fontSize:20,fontWeight:700,color:'var(--primary)'}}>{form.priceMonthly} أوقية<span style={{fontSize:11,fontWeight:400}}>/شهر</span></span>}
-                  {form.priceYearly&&<span style={{fontSize:13,color:'#1B9E77',fontWeight:700}}> · {form.priceYearly} أوقية/سنة</span>}
-                </div>
-                {form.originalPrice&&form.priceMonthly&&(
-                  <div style={{marginTop:5,fontSize:11,fontWeight:700,color:'#1B9E77'}}>
-                    🏷 خصم {Math.round((1-parseFloat(form.priceMonthly)/parseFloat(form.originalPrice))*100)}%
-                  </div>
-                )}
+            <div className="card-title" style={{marginBottom:14}}>التسعير</div>
+
+            {/* Free toggle */}
+            <div
+              onClick={() => { setIsFree(v => !v); set('priceMonthly',''); set('priceYearly',''); set('originalPrice','') }}
+              style={{display:'flex',alignItems:'center',gap:12,padding:'13px 15px',borderRadius:11,border:'2px solid '+(isFree?'#1B9E77':'#E1E5E9'),background:isFree?'#F0FBF7':'#FAFBFC',cursor:'pointer',marginBottom:14,transition:'all .15s'}}
+            >
+              <div style={{width:42,height:24,borderRadius:12,background:isFree?'#1B9E77':'#C9D3DC',position:'relative',transition:'background .2s',flexShrink:0}}>
+                <div style={{position:'absolute',top:3,right:isFree?3:undefined,left:isFree?undefined:3,width:18,height:18,borderRadius:'50%',background:'#fff',transition:'all .2s',boxShadow:'0 1px 3px rgba(0,0,0,.2)'}} />
               </div>
-            )}
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:isFree?'#15805F':'var(--text)'}}>مجاني بالكامل 🎁</div>
+                <div style={{fontSize:11,color:'var(--text3)',marginTop:2}}>الطلاب يشاهدون الدروس دون اشتراك</div>
+              </div>
+            </div>
+
+            {!isFree && (<>
+              <div className="field-label" style={{marginBottom:6}}>السعر الشهري <span style={{color:'#E53E3E'}}>*</span></div>
+              <div style={{display:'flex',alignItems:'center',border:'1.5px solid #E1E5E9',borderRadius:10,overflow:'hidden',background:'#FCFCFD',marginBottom:12}}>
+                <input type="number" style={{border:'none',background:'transparent',fontSize:17,fontWeight:700,padding:'11px 13px',width:'100%',outline:'none',fontFamily:'inherit'}} placeholder="1200" value={form.priceMonthly} onChange={e=>set('priceMonthly',e.target.value)} />
+                <span style={{padding:'0 13px',fontSize:12,color:'var(--text3)',fontWeight:600,whiteSpace:'nowrap',borderRight:'1px solid #E1E5E9'}}>أوقية/شهر</span>
+              </div>
+              <div className="field-label" style={{marginBottom:6}}>السعر السنوي <span style={{fontSize:10.5,color:'var(--text3)',fontWeight:400}}>(اختياري)</span></div>
+              <div style={{display:'flex',alignItems:'center',border:'1.5px solid #E1E5E9',borderRadius:10,overflow:'hidden',background:'#FCFCFD',marginBottom:12}}>
+                <input type="number" style={{border:'none',background:'transparent',fontSize:17,fontWeight:700,padding:'11px 13px',width:'100%',outline:'none',fontFamily:'inherit'}} placeholder="11000" value={form.priceYearly} onChange={e=>set('priceYearly',e.target.value)} />
+                <span style={{padding:'0 13px',fontSize:12,color:'var(--text3)',fontWeight:600,whiteSpace:'nowrap',borderRight:'1px solid #E1E5E9'}}>أوقية/سنة</span>
+              </div>
+              <div className="field-label" style={{marginBottom:6}}>السعر الأصلي قبل الخصم <span style={{fontSize:10.5,color:'var(--text3)',fontWeight:400}}>(اختياري)</span></div>
+              <div style={{display:'flex',alignItems:'center',border:'1.5px solid #E1E5E9',borderRadius:10,overflow:'hidden',background:'#FCFCFD'}}>
+                <input type="number" style={{border:'none',background:'transparent',fontSize:17,fontWeight:700,padding:'11px 13px',width:'100%',outline:'none',fontFamily:'inherit'}} placeholder="1600" value={form.originalPrice} onChange={e=>set('originalPrice',e.target.value)} />
+                <span style={{padding:'0 13px',fontSize:12,color:'var(--text3)',fontWeight:600,whiteSpace:'nowrap',borderRight:'1px solid #E1E5E9'}}>أوقية</span>
+              </div>
+              {(form.priceMonthly||form.priceYearly||form.originalPrice) && (
+                <div style={{marginTop:13,padding:'11px 13px',background:'#F7F9FA',borderRadius:10,border:'1px solid #EFF2F4'}}>
+                  <div style={{fontSize:10.5,color:'var(--text3)',fontWeight:700,marginBottom:7}}>معاينة عرض السعر</div>
+                  <div style={{display:'flex',alignItems:'baseline',gap:8,flexWrap:'wrap'}}>
+                    {form.originalPrice&&<span style={{fontSize:13,color:'#B0BEC5',textDecoration:'line-through'}}>{form.originalPrice} أوقية</span>}
+                    {form.priceMonthly&&<span style={{fontSize:20,fontWeight:700,color:'var(--primary)'}}>{form.priceMonthly} أوقية<span style={{fontSize:11,fontWeight:400}}>/شهر</span></span>}
+                    {form.priceYearly&&<span style={{fontSize:13,color:'#1B9E77',fontWeight:700}}> · {form.priceYearly} أوقية/سنة</span>}
+                  </div>
+                  {form.originalPrice&&form.priceMonthly&&(
+                    <div style={{marginTop:5,fontSize:11,fontWeight:700,color:'#1B9E77'}}>
+                      🏷 خصم {Math.round((1-parseFloat(form.priceMonthly)/parseFloat(form.originalPrice))*100)}%
+                    </div>
+                  )}
+                </div>
+              )}
+            </>)}
           </div>
 
           <div className="card">

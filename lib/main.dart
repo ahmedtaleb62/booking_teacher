@@ -169,6 +169,7 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
 
     _bannerEntry = OverlayEntry(builder: (_) => _NotifBanner(
       title: title,
+      
       body: body,
       onDismiss: () { _bannerEntry?.remove(); _bannerEntry = null; },
     ));

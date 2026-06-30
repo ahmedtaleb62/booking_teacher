@@ -348,6 +348,7 @@ class _RejectedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final id          = session['id'] as String;
     final studentMap  = session['student'] as Map? ?? {};
     final studentName = (studentMap['full_name'] as String?) ?? l.authStudent;
     final avatarUrl   = studentMap['avatar_url'] as String?;
@@ -356,7 +357,9 @@ class _RejectedCard extends StatelessWidget {
     final reason      = (session['rejection_reason'] as String?);
     final initial     = studentName.isNotEmpty ? studentName[0] : l.authStudent[0];
 
-    return Container(
+    return GestureDetector(
+      onTap: () => context.push('/teacher/session/$id'),
+      child: Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -398,7 +401,7 @@ class _RejectedCard extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 

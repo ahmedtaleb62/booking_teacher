@@ -7,7 +7,9 @@ import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/session.dart';
 import '../../../core/constants/session_states.dart';
 import '../../../core/providers/sessions_provider.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/session_service.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../l10n/app_localizations.dart';
 
 class TeacherSessionStatusScreen extends ConsumerWidget {
@@ -18,6 +20,8 @@ class TeacherSessionStatusScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l     = context.l10n;
     final async = ref.watch(sessionProvider(sessionId));
+    final comm  = ref.watch(commissionSettingsProvider).asData?.value
+                  ?? const CommissionSettings();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -56,7 +60,7 @@ class TeacherSessionStatusScreen extends ConsumerWidget {
         ),
         data: (session) {
           if (session == null) return Center(child: Text(l.sessionNotFound));
-          return _SessionBody(session: session);
+          return _SessionBody(session: session, commissionPct: comm.sessionPct);
         },
       ),
     );
@@ -65,7 +69,8 @@ class TeacherSessionStatusScreen extends ConsumerWidget {
 
 class _SessionBody extends StatelessWidget {
   final Session session;
-  const _SessionBody({required this.session});
+  final double commissionPct;
+  const _SessionBody({required this.session, required this.commissionPct});
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +86,7 @@ class _SessionBody extends StatelessWidget {
                 const SizedBox(height: 16),
                 _MiniStepper(state: s.state),
                 const SizedBox(height: 16),
-                _SummaryCard(s: s),
+                _SummaryCard(s: s, commissionPct: commissionPct),
                 if (s.events.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   _TimelineCard(s: s),
@@ -117,8 +122,6 @@ class _HeroBanner extends StatelessWidget {
         return (const Color(0xFF1B6B7A), const Color(0xFF0E4550));
       case SessionState.completed:
         return (const Color(0xFF2D6CDF), const Color(0xFF1E468F));
-      case SessionState.dispute:
-        return (AppColors.error, const Color(0xFF9B2D2D));
       default:
         return (AppColors.primaryDark, const Color(0xFF0E2A33));
     }
@@ -132,7 +135,6 @@ class _HeroBanner extends StatelessWidget {
       case SessionState.confirmedBooking: return Icons.event_available_rounded;
       case SessionState.activeSession:    return Icons.videocam_rounded;
       case SessionState.completed:        return Icons.star_rounded;
-      case SessionState.dispute:          return Icons.warning_rounded;
       default:                            return Icons.info_outline_rounded;
     }
   }
@@ -141,8 +143,13 @@ class _HeroBanner extends StatelessWidget {
     final state = session.state;
     if (state == SessionState.cancelled) {
       final cr = session.cancellationReason ?? '';
+      if (cr == 'teacher_timeout')     return 'انتهت مهلة ردك على الطلب — أُلغيت الجلسة تلقائياً';
+      if (cr == 'payment_timeout' || cr == 'no_payment_deadline') {
+        return 'انتهت مهلة الدفع — أُلغيت الجلسة تلقائياً';
+      }
       if (cr == 'fake_proof')          return 'غياب الدفع — الوصل مزيف';
       if (cr == 'insufficient_refund') return 'غياب الدفع — المبلغ غير مكتمل';
+      if (cr == 'student_cancelled')   return l.sessionCancelledInfo;
       return l.sessionCancelledInfo;
     }
     switch (state) {
@@ -152,9 +159,6 @@ class _HeroBanner extends StatelessWidget {
       case SessionState.confirmedBooking: return l.teacherSubConfirmedBooking;
       case SessionState.activeSession:    return l.teacherSubActiveSession;
       case SessionState.completed:        return l.teacherSubCompleted;
-      case SessionState.dispute:          return l.teacherSubDispute;
-      case SessionState.teacherNoShow:    return l.teacherStatusNoShow;
-      case SessionState.studentNoShow:    return l.teacherStatusStudentNoShow;
       case SessionState.teacherRejected:  return l.teacherSubRejected;
       default:                            return '';
     }
@@ -329,7 +333,8 @@ class _Line extends StatelessWidget {
 
 class _SummaryCard extends StatelessWidget {
   final Session s;
-  const _SummaryCard({required this.s});
+  final double commissionPct;
+  const _SummaryCard({required this.s, required this.commissionPct});
 
   String _fmtDate(DateTime dt, AppLocalizations l) {
     final days = [l.daySun, l.dayMon, l.dayTue, l.dayWed, l.dayThu, l.dayFri, l.daySat];
@@ -341,7 +346,7 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l   = context.l10n;
-    final net = s.amount * 0.85;
+    final net = s.amount * (1.0 - commissionPct);
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -441,7 +446,7 @@ class _TimelineCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(event.teacherLabelFor(l),
+                        Text(event.teacherLabelFor(l, cancellationReason: s.cancellationReason),
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary)),
                         Text(_fmtTime(event.createdAt, l),
@@ -502,8 +507,7 @@ class _BottomActionState extends State<_BottomAction> {
       if (mounted) context.go('/teacher/sessions');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${context.l10n.commonError}: $e')));
+        AppErrors.showSnackBar(e, context.l10n, ScaffoldMessenger.of(context));
         setState(() => _cancelling = false);
       }
     }
@@ -590,44 +594,149 @@ class _BottomActionState extends State<_BottomAction> {
       ));
     }
 
+    // ── COMPLETED: show chat history button ──────────────────────────
+    if (s.state == SessionState.completed) {
+      return _wrap(context, SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () => context.push('/teacher/session-history/${s.id}'),
+          icon: const Icon(Icons.chat_bubble_outline_rounded, size: 17),
+          label: Text(
+            context.l10n.actionViewChat,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          ),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 15),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            backgroundColor: const Color(0xFF7B61FF),
+            foregroundColor: Colors.white,
+          ),
+        ),
+      ));
+    }
+
+    // ── TEACHER_REJECTED: teacher rejected this request ──────────────
+    if (s.state == SessionState.teacherRejected) {
+      return _wrap(context, Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFD1D5DB)),
+        ),
+        child: const Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.do_not_disturb_alt_rounded, color: Color(0xFF374151), size: 20),
+            SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('اعتذرت عن هذا الطلب',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF374151))),
+                  SizedBox(height: 4),
+                  Text('لقد رفضت هذا الطلب. سيتمكن الطالب من البحث عن أستاذ آخر.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF374151), height: 1.5)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ));
+    }
+
     // ── CANCELLED: show reason to teacher ────────────────────────
     if (s.state == SessionState.cancelled) {
       final cr = s.cancellationReason ?? '';
-      final isPaymentIssue = cr == 'fake_proof' || cr == 'insufficient_refund';
-      if (isPaymentIssue) {
-        return _wrap(context, Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFEF3C7),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFFBBF24)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.payments_outlined, color: Color(0xFF92400E), size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('غياب الدفع — الجلسة ملغاة',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF92400E))),
-                    const SizedBox(height: 4),
-                    Text(
-                      cr == 'fake_proof'
-                          ? 'رُفض إثبات دفع الطالب لأنه غير حقيقي.'
-                          : 'المبلغ المدفوع من الطالب كان أقل من المطلوب.',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF92400E), height: 1.5),
-                    ),
-                  ],
-                ),
+      final (IconData icon, String title, String body, Color fg, Color bg, Color border) = switch (cr) {
+        'student_cancelled' => (
+          Icons.person_off_outlined,
+          'ألغى الطالب الجلسة',
+          'قام الطالب بإلغاء هذا الحجز.',
+          const Color(0xFF374151),
+          const Color(0xFFF3F4F6),
+          const Color(0xFFD1D5DB),
+        ),
+        'teacher_timeout' => (
+          Icons.timer_off_rounded,
+          'انتهت مهلة ردك',
+          'لم يُسجَّل ردك على الطلب في الوقت المحدد فأُلغيت الجلسة تلقائياً.',
+          const Color(0xFF92400E),
+          const Color(0xFFFEF3C7),
+          const Color(0xFFFBBF24),
+        ),
+        'payment_timeout' || 'no_payment_deadline' => (
+          Icons.payments_outlined,
+          'غياب الدفع — إلغاء تلقائي',
+          'لم يكمل الطالب الدفع في الوقت المحدد.',
+          const Color(0xFFC0392B),
+          const Color(0xFFFDECEC),
+          const Color(0xFFF5B7B1),
+        ),
+        'fake_proof' => (
+          Icons.gpp_bad_rounded,
+          'غياب الدفع — الجلسة ملغاة',
+          'رُفض إثبات دفع الطالب لأنه غير حقيقي.',
+          const Color(0xFFC0392B),
+          const Color(0xFFFDECEC),
+          const Color(0xFFF5B7B1),
+        ),
+        'insufficient_refund' => (
+          Icons.payments_outlined,
+          'غياب الدفع — الجلسة ملغاة',
+          'المبلغ المدفوع من الطالب كان أقل من المطلوب.',
+          const Color(0xFF7B61FF),
+          const Color(0xFFF0EDFF),
+          const Color(0xFFBFB5FF),
+        ),
+        _ when cr.isNotEmpty => (
+          Icons.cancel_outlined,
+          'الجلسة ملغاة',
+          'تم إلغاء هذه الجلسة.',
+          const Color(0xFF374151),
+          const Color(0xFFF3F4F6),
+          const Color(0xFFD1D5DB),
+        ),
+        _ => (
+          Icons.cancel_outlined,
+          'الجلسة ملغاة',
+          'تم إلغاء هذه الجلسة.',
+          const Color(0xFF374151),
+          const Color(0xFFF3F4F6),
+          const Color(0xFFD1D5DB),
+        ),
+      };
+
+      return _wrap(context, Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: border),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: fg, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: fg)),
+                  const SizedBox(height: 4),
+                  Text(body,
+                    style: TextStyle(fontSize: 12, color: fg, height: 1.5)),
+                ],
               ),
-            ],
-          ),
-        ));
-      }
+            ),
+          ],
+        ),
+      ));
     }
 
     return const SizedBox.shrink();

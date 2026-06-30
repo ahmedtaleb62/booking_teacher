@@ -11,7 +11,7 @@ class CourseService {
   static Future<List<Course>> getCourses({String? subject}) async {
     var q = _db
         .from('courses')
-        .select('*, teacher:teacher_id(full_name)')
+        .select('*, teacher:teacher_id(full_name, avatar_url)')
         .eq('is_active', true);
     if (subject != null) q = q.eq('subject', subject);
     final data = await q.order('created_at', ascending: false);
@@ -23,7 +23,7 @@ class CourseService {
   static Future<Course> getCourseDetails(String courseId) async {
     final courseData = await _db
         .from('courses')
-        .select('*, teacher:teacher_id(full_name)')
+        .select('*, teacher:teacher_id(full_name, avatar_url)')
         .eq('id', courseId)
         .single();
 

@@ -18,11 +18,11 @@ export default function Methods() {
   useEffect(() => { loadData() }, [])
 
   const COLORS = [
-    ['#E0E7FF', '#4338CA'],
-    ['#EDE9FE', '#5B21B6'],
-    ['#D1FAE5', '#065F46'],
-    ['#FEF3C7', '#92400E'],
-    ['#DBEAFE', '#1D4ED8'],
+    ['#D7F2E6', '#0A6E4E'],
+    ['#ECE5F7', '#5A3B95'],
+    ['#E3F4EF', '#0E7C66'],
+    ['#FBEFD6', '#92620F'],
+    ['#DEEAF7', '#1F5C99'],
   ]
 
   async function loadData() {
@@ -157,13 +157,13 @@ export default function Methods() {
                     <div style={{ fontSize: 12.5, color: 'var(--text2)', direction: 'ltr', textAlign: 'right' }}>{m.number}</div>
                     <div style={{ fontSize: 10.5, color: 'var(--text3)' }}>المستفيد: {m.holder}</div>
                   </div>
-                  <span className="badge" style={{ background: m.is_active ? '#D1FAE5' : '#F1F5F9', color: m.is_active ? '#065F46' : '#475569', flexShrink: 0 }}>
+                  <span className="badge" style={{ background: m.is_active ? '#D7F2E6' : '#F1F5F9', color: m.is_active ? '#0A6E4E' : '#475569', flexShrink: 0 }}>
                     {m.is_active ? 'مفعّل' : 'معطّل'}
                   </span>
                   {/* Toggle */}
                   <div
                     className="switch"
-                    style={{ background: m.is_active ? '#4F46E5' : '#C7CEE8', cursor: 'pointer', flexShrink: 0 }}
+                    style={{ background: m.is_active ? 'var(--primary)' : '#C9D6D1', cursor: 'pointer', flexShrink: 0 }}
                     onClick={() => toggleMethod(m.id, m.is_active)}
                   >
                     <div className="switch-knob" style={{ [m.is_active ? 'left' : 'right']: 3 }} />
@@ -179,7 +179,7 @@ export default function Methods() {
                   {/* Delete */}
                   <button
                     className="btn btn-sm"
-                    style={{ padding: '5px 10px', fontSize: 12, background: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5', flexShrink: 0 }}
+                    style={{ padding: '5px 10px', fontSize: 12, background: '#FBE0DB', color: '#A12B1D', border: '1px solid #F3C5BD', flexShrink: 0 }}
                     onClick={() => setDeleteTarget({ id: m.id, label: m.label || m.method })}
                   >
                     🗑

@@ -8,7 +8,6 @@ class SessionService {
   static final _db = SupabaseService.client;
 
   // ── Student: request new session ─────────────────────────────────────────────
-  // Trigger doesn't fire on INSERT, so we log the REQUESTED event manually.
   static Future<String> requestSession({
     required String teacherId,
     required DateTime scheduledAt,
@@ -35,17 +34,7 @@ class SessionService {
       'event_type': 'REQUESTED',
       'actor':      'student',
     });
-
-    SupabaseService.client.functions.invoke('notify-user', body: {
-      'user_id': teacherId,
-      'title':   'طلب جلسة جديد 📚',
-      'body':    'لديك طلب جلسة جديد في مادة $subject',
-      'data': {
-        'type':       'SESSION_REQUESTED',
-        'session_id': response['id'] as String,
-        'role':       'teacher',
-      },
-    }).then((_) {}, onError: (_) {});
+    // trg_session_requested DB trigger sends bilingual teacher notification
 
     return response['id'] as String;
   }
@@ -60,8 +49,9 @@ class SessionService {
     // State guard in UPDATE prevents TOCTOU race where session transitions
     // to a non-cancellable state between the check above and the write below.
     final updated = await _db.from('sessions').update({
-      'state':      SessionState.cancelled.englishKey,
-      'updated_at': DateTime.now().toIso8601String(),
+      'state':               SessionState.cancelled.englishKey,
+      'cancellation_reason': 'student_cancelled',
+      'updated_at':          DateTime.now().toIso8601String(),
     }).eq('id', sessionId)
       .inFilter('state', [
         SessionState.requested.englishKey,
@@ -114,43 +104,27 @@ class SessionService {
     // Trigger logs TEACHER_REJECTED event + notifies student
   }
 
-  // ── Teacher: cancel or open dispute ──────────────────────────────────────────
-  // • Before PAYMENT_CONFIRMED → cancel (safe, money not confirmed)
-  // • At/After PAYMENT_CONFIRMED → cannot cancel → open DISPUTE for admin
-  // Returns true if cancelled, false if dispute was opened.
-  // DB trigger logs the resulting state change event.
-  static Future<bool> teacherCancelOrDispute(String sessionId, {String? reason}) async {
+  // ── Teacher: cancel session ──────────────────────────────────────────────────
+  // Only allowed before PAYMENT_CONFIRMED. After payment is confirmed the teacher
+  // must contact admin via WhatsApp — cancellation is blocked at that stage.
+  // DB trigger logs the CANCELLED event.
+  static Future<void> teacherCancelOrDispute(String sessionId, {String? reason}) async {
     final session = await getSession(sessionId);
 
-    // Guard: already in DISPUTE — don't insert a second disputes row
-    if (session.state == SessionState.dispute) return false;
-
-    final blockedStates = {
+    const blockedStates = {
       SessionState.paymentConfirmed,
       SessionState.confirmedBooking,
       SessionState.activeSession,
     };
 
     if (blockedStates.contains(session.state)) {
-      await _db.from('sessions').update({
-        'state':      SessionState.dispute.englishKey,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', sessionId);
-
-      await _db.from('disputes').insert({
-        'session_id': sessionId,
-        'reason':     reason ?? 'طلب إلغاء من الأستاذ بعد تأكيد الدفع',
-      });
-      // Trigger logs DISPUTE event + notifies admin
-      return false;
+      throw Exception('لا يمكن إلغاء الجلسة بعد تأكيد الدفع — تواصل مع الإدارة عبر واتساب');
     }
 
     await _db.from('sessions').update({
       'state':      SessionState.cancelled.englishKey,
       'updated_at': DateTime.now().toIso8601String(),
     }).eq('id', sessionId);
-    // Trigger logs CANCELLED event
-    return true;
   }
 
   // ── Student: submit payment proof ─────────────────────────────────────────────
@@ -213,10 +187,13 @@ class SessionService {
     final now = DateTime.now().toIso8601String();
     final updated = await _db.from('sessions').update({
       'state':      SessionState.activeSession.englishKey,
-      'started_at': now, // set client-side; DB trigger may override
+      'started_at': now,
       'updated_at': now,
     }).eq('id', sessionId)
-      .eq('state', SessionState.confirmedBooking.englishKey)
+      .inFilter('state', [
+        SessionState.confirmedBooking.englishKey,
+        SessionState.paymentConfirmed.englishKey,
+      ])
       .select('id');
 
     if ((updated as List).isEmpty) {
@@ -313,108 +290,6 @@ class SessionService {
       .eq('teacher_id', uid);
   }
 
-  // ── Student: request refund after teacher no-show ────────────────────────────
-  // Sets refund_status = 'student_requested' so admin can process it.
-  // Dispute is opened automatically by cron — student can only reschedule or refund.
-  static Future<void> requestRefund(String sessionId) async {
-    final updated = await _db.from('sessions').update({
-      'refund_status': 'student_requested',
-      'updated_at':    DateTime.now().toIso8601String(),
-    }).eq('id', sessionId)
-      .eq('state', SessionState.teacherNoShow.englishKey)
-      .isFilter('refund_status', null)
-      .select('id');
-
-    if ((updated as List).isEmpty) {
-      throw Exception('لا يمكن طلب الاسترداد في هذه الحالة');
-    }
-
-    await _db.from('session_events').insert({
-      'session_id': sessionId,
-      'event_type': 'REFUND_REQUESTED',
-      'actor':      'student',
-    });
-  }
-
-  // ── Teacher: report student no-show ──────────────────────────────────────────
-  static Future<void> reportStudentNoShow(String sessionId) async {
-    // Guard: student_joined_at must be null — cannot mark absent if student already joined
-    final check = await _db
-        .from('sessions')
-        .select('student_joined_at')
-        .eq('id', sessionId)
-        .single();
-    if (check['student_joined_at'] != null) {
-      throw Exception('لا يمكن تسجيل الغياب — الطالب انضم بالفعل');
-    }
-
-    final updated = await _db.from('sessions').update({
-      'state':      SessionState.studentNoShow.englishKey,
-      'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', sessionId)
-      .inFilter('state', [  // allowed from CONFIRMED_BOOKING or ACTIVE_SESSION
-        SessionState.confirmedBooking.englishKey,
-        SessionState.activeSession.englishKey,
-      ])
-      .select('id');
-
-    if ((updated as List).isEmpty) {
-      throw Exception('لا يمكن تسجيل الغياب — تغيرت حالة الجلسة');
-    }
-    // Trigger logs STUDENT_NO_SHOW
-  }
-
-  // ── Student: reschedule after no-show ────────────────────────────────────────
-  // • After TEACHER_NO_SHOW: payment already confirmed → start at CONFIRMED_BOOKING
-  // • Otherwise (voluntary): start fresh from REQUESTED
-  // Trigger doesn't fire on INSERT, so we log REQUESTED/CONFIRMED_BOOKING manually.
-  static Future<String> rescheduleSession({
-    required String parentSessionId,
-    required DateTime newScheduledAt,
-    required int durationMinutes,
-  }) async {
-    final original = await getSession(parentSessionId);
-
-    const allowedStates = {SessionState.teacherNoShow, SessionState.completed};
-    if (!allowedStates.contains(original.state)) {
-      throw Exception('لا يمكن إعادة الجدولة إلا بعد غياب الأستاذ أو اكتمال الجلسة');
-    }
-
-    final isAfterTeacherNoShow = original.state == SessionState.teacherNoShow;
-    final newState = isAfterTeacherNoShow
-        ? SessionState.confirmedBooking.englishKey
-        : SessionState.requested.englishKey;
-
-    final response = await _db.from('sessions').insert({
-      'student_id':        SupabaseService.userId,
-      'teacher_id':        original.teacherId,
-      'scheduled_at':      newScheduledAt.toIso8601String(),
-      'duration_minutes':  durationMinutes,
-      'amount':            original.amount,
-      'subject':           original.subject,
-      'state':             newState,
-      'parent_session_id': parentSessionId,
-    }).select().single();
-
-    final newSessionId = response['id'] as String;
-
-    // Log RESCHEDULED on the parent session (trigger doesn't cover this)
-    await _db.from('session_events').insert({
-      'session_id': parentSessionId,
-      'event_type': 'RESCHEDULED',
-      'actor':      'student',
-      'note':       'أُعيدت الجدولة — جلسة جديدة: $newSessionId',
-    });
-
-    // Log the initial event for the new session (trigger doesn't fire on INSERT)
-    await _db.from('session_events').insert({
-      'session_id': newSessionId,
-      'event_type': isAfterTeacherNoShow ? 'CONFIRMED_BOOKING' : 'REQUESTED',
-      'actor':      'student',
-    });
-
-    return newSessionId;
-  }
 
   // ── Fetch single session ─────────────────────────────────────────────────────
   static Future<Session> getSession(String sessionId) async {
@@ -559,8 +434,7 @@ class SessionService {
   }
 
   // ── Teacher booked times (for double-booking prevention) ─────────────────────
-  // Excludes TEACHER_REJECTED, CANCELLED, TEACHER_NO_SHOW, STUDENT_NO_SHOW
-  // since those slots are effectively free.
+  // Excludes TEACHER_REJECTED and CANCELLED since those slots are effectively free.
   static Future<List<DateTime>> getTeacherBookedTimes(
     String teacherId,
     DateTime date,
@@ -577,8 +451,6 @@ class SessionService {
         .not('state', 'in', '(${[
           SessionState.teacherRejected.englishKey,
           SessionState.cancelled.englishKey,
-          SessionState.teacherNoShow.englishKey,
-          SessionState.studentNoShow.englishKey,
         ].join(',')})');
 
     return (data as List)

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/l10n_extension.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../l10n/app_localizations.dart';
 
 class HelpCenterScreen extends StatefulWidget {
@@ -82,12 +84,13 @@ class _HelpCenterScreenState extends State<HelpCenterScreen>
 
 // ── Contact tab ───────────────────────────────────────────────────────────────
 
-class _ContactTab extends StatelessWidget {
+class _ContactTab extends ConsumerWidget {
   const _ContactTab();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
+    final supportPhone = ref.watch(supportPhoneProvider).asData?.value ?? '';
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
       children: [
@@ -131,14 +134,16 @@ class _ContactTab extends StatelessWidget {
         const SizedBox(height: 24),
 
         // Contact options
-        _ContactOption(
-          icon: Icons.phone_rounded,
-          color: const Color(0xFF16A34A),
-          label: l.helpCallUs,
-          value: '42740370',
-          onTap: () => _copyToClipboard(context, l, '42740370', l.helpCallUs),
-        ),
-        const SizedBox(height: 12),
+        if (supportPhone.isNotEmpty) ...[
+          _ContactOption(
+            icon: Icons.phone_rounded,
+            color: const Color(0xFF16A34A),
+            label: l.helpCallUs,
+            value: supportPhone,
+            onTap: () => _copyToClipboard(context, l, supportPhone, l.helpCallUs),
+          ),
+          const SizedBox(height: 12),
+        ],
         _ContactOption(
           icon: Icons.email_rounded,
           color: AppColors.primary,
@@ -317,17 +322,70 @@ class _SectionTitle extends StatelessWidget {
 
 // ── Scrollable text tab (Privacy / Terms) ────────────────────────────────────
 
-class _TextTab extends StatelessWidget {
+class _TextTab extends ConsumerWidget {
   final String content;
   const _TextTab({required this.content});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final supportPhone = ref.watch(supportPhoneProvider).asData?.value ?? '';
     final sections = content.split('\n\n');
+    final showPhone = supportPhone.isNotEmpty;
+
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
-      itemCount: sections.length,
+      itemCount: sections.length + (showPhone ? 1 : 0),
       itemBuilder: (_, i) {
+        // Phone contact banner appended after all content
+        if (showPhone && i == sections.length) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 20),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1B6B7A), Color(0xFF114F5B)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.support_agent_rounded,
+                        color: Colors.white, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l.helpCallUs,
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.white70)),
+                        const SizedBox(height: 2),
+                        Text(supportPhone,
+                            style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         final s = sections[i].trim();
         if (s.startsWith('# ')) {
           return Padding(

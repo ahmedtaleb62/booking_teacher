@@ -44,7 +44,7 @@ function CourseSelector({ selected, onChange, courses }) {
               </div>
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)', flexShrink: 0 }}>
-              {c.price_monthly?.toLocaleString('ar')} أوقية
+              {c.price_monthly?.toLocaleString('en-US')} أوقية
             </div>
           </div>
         )
@@ -59,7 +59,7 @@ export default function Packages() {
   const [allCourses, setAllCourses]     = useState([])
   const [loading, setLoading]           = useState(true)
   const [showAdd, setShowAdd]           = useState(false)
-  const [form, setForm]                 = useState({ title: '', priceMonthly: '', priceYearly: '', originalPrice: '', courseIds: [] })
+  const [form, setForm]                 = useState({ title: '', priceYearly: '', originalPrice: '', courseIds: [], isFree: false })
   const [saving, setSaving]             = useState(false)
   const [editTarget, setEditTarget]     = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -93,13 +93,14 @@ export default function Packages() {
   }
 
   async function addPackage() {
-    if (!form.title || !form.priceMonthly) return
+    if (!form.title || (!form.isFree && !form.priceYearly)) return
     setSaving(true)
+    const yearly = form.isFree ? 0 : parseFloat(form.priceYearly)
     const { data: pkg, error } = await supabase.from('packages').insert({
       title:          form.title,
-      price_monthly:  parseFloat(form.priceMonthly),
-      price_yearly:   form.priceYearly   ? parseFloat(form.priceYearly)   : null,
-      original_price: form.originalPrice ? parseFloat(form.originalPrice) : null,
+      price_monthly:  yearly,
+      price_yearly:   form.isFree ? null : yearly,
+      original_price: form.isFree ? null : (form.originalPrice ? parseFloat(form.originalPrice) : null),
       is_active:      true,
     }).select().single()
     if (error) { toast('خطأ في الإضافة: ' + error.message, 'error'); setSaving(false); return }
@@ -110,41 +111,43 @@ export default function Packages() {
       if (pcErr) { toast('تمت إضافة الباقة لكن فشل ربط الدروس: ' + pcErr.message, 'error'); setSaving(false); return }
     }
 
-    await supabase.functions.invoke('notify-broadcast', {
-      body: {
-        role:  'student',
-        title: 'باقة جديدة متاحة 🎁',
-        body:  form.title || 'تحقق من الباقات الجديدة',
-        data:  { type: 'NEW_PACKAGE', package_id: pkg.id },
-      },
-    }).catch(() => {})
+    try {
+      await supabase.rpc('send_admin_notification', {
+        p_target_type: 'students',
+        p_title: 'باقة جديدة متاحة 🎁',
+        p_body:  form.title || 'تحقق من الباقات الجديدة',
+        p_type:  'NEW_PACKAGE',
+      })
+    } catch (_) {}
 
     setSaving(false)
     setShowAdd(false)
-    setForm({ title: '', priceMonthly: '', priceYearly: '', originalPrice: '', courseIds: [] })
+    setForm({ title: '', priceYearly: '', originalPrice: '', courseIds: [], isFree: false })
     toast('تمت إضافة الباقة بنجاح', 'success')
     await loadData()
   }
 
   function openEdit(p) {
+    const free = p.price_monthly === 0
     setEditTarget({
       id:           p.id,
       title:        p.title,
-      priceMonthly: String(p.price_monthly || ''),
-      priceYearly:  p.price_yearly   != null ? String(p.price_yearly)   : '',
-      originalPrice:p.original_price != null ? String(p.original_price) : '',
+      isFree:       free,
+      priceYearly:  !free && p.price_yearly != null ? String(p.price_yearly) : '',
+      originalPrice:!free && p.original_price != null ? String(p.original_price) : '',
       courseIds:    p.courseIds || [],
     })
   }
 
   async function saveEdit() {
-    if (!editTarget.title || !editTarget.priceMonthly) return
+    if (!editTarget.title || (!editTarget.isFree && !editTarget.priceYearly)) return
     setSaving(true)
+    const yearly = editTarget.isFree ? 0 : parseFloat(editTarget.priceYearly)
     const { error: updErr } = await supabase.from('packages').update({
       title:          editTarget.title,
-      price_monthly:  parseFloat(editTarget.priceMonthly),
-      price_yearly:   editTarget.priceYearly   ? parseFloat(editTarget.priceYearly)   : null,
-      original_price: editTarget.originalPrice ? parseFloat(editTarget.originalPrice) : null,
+      price_monthly:  yearly,
+      price_yearly:   editTarget.isFree ? null : yearly,
+      original_price: editTarget.isFree ? null : (editTarget.originalPrice ? parseFloat(editTarget.originalPrice) : null),
     }).eq('id', editTarget.id)
     if (updErr) { toast('خطأ في التعديل: ' + updErr.message, 'error'); setSaving(false); return }
 
@@ -212,20 +215,22 @@ export default function Packages() {
             <div style={{ padding: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                 <div>
-                  {p.original_price && (
-                    <div style={{ fontSize: 11, color: '#B0BEC5', textDecoration: 'line-through', marginBottom: 1 }}>
-                      {p.original_price?.toLocaleString('ar')} أوقية
+                  {p.price_monthly === 0 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 19, fontWeight: 700, color: '#15805F' }}>مجاني</span>
+                      <span style={{ fontSize: 15 }}>🎁</span>
                     </div>
-                  )}
-                  <div>
-                    <span style={{ fontSize: 19, fontWeight: 700 }}>{p.price_monthly?.toLocaleString('ar')}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text3)' }}> أوقية/شهر</span>
-                  </div>
-                  {p.price_yearly && (
-                    <div style={{ fontSize: 12, color: '#1B9E77', fontWeight: 600, marginTop: 2 }}>
-                      {p.price_yearly?.toLocaleString('ar')} أوقية/سنة
+                  ) : (<>
+                    {p.original_price && (
+                      <div style={{ fontSize: 11, color: '#B0BEC5', textDecoration: 'line-through', marginBottom: 1 }}>
+                        {p.original_price?.toLocaleString('en-US')} أوقية
+                      </div>
+                    )}
+                    <div>
+                      <span style={{ fontSize: 19, fontWeight: 700 }}>{(p.price_yearly ?? p.price_monthly)?.toLocaleString('en-US')}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text3)' }}> أوقية/سنة</span>
                     </div>
-                  )}
+                  </>)}
                 </div>
                 <div style={{ textAlign: 'left' }}>
                   <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>{p.subsCount}</div>
@@ -242,7 +247,7 @@ export default function Packages() {
                 </button>
                 <button
                   className="btn btn-sm"
-                  style={{ padding: '6px 12px', fontSize: 12, background: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5' }}
+                  style={{ padding: '6px 12px', fontSize: 12, background: '#FBE0DB', color: '#A12B1D', border: '1px solid #F3C5BD' }}
                   onClick={() => setDeleteTarget({ id: p.id, title: p.title })}
                 >
                   🗑
@@ -267,35 +272,47 @@ export default function Packages() {
               <input className="field-input" placeholder="باقة العلوم الشاملة" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20, marginTop: 14 }}>
-              <div>
-                <div className="field-label" style={{ marginBottom: 6 }}>السعر الشهري * (أوقية)</div>
-                <input className="field-input" type="number" placeholder="12000" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} />
+            {/* Free toggle */}
+            <div
+              onClick={() => setForm(f => ({ ...f, isFree: !f.isFree, priceYearly: '', originalPrice: '' }))}
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 15px', borderRadius:11, border:'2px solid '+(form.isFree?'#1B9E77':'#E1E5E9'), background:form.isFree?'#F0FBF7':'#FAFBFC', cursor:'pointer', marginBottom:14, marginTop:10, transition:'all .15s' }}
+            >
+              <div style={{ width:42, height:24, borderRadius:12, background:form.isFree?'#1B9E77':'#C9D3DC', position:'relative', transition:'background .2s', flexShrink:0 }}>
+                <div style={{ position:'absolute', top:3, right:form.isFree?3:undefined, left:form.isFree?undefined:3, width:18, height:18, borderRadius:'50%', background:'#fff', transition:'all .2s', boxShadow:'0 1px 3px rgba(0,0,0,.2)' }} />
               </div>
               <div>
-                <div className="field-label" style={{ marginBottom: 6 }}>السعر السنوي (أوقية)</div>
-                <input className="field-input" type="number" placeholder="110000" value={form.priceYearly} onChange={e => setForm(f => ({ ...f, priceYearly: e.target.value }))} />
-              </div>
-              <div>
-                <div className="field-label" style={{ marginBottom: 6 }}>سعر الخصم المشطوب</div>
-                <input className="field-input" type="number" placeholder="15000" value={form.originalPrice} onChange={e => setForm(f => ({ ...f, originalPrice: e.target.value }))} />
+                <div style={{ fontSize:13, fontWeight:700, color:form.isFree?'#15805F':'var(--text)' }}>مجاني بالكامل 🎁</div>
+                <div style={{ fontSize:11, color:'var(--text3)', marginTop:2 }}>الطلاب يشاهدون الدروس دون اشتراك</div>
               </div>
             </div>
 
-            {(form.priceMonthly || form.priceYearly || form.originalPrice) && (
-              <div style={{ background: '#F7F9FA', borderRadius: 10, padding: '9px 13px', marginBottom: 16, fontSize: 12.5 }}>
-                <span style={{ fontSize: 10.5, color: 'var(--text3)', fontWeight: 700, marginBottom: 4, display: 'block' }}>معاينة السعر</span>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                  {form.originalPrice && <span style={{ color: '#B0BEC5', textDecoration: 'line-through' }}>{Number(form.originalPrice).toLocaleString('ar')} أوقية</span>}
-                  {form.priceMonthly && <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 16 }}>{Number(form.priceMonthly).toLocaleString('ar')} أوقية<span style={{ fontSize: 10.5, fontWeight: 400 }}>/شهر</span></span>}
-                  {form.priceYearly && <span style={{ color: '#1B9E77', fontWeight: 700 }}>{Number(form.priceYearly).toLocaleString('ar')} أوقية/سنة</span>}
+            {!form.isFree && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+                  <div>
+                    <div className="field-label" style={{ marginBottom: 6 }}>السعر السنوي * (أوقية)</div>
+                    <input className="field-input" type="number" placeholder="110000" value={form.priceYearly} onChange={e => setForm(f => ({ ...f, priceYearly: e.target.value }))} />
+                  </div>
+                  <div>
+                    <div className="field-label" style={{ marginBottom: 6 }}>سعر الخصم المشطوب</div>
+                    <input className="field-input" type="number" placeholder="15000" value={form.originalPrice} onChange={e => setForm(f => ({ ...f, originalPrice: e.target.value }))} />
+                  </div>
                 </div>
-                {form.originalPrice && form.priceMonthly && (
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#1B9E77', marginTop: 4 }}>
-                    🏷 خصم {Math.round((1 - parseFloat(form.priceMonthly) / parseFloat(form.originalPrice)) * 100)}%
+                {(form.priceYearly || form.originalPrice) && (
+                  <div style={{ background: '#F7F9FA', borderRadius: 10, padding: '9px 13px', marginBottom: 16, fontSize: 12.5 }}>
+                    <span style={{ fontSize: 10.5, color: 'var(--text3)', fontWeight: 700, marginBottom: 4, display: 'block' }}>معاينة السعر</span>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                      {form.originalPrice && <span style={{ color: '#B0BEC5', textDecoration: 'line-through' }}>{Number(form.originalPrice).toLocaleString('en-US')} أوقية</span>}
+                      {form.priceYearly && <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 16 }}>{Number(form.priceYearly).toLocaleString('en-US')} أوقية<span style={{ fontSize: 10.5, fontWeight: 400 }}>/سنة</span></span>}
+                    </div>
+                    {form.originalPrice && form.priceYearly && (
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#1B9E77', marginTop: 4 }}>
+                        🏷 خصم {Math.round((1 - parseFloat(form.priceYearly) / parseFloat(form.originalPrice)) * 100)}%
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
+              </>
             )}
 
             <div className="field-label" style={{ marginBottom: 10 }}>
@@ -313,7 +330,7 @@ export default function Packages() {
             />
 
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} disabled={saving || !form.title || !form.priceMonthly} onClick={addPackage}>
+              <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} disabled={saving || !form.title || !form.priceYearly} onClick={addPackage}>
                 {saving ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> : '+ إضافة الباقة'}
               </button>
               <button className="btn btn-secondary" onClick={() => setShowAdd(false)}>إلغاء</button>
@@ -336,35 +353,47 @@ export default function Packages() {
               <input className="field-input" value={editTarget.title} onChange={e => setEditTarget(t => ({ ...t, title: e.target.value }))} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16, marginTop: 14 }}>
-              <div>
-                <div className="field-label" style={{ marginBottom: 6 }}>السعر الشهري * (أوقية)</div>
-                <input className="field-input" type="number" value={editTarget.priceMonthly} onChange={e => setEditTarget(t => ({ ...t, priceMonthly: e.target.value }))} />
+            {/* Free toggle */}
+            <div
+              onClick={() => setEditTarget(t => ({ ...t, isFree: !t.isFree, priceYearly: '', originalPrice: '' }))}
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 15px', borderRadius:11, border:'2px solid '+(editTarget.isFree?'#1B9E77':'#E1E5E9'), background:editTarget.isFree?'#F0FBF7':'#FAFBFC', cursor:'pointer', marginBottom:14, marginTop:10, transition:'all .15s' }}
+            >
+              <div style={{ width:42, height:24, borderRadius:12, background:editTarget.isFree?'#1B9E77':'#C9D3DC', position:'relative', transition:'background .2s', flexShrink:0 }}>
+                <div style={{ position:'absolute', top:3, right:editTarget.isFree?3:undefined, left:editTarget.isFree?undefined:3, width:18, height:18, borderRadius:'50%', background:'#fff', transition:'all .2s', boxShadow:'0 1px 3px rgba(0,0,0,.2)' }} />
               </div>
               <div>
-                <div className="field-label" style={{ marginBottom: 6 }}>السعر السنوي (أوقية)</div>
-                <input className="field-input" type="number" placeholder="110000" value={editTarget.priceYearly} onChange={e => setEditTarget(t => ({ ...t, priceYearly: e.target.value }))} />
-              </div>
-              <div>
-                <div className="field-label" style={{ marginBottom: 6 }}>سعر الخصم المشطوب</div>
-                <input className="field-input" type="number" placeholder="15000" value={editTarget.originalPrice} onChange={e => setEditTarget(t => ({ ...t, originalPrice: e.target.value }))} />
+                <div style={{ fontSize:13, fontWeight:700, color:editTarget.isFree?'#15805F':'var(--text)' }}>مجاني بالكامل 🎁</div>
+                <div style={{ fontSize:11, color:'var(--text3)', marginTop:2 }}>الطلاب يشاهدون الدروس دون اشتراك</div>
               </div>
             </div>
 
-            {(editTarget.priceMonthly || editTarget.priceYearly || editTarget.originalPrice) && (
-              <div style={{ background: '#F7F9FA', borderRadius: 10, padding: '9px 13px', marginBottom: 16, fontSize: 12.5 }}>
-                <span style={{ fontSize: 10.5, color: 'var(--text3)', fontWeight: 700, marginBottom: 4, display: 'block' }}>معاينة السعر</span>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                  {editTarget.originalPrice && <span style={{ color: '#B0BEC5', textDecoration: 'line-through' }}>{Number(editTarget.originalPrice).toLocaleString('ar')} أوقية</span>}
-                  {editTarget.priceMonthly && <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 16 }}>{Number(editTarget.priceMonthly).toLocaleString('ar')} أوقية<span style={{ fontSize: 10.5, fontWeight: 400 }}>/شهر</span></span>}
-                  {editTarget.priceYearly && <span style={{ color: '#1B9E77', fontWeight: 700 }}>{Number(editTarget.priceYearly).toLocaleString('ar')} أوقية/سنة</span>}
+            {!editTarget.isFree && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                  <div>
+                    <div className="field-label" style={{ marginBottom: 6 }}>السعر السنوي * (أوقية)</div>
+                    <input className="field-input" type="number" placeholder="110000" value={editTarget.priceYearly} onChange={e => setEditTarget(t => ({ ...t, priceYearly: e.target.value }))} />
+                  </div>
+                  <div>
+                    <div className="field-label" style={{ marginBottom: 6 }}>سعر الخصم المشطوب</div>
+                    <input className="field-input" type="number" placeholder="15000" value={editTarget.originalPrice} onChange={e => setEditTarget(t => ({ ...t, originalPrice: e.target.value }))} />
+                  </div>
                 </div>
-                {editTarget.originalPrice && editTarget.priceMonthly && (
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#1B9E77', marginTop: 4 }}>
-                    🏷 خصم {Math.round((1 - parseFloat(editTarget.priceMonthly) / parseFloat(editTarget.originalPrice)) * 100)}%
+                {(editTarget.priceYearly || editTarget.originalPrice) && (
+                  <div style={{ background: '#F7F9FA', borderRadius: 10, padding: '9px 13px', marginBottom: 16, fontSize: 12.5 }}>
+                    <span style={{ fontSize: 10.5, color: 'var(--text3)', fontWeight: 700, marginBottom: 4, display: 'block' }}>معاينة السعر</span>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                      {editTarget.originalPrice && <span style={{ color: '#B0BEC5', textDecoration: 'line-through' }}>{Number(editTarget.originalPrice).toLocaleString('en-US')} أوقية</span>}
+                      {editTarget.priceYearly && <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 16 }}>{Number(editTarget.priceYearly).toLocaleString('en-US')} أوقية<span style={{ fontSize: 10.5, fontWeight: 400 }}>/سنة</span></span>}
+                    </div>
+                    {editTarget.originalPrice && editTarget.priceYearly && (
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#1B9E77', marginTop: 4 }}>
+                        🏷 خصم {Math.round((1 - parseFloat(editTarget.priceYearly) / parseFloat(editTarget.originalPrice)) * 100)}%
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
+              </>
             )}
 
             <div className="field-label" style={{ marginBottom: 10 }}>
@@ -382,7 +411,7 @@ export default function Packages() {
             />
 
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} disabled={saving || !editTarget.title || !editTarget.priceMonthly} onClick={saveEdit}>
+              <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} disabled={saving || !editTarget.title || (!editTarget.isFree && !editTarget.priceYearly)} onClick={saveEdit}>
                 {saving ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> : '💾 حفظ التعديلات'}
               </button>
               <button className="btn btn-secondary" onClick={() => setEditTarget(null)}>إلغاء</button>

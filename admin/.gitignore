@@ -1,0 +1,18 @@
+# Environment variables — never commit
+.env
+.env.local
+.env.production
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Vite cache
+.vite/
+
+# Editor
+.DS_Store
+*.local

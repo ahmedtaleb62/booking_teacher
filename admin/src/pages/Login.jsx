@@ -2,10 +2,10 @@ import React, { useState } from 'react'
 import { supabase } from '../supabase'
 
 export default function Login() {
-  const [email, setEmail] = useState('')
+  const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState('')
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -19,9 +19,15 @@ export default function Login() {
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={handleLogin}>
-        <div className="login-logo">س</div>
-        <div className="login-title">سولني</div>
-        <div className="login-sub">لوحة الإدارة الاحترافية</div>
+        <div className="login-logo">
+          <svg viewBox="0 0 24 24" style={{ width: 30, height: 30, fill: 'none', stroke: '#fff', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' }}>
+            <path d="M3 9.5 12 5l9 4.5-9 4.5z"/>
+            <path d="M7 11.5V16c0 1 2.2 2.4 5 2.4S17 17 17 16v-4.5"/>
+            <path d="M21 9.5V14"/>
+          </svg>
+        </div>
+        <div className="login-title">حصتي</div>
+        <div className="login-sub">لوحة تحكم الإدارة</div>
 
         {error && <div className="login-error">{error}</div>}
 
@@ -32,9 +38,10 @@ export default function Login() {
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder="admin@example.com"
+            placeholder="admin@hissati.mr"
             required
             dir="ltr"
+            style={{ textAlign: 'right' }}
           />
         </div>
         <div style={{ marginBottom: 22 }}>
@@ -47,6 +54,7 @@ export default function Login() {
             placeholder="••••••••"
             required
             dir="ltr"
+            style={{ textAlign: 'right' }}
           />
         </div>
         <button

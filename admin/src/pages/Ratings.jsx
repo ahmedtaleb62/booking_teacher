@@ -25,7 +25,7 @@ export default function Ratings() {
       if (r.comment) byTeacher[id].comments.push({ text: r.comment, student: r.student?.full_name || 'طالب' })
     })
 
-    const colors = [['#E0E7FF', '#4338CA'], ['#EDE9FE', '#5B21B6'], ['#D1FAE5', '#065F46'], ['#FEF3C7', '#92400E']]
+    const colors = [['#D7F2E6', '#0A6E4E'], ['#ECE5F7', '#5A3B95'], ['#E3F4EF', '#0E7C66'], ['#FBEFD6', '#92620F']]
     const teacherRows = Object.values(byTeacher).map((t, i) => {
       const [bg, fg] = colors[i % colors.length]
       const avg = t.ratings.length ? (t.ratings.reduce((s, r) => s + r, 0) / t.ratings.length).toFixed(1) : '0.0'

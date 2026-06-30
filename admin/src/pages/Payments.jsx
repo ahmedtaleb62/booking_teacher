@@ -7,13 +7,13 @@ const DEFAULT_COMMISSION = 0.15
 /* ── Status badge + rejection sub-reason ────────────────────── */
 const BADGE_MAP = {
   submitted: ['قيد التأكيد',  '#FEF3C7', '#92400E'],
-  confirmed: ['مؤكّد',        '#D1FAE5', '#065F46'],
-  rejected:  ['مرفوض',        '#FEE2E2', '#991B1B'],
-  refunded:  ['مسترد',        '#EDE9FE', '#5B21B6'],
-  pending:   ['قيد المراجعة', '#EDE9FE', '#5B21B6'],
-  active:    ['نشط',          '#D1FAE5', '#065F46'],
+  confirmed: ['مؤكّد',        '#D7F2E6', '#0A6E4E'],
+  rejected:  ['مرفوض',        '#FBE0DB', '#A12B1D'],
+  refunded:  ['مسترد',        '#ECE5F7', '#5A3B95'],
+  pending:   ['قيد المراجعة', '#ECE5F7', '#5A3B95'],
+  active:    ['نشط',          '#D7F2E6', '#0A6E4E'],
   expired:   ['منتهي',        '#FEF3C7', '#D97706'],
-  cancelled: ['ملغى',         '#FEE2E2', '#991B1B'],
+  cancelled: ['ملغى',         '#FBE0DB', '#A12B1D'],
 }
 
 function Badge({ status }) {
@@ -33,9 +33,9 @@ function StatusBadge({ row, type }) {
   // Sub-label — simplified: only 2 outcomes now
   let sub = null, subColor = '#6B7280'
   if (isFake && (st === 'rejected' || st === 'cancelled')) {
-    sub = 'الوصل مزيف'; subColor = '#991B1B'
+    sub = 'الوصل مزيف'; subColor = '#A12B1D'
   } else if ((isInsuf || isRefundPrefix) && (st === 'refunded' || isRefundPrefix)) {
-    sub = 'مبلغ ناقص · مُسترد'; subColor = '#5B21B6'
+    sub = 'مبلغ ناقص · مُسترد'; subColor = '#5A3B95'
   } else if (isInsuf && st === 'rejected') {
     sub = 'مبلغ ناقص'; subColor = '#92400E'
   }
@@ -88,7 +88,7 @@ function buildSessionTimeline(row, fmtTs) {
 
   steps.push({
     icon: '📤', label: 'تقديم إثبات الدفع',
-    color: '#059669', bg: '#D1FAE5',
+    color: '#059669', bg: '#D7F2E6',
     date: row.created_at ? fmtTs(row.created_at) : undefined,
   })
 
@@ -98,34 +98,34 @@ function buildSessionTimeline(row, fmtTs) {
   }
 
   if (row.status === 'confirmed') {
-    steps.push({ icon: '✅', label: 'تم تأكيد الدفع', color: '#059669', bg: '#D1FAE5' })
+    steps.push({ icon: '✅', label: 'تم تأكيد الدفع', color: '#059669', bg: '#D7F2E6' })
     return steps
   }
 
   // FAKE_PROOF → rejected, no refund
   if (rr === 'FAKE_PROOF' || cr === 'fake_proof') {
-    steps.push({ icon: '🚫', label: 'الوصل مزيف — مرفوض نهائياً', color: '#991B1B', bg: '#FEE2E2' })
-    steps.push({ icon: '✕', label: 'جلسة ملغاة', color: '#991B1B', bg: '#FEE2E2' })
+    steps.push({ icon: '🚫', label: 'الوصل مزيف — مرفوض نهائياً', color: '#A12B1D', bg: '#FBE0DB' })
+    steps.push({ icon: '✕', label: 'جلسة ملغاة', color: '#A12B1D', bg: '#FBE0DB' })
     return steps
   }
 
   // INCOMPLETE_AMOUNT → cancelled + refunded
   if (rr === 'INCOMPLETE_AMOUNT' || cr === 'insufficient_refund') {
     steps.push({ icon: '💰', label: 'المبلغ غير مكتمل', color: '#92400E', bg: '#FEF3C7' })
-    steps.push({ icon: '✕', label: 'جلسة ملغاة', color: '#991B1B', bg: '#FEE2E2' })
-    steps.push({ icon: '↩', label: 'مُسترد للطالب', color: '#5B21B6', bg: '#EDE9FE' })
+    steps.push({ icon: '✕', label: 'جلسة ملغاة', color: '#A12B1D', bg: '#FBE0DB' })
+    steps.push({ icon: '↩', label: 'مُسترد للطالب', color: '#5A3B95', bg: '#ECE5F7' })
     return steps
   }
 
   // teacher_no_show refund
   if (cr === 'teacher_no_show_refund') {
     steps.push({ icon: '👤', label: 'غياب الأستاذ', color: '#D97706', bg: '#FEF3C7' })
-    steps.push({ icon: '↩', label: 'مُسترد للطالب', color: '#5B21B6', bg: '#EDE9FE' })
+    steps.push({ icon: '↩', label: 'مُسترد للطالب', color: '#5A3B95', bg: '#ECE5F7' })
     return steps
   }
 
   // fallback for legacy states
-  steps.push({ icon: '✕', label: 'مرفوض', color: '#991B1B', bg: '#FEE2E2' })
+  steps.push({ icon: '✕', label: 'مرفوض', color: '#A12B1D', bg: '#FBE0DB' })
   return steps
 }
 
@@ -136,26 +136,26 @@ function buildSubTimeline(row) {
   const isRefund       = rr.startsWith('REFUND:')
   const cleanRr        = isRefund ? rr.replace(/^REFUND:/i, '').toUpperCase() : rr.toUpperCase()
 
-  steps.push({ icon: '📤', label: 'تقديم طلب الاشتراك', color: '#059669', bg: '#D1FAE5' })
+  steps.push({ icon: '📤', label: 'تقديم طلب الاشتراك', color: '#059669', bg: '#D7F2E6' })
 
   if (row.status === 'pending') {
-    steps.push({ icon: '⏳', label: 'قيد مراجعة الأدمن', color: '#7C3AED', bg: '#EDE9FE' })
+    steps.push({ icon: '⏳', label: 'قيد مراجعة الأدمن', color: 'var(--purple)', bg: 'var(--purple-light)' })
   } else if (row.status === 'active') {
-    steps.push({ icon: '✅', label: 'تم تفعيل الاشتراك', color: '#059669', bg: '#D1FAE5' })
+    steps.push({ icon: '✅', label: 'تم تفعيل الاشتراك', color: '#059669', bg: '#D7F2E6' })
   } else if (row.status === 'expired') {
-    steps.push({ icon: '✅', label: 'تم تفعيل الاشتراك', color: '#059669', bg: '#D1FAE5' })
+    steps.push({ icon: '✅', label: 'تم تفعيل الاشتراك', color: '#059669', bg: '#D7F2E6' })
     steps.push({ icon: '⏰', label: 'انتهت صلاحية الاشتراك', color: '#D97706', bg: '#FEF3C7' })
   } else if (row.status === 'rejected') {
     if (cleanRr === 'FAKE_PROOF') {
-      steps.push({ icon: '🚫', label: 'الوصل مزيف — مرفوض نهائياً', color: '#991B1B', bg: '#FEE2E2' })
-      steps.push({ icon: '✕', label: 'اشتراك ملغى', color: '#991B1B', bg: '#FEE2E2' })
+      steps.push({ icon: '🚫', label: 'الوصل مزيف — مرفوض نهائياً', color: '#A12B1D', bg: '#FBE0DB' })
+      steps.push({ icon: '✕', label: 'اشتراك ملغى', color: '#A12B1D', bg: '#FBE0DB' })
     } else if (cleanRr === 'INCOMPLETE_AMOUNT') {
       steps.push({ icon: '💰', label: 'المبلغ غير مكتمل', color: '#92400E', bg: '#FEF3C7' })
-      steps.push({ icon: '✕', label: 'اشتراك ملغى', color: '#991B1B', bg: '#FEE2E2' })
-      steps.push({ icon: '↩', label: 'مُسترد للطالب', color: '#5B21B6', bg: '#EDE9FE' })
+      steps.push({ icon: '✕', label: 'اشتراك ملغى', color: '#A12B1D', bg: '#FBE0DB' })
+      steps.push({ icon: '↩', label: 'مُسترد للطالب', color: '#5A3B95', bg: '#ECE5F7' })
     } else {
-      steps.push({ icon: '✕', label: 'مرفوض من الأدمن', color: '#991B1B', bg: '#FEE2E2' })
-      if (isRefund) steps.push({ icon: '↩', label: 'مُسترد للطالب', color: '#5B21B6', bg: '#EDE9FE' })
+      steps.push({ icon: '✕', label: 'مرفوض من الأدمن', color: '#A12B1D', bg: '#FBE0DB' })
+      if (isRefund) steps.push({ icon: '↩', label: 'مُسترد للطالب', color: '#5A3B95', bg: '#ECE5F7' })
     }
   }
 
@@ -182,6 +182,7 @@ export default function Payments({ adminId }) {
   const [subRows, setSubRows]             = useState([])
   const [refundedRows, setRefundedRows]   = useState([])
   const [subRefundedRows, setSubRefundedRows] = useState([])
+  const [disputeRefundedRows, setDisputeRefundedRows] = useState([])
   const [stats, setStats]                 = useState({})
   const [loading, setLoading]             = useState(true)
   const [sessionComm, setSessionComm]     = useState(DEFAULT_COMMISSION)
@@ -192,6 +193,12 @@ export default function Payments({ adminId }) {
   const [rejectReason, setRejectReason]   = useState('')
   const [withRefund, setWithRefund]       = useState(false)
   const [proofUrl, setProofUrl]           = useState(null)
+  const [refundAmountInput, setRefundAmountInput] = useState('')
+  const actionsRef = React.useRef(null)
+  // Problem 2: dispute system
+  const [disputeMode, setDisputeMode]     = useState(false)
+  const [disputeAction, setDisputeAction] = useState('')   // 'frozen' | 'refunded' | 'confirmed'
+  const [disputeAmount, setDisputeAmount] = useState('')
 
   useEffect(() => { loadData() }, [])
 
@@ -204,7 +211,7 @@ export default function Payments({ adminId }) {
       if (!isNaN(s.subscription_commission_pct)) setSubComm(s.subscription_commission_pct / 100)
     }
 
-    const [payRes, subPayRes, refundedRes, subRefundRes] = await Promise.all([
+    const [payRes, subPayRes, refundedRes, subRefundRes, disputeRefundRes] = await Promise.all([
       supabase.from('payments')
         .select('*, session:session_id(id,subject,student_id,teacher_id,scheduled_at,payment_deadline,state,cancellation_reason), student:student_id(full_name)')
         .order('created_at', { ascending: false }),
@@ -220,12 +227,18 @@ export default function Payments({ adminId }) {
         .eq('status', 'rejected')
         .like('reject_reason', 'REFUND:%')
         .order('updated_at', { ascending: false }),
+      supabase.from('payments')
+        .select('*, session:session_id(id, subject, student_id, teacher_id), student:student_id(full_name)')
+        .eq('status', 'confirmed')
+        .eq('dispute_status', 'refunded')
+        .order('dispute_updated_at', { ascending: false }),
     ])
 
     const pays      = payRes.data || []
     let subs        = subPayRes.data || []
     let refunded    = refundedRes.data || []
     let subRef      = subRefundRes.data || []
+    const dispRef   = disputeRefundRes.data || []
 
     // Enrich subscriptions with teacher names
     const teacherIds = [...new Set(subs.map(s => s.course?.teacher_id).filter(Boolean))]
@@ -279,20 +292,22 @@ export default function Payments({ adminId }) {
     const subCommTotal      = activeSubs.reduce((s, r) => s + (r.platform_commission ?? r.amount * subComm), 0)
     const totalRefunded     = refunded.reduce((acc, s) => acc + (s.payment?.amount || s.amount || 0), 0)
     const totalSubRefunded  = subRef.reduce((acc, s) => acc + (s.amount || 0), 0)
-    const refundCount       = refunded.length + subRef.length
+    const totalDisputeRef   = dispRef.reduce((acc, p) => acc + (p.dispute_refund_amount || 0), 0)
+    const refundCount       = refunded.length + subRef.length + dispRef.length
 
     setStats({
       pendingSessions:  pays.filter(p => p.status === 'submitted').length,
       pendingSubs:      subs.filter(s => s.status === 'pending').length,
       sessionCommToday: Math.round(sessionCommToday),
       subCommTotal:     Math.round(subCommTotal),
-      totalRefunded:    Math.round(totalRefunded + totalSubRefunded),
+      totalRefunded:    Math.round(totalRefunded + totalSubRefunded + totalDisputeRef),
       refundCount,
     })
     setRows(pays)
     setSubRows(subs)
     setRefundedRows(refunded)
     setSubRefundedRows(subRef)
+    setDisputeRefundedRows(dispRef)
     setLoading(false)
   }
 
@@ -302,6 +317,10 @@ export default function Payments({ adminId }) {
     setRejectInput(false)
     setRejectReason('')
     setWithRefund(false)
+    setRefundAmountInput('')
+    setDisputeMode(false)
+    setDisputeAction('')
+    setDisputeAmount('')
     if (row.proof_image_url) {
       const bucket = type === 'session' ? 'payment-proofs' : 'subscription-proofs'
       let path = row.proof_image_url
@@ -322,6 +341,10 @@ export default function Payments({ adminId }) {
     setProofUrl(null)
     setRejectInput(false)
     setRejectReason('')
+    setRefundAmountInput('')
+    setDisputeMode(false)
+    setDisputeAction('')
+    setDisputeAmount('')
   }
 
   /* ── Session payment actions ──────────────────────────────────── */
@@ -374,15 +397,8 @@ export default function Payments({ adminId }) {
       if (sessErr) throw sessErr
       const { error: payErr } = await supabase.from('payments').update({ status: 'refunded' }).eq('id', payment.id)
       if (payErr) throw payErr
-      await Promise.allSettled([
-        supabase.from('session_events').insert({ session_id: sessionId, event_type: 'REFUND_PROCESSED', actor: 'admin' }),
-        supabase.from('notifications').insert({
-          user_id: payment.student_id,
-          title: 'تم رفض حجزك واسترداد مبلغك ✅',
-          body: 'تم إلغاء الحجز واسترداد المبلغ المدفوع. سيصلك المبلغ قريباً.',
-          type: 'refund_processed', session_id: sessionId,
-        }),
-      ])
+      // on_session_state_change trigger sends bilingual notification for insufficient_refund
+      await supabase.from('session_events').insert({ session_id: sessionId, event_type: 'REFUND_PROCESSED', actor: 'admin' })
       closeModal(); await loadData()
       toast('تم إلغاء الجلسة وتسجيل استرداد المبلغ وإشعار الطالب', 'success')
     } catch (err) {
@@ -418,26 +434,59 @@ export default function Payments({ adminId }) {
     } finally { setActionId(null) }
   }
 
-  async function rejectSubWithRefund(id, reason) {
-    if (!reason?.trim()) return
+  async function rejectSubWithRefund(id, reason, refundAmount) {
+    if (!reason?.trim() || !refundAmount) return
     setActionId(id)
-    const sub      = subRows.find(r => r.id === id)
-    const itemName = sub?.course?.title || sub?.package?.title || 'الدورة'
-    const amount   = sub?.amount?.toLocaleString('ar') || '—'
     try {
-      const markedReason = `REFUND:${reason.trim()}`
       const { error } = await supabase.rpc('admin_reject_subscription', {
-        p_subscription_id: id, p_admin_id: adminId, p_reason: markedReason,
+        p_subscription_id: id, p_admin_id: adminId, p_reason: reason.trim(),
+        p_refund_amount: parseFloat(refundAmount),
       })
       if (error) throw error
-      await supabase.from('notifications').insert({
-        user_id: sub.student_id,
-        title:   'سيُسترد مبلغك قريباً 💰',
-        body:    `تم رفض اشتراكك في "${itemName}" وسيُسترد مبلغك (${amount} أوقية) قريباً.`,
-        type:    'subscription_refunded',
-      })
       closeModal(); await loadData()
       toast('تم رفض الاشتراك وإشعار الطالب باسترداد مبلغه', 'success')
+    } catch (err) {
+      toast('خطأ: ' + (err.message || ''), 'error')
+    } finally { setActionId(null) }
+  }
+
+  /* ── Dispute actions ─────────────────────────────────────────── */
+  async function freezePayment(paymentId) {
+    if (actionId) return
+    setActionId(paymentId)
+    try {
+      const { error } = await supabase.rpc('admin_freeze_payment', { p_payment_id: paymentId, p_admin_id: adminId })
+      if (error) throw error
+      closeModal(); await loadData()
+      toast('تم تجميد المبلغ وإشعار الطرفين', 'success')
+    } catch (err) {
+      toast('خطأ: ' + (err.message || ''), 'error')
+    } finally { setActionId(null) }
+  }
+
+  async function disputeRefund(paymentId, amount) {
+    if (actionId || !amount) return
+    setActionId(paymentId)
+    try {
+      const { error } = await supabase.rpc('admin_dispute_refund', {
+        p_payment_id: paymentId, p_admin_id: adminId, p_refund_amount: parseFloat(amount),
+      })
+      if (error) throw error
+      closeModal(); await loadData()
+      toast('تم تسجيل الاسترداد وإشعار الطرفين', 'success')
+    } catch (err) {
+      toast('خطأ: ' + (err.message || ''), 'error')
+    } finally { setActionId(null) }
+  }
+
+  async function confirmAfterDispute(paymentId) {
+    if (actionId) return
+    setActionId(paymentId)
+    try {
+      const { error } = await supabase.rpc('admin_confirm_after_dispute', { p_payment_id: paymentId, p_admin_id: adminId })
+      if (error) throw error
+      closeModal(); await loadData()
+      toast('تم تأكيد حق الأستاذ وإشعار الطرفين', 'success')
     } catch (err) {
       toast('خطأ: ' + (err.message || ''), 'error')
     } finally { setActionId(null) }
@@ -446,9 +495,9 @@ export default function Payments({ adminId }) {
   /* ── Render ──────────────────────────────────────────────────── */
   if (loading) return <div className="loading-center"><div className="spinner" /></div>
 
-  const fmt       = n => n?.toLocaleString('ar') ?? '—'
-  const fmtDate   = s => s ? new Date(s).toLocaleDateString('ar-EG', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'
-  const fmtTs     = s => s ? new Date(s).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' }) : '—'
+  const fmt       = n => n?.toLocaleString('en-US') ?? '—'
+  const fmtDate   = s => s ? new Date(s).toLocaleDateString('ar-EG-u-nu-latn', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'
+  const fmtTs     = s => s ? new Date(s).toLocaleString('ar-EG-u-nu-latn', { dateStyle: 'short', timeStyle: 'short' }) : '—'
   const fmtMethod = m => METHOD_LABELS[m] || m || '—'
 
   const sessionCols = '0.7fr 1.4fr 1fr 0.7fr 0.9fr 0.9fr 0.8fr 0.6fr 0.7fr'
@@ -463,7 +512,7 @@ export default function Payments({ adminId }) {
         </div>
         <div className="card-sm">
           <div className="text-muted" style={{ fontSize: 12 }}>اشتراكات قيد المراجعة</div>
-          <div style={{ fontSize: 21, fontWeight: 700, color: '#7C3AED', marginTop: 3 }}>{stats.pendingSubs}</div>
+          <div style={{ fontSize: 21, fontWeight: 700, color: 'var(--purple)', marginTop: 3 }}>{stats.pendingSubs}</div>
         </div>
         <div className="card-sm">
           <div className="text-muted" style={{ fontSize: 12 }}>عمولة الجلسات اليوم</div>
@@ -479,7 +528,7 @@ export default function Payments({ adminId }) {
         </div>
         <div className="card-sm">
           <div className="text-muted" style={{ fontSize: 12 }}>إجمالي المُسترد</div>
-          <div style={{ fontSize: 21, fontWeight: 700, color: '#7B61FF', marginTop: 3 }}>
+          <div style={{ fontSize: 21, fontWeight: 700, color: 'var(--purple)', marginTop: 3 }}>
             {fmt(stats.totalRefunded)} <span style={{ fontSize: 11, color: 'var(--text3)' }}>أوقية</span>
           </div>
           <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>{stats.refundCount} استرداد</div>
@@ -492,10 +541,10 @@ export default function Payments({ adminId }) {
           مدفوعات الجلسات {stats.pendingSessions > 0 && <span className="badge" style={{ background: '#FEF3C7', color: '#92400E', marginRight: 5, fontSize: 10 }}>{stats.pendingSessions}</span>}
         </div>
         <div className={`tab${tab === 'subs' ? ' active' : ''}`} onClick={() => setTab('subs')}>
-          مدفوعات الاشتراكات {stats.pendingSubs > 0 && <span className="badge" style={{ background: '#EDE9FE', color: '#5B21B6', marginRight: 5, fontSize: 10 }}>{stats.pendingSubs}</span>}
+          مدفوعات الاشتراكات {stats.pendingSubs > 0 && <span className="badge" style={{ background: '#ECE5F7', color: '#5A3B95', marginRight: 5, fontSize: 10 }}>{stats.pendingSubs}</span>}
         </div>
         <div className={`tab${tab === 'refunds' ? ' active' : ''}`} onClick={() => setTab('refunds')}>
-          المبالغ المستردة {stats.refundCount > 0 && <span className="badge" style={{ background: '#EDE9FE', color: '#5B21B6', marginRight: 5, fontSize: 10 }}>{stats.refundCount}</span>}
+          المبالغ المستردة {stats.refundCount > 0 && <span className="badge" style={{ background: '#ECE5F7', color: '#5A3B95', marginRight: 5, fontSize: 10 }}>{stats.refundCount}</span>}
         </div>
       </div>
 
@@ -535,8 +584,19 @@ export default function Payments({ adminId }) {
                 <span className={isRejected ? '' : 'fw-700 text-green'} style={isRejected ? { color: '#9CA3AF', fontSize: 12 } : {}}>
                   {isRejected ? '0' : fmt(net)}
                 </span>
-                {/* Status + rejection reason sub-label */}
-                <span><StatusBadge row={r} type="session" /></span>
+                {/* Status + dispute sub-badge */}
+                <span>
+                  <StatusBadge row={r} type="session" />
+                  {r.status === 'confirmed' && r.dispute_status && r.dispute_status !== 'confirmed' && (
+                    <span className="badge" style={{
+                      display: 'block', marginTop: 3, fontSize: 9,
+                      background: r.dispute_status === 'frozen' ? '#FEF3C7' : '#ECE5F7',
+                      color: r.dispute_status === 'frozen' ? '#92400E' : '#5A3B95',
+                    }}>
+                      {r.dispute_status === 'frozen' ? '⚠ مجمّد' : '↩ مسترد'}
+                    </span>
+                  )}
+                </span>
                 <span>
                   {hasProof
                     ? <span title="يحتوي على وصل" style={{ fontSize: 18 }}>🧾</span>
@@ -633,7 +693,7 @@ export default function Payments({ adminId }) {
                       <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text3)', marginTop: 5 }}>انقر للعرض الكامل ↗</div>
                     </a>
                   )
-                  : <div style={{ textAlign: 'center', padding: '16px 0', color: 'var(--text3)', fontSize: 13, background: '#F5F7FF', borderRadius: 12 }}>جارٍ تحميل إثبات الدفع…</div>
+                  : <div style={{ textAlign: 'center', padding: '16px 0', color: 'var(--text3)', fontSize: 13, background: '#F2F7F5', borderRadius: 12 }}>جارٍ تحميل إثبات الدفع…</div>
                 }
               </div>
             ) : (
@@ -645,7 +705,7 @@ export default function Payments({ adminId }) {
             )}
 
             {/* ── Details ───────────────────────────────────────── */}
-            <div style={{ background: '#F5F7FF', borderRadius: 12, padding: 14, marginBottom: 16, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 7 }}>
+            <div style={{ background: '#F2F7F5', borderRadius: 12, padding: 14, marginBottom: 16, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 7 }}>
               {modal.type === 'sub' && (
                 <>
                   <div><b>الطالب:</b> {modal.row.student?.full_name || '—'}</div>
@@ -667,17 +727,17 @@ export default function Payments({ adminId }) {
                     <div><b>المادة:</b> {session?.subject || '—'}</div>
                     <div><b>طريقة الدفع:</b> <span style={{ fontWeight: 700, color: '#1D4ED8' }}>{fmtMethod(modal.row.method)}</span></div>
                     <div><b>تاريخ الدفع:</b> {fmtTs(modal.row.created_at)}</div>
-                    {scheduledAt && <div><b>موعد الجلسة:</b> {scheduledAt.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}</div>}
+                    {scheduledAt && <div><b>موعد الجلسة:</b> {scheduledAt.toLocaleString('ar-EG-u-nu-latn', { dateStyle: 'short', timeStyle: 'short' })}</div>}
                     {deadline && (
-                      <div style={{ color: deadlineExp ? '#DC2626' : 'var(--text2)', fontWeight: deadlineExp ? 600 : 400 }}>
-                        <b>مهلة الدفع:</b> {deadline.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
+                      <div style={{ color: deadlineExp ? '#A12B1D' : 'var(--text2)', fontWeight: deadlineExp ? 600 : 400 }}>
+                        <b>مهلة الدفع:</b> {deadline.toLocaleString('ar-EG-u-nu-latn', { dateStyle: 'short', timeStyle: 'short' })}
                         {deadlineExp ? ' ⚠ منتهية' : ''}
                       </div>
                     )}
                   </>
                 )
               })()}
-              <div><b>المبلغ الكلي:</b> {modal.row.amount?.toLocaleString('ar')} أوقية</div>
+              <div><b>المبلغ الكلي:</b> {modal.row.amount?.toLocaleString('en-US')} أوقية</div>
             </div>
 
             {/* ── Earnings ─────────────────────────────────────── */}
@@ -691,11 +751,11 @@ export default function Payments({ adminId }) {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
                   <div style={{ background: isRej ? '#F3F4F6' : '#FEF3C7', borderRadius: 12, padding: '10px 14px' }}>
                     <div style={{ fontSize: 11, color: isRej ? '#9CA3AF' : '#92400E', marginBottom: 3 }}>عمولة المنصة{isRej ? ' — مرفوض' : ''}</div>
-                    <div style={{ fontSize: 17, fontWeight: 700, color: isRej ? '#9CA3AF' : '#D97706' }}>{isRej ? '0' : comm.toLocaleString('ar')} أوقية</div>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: isRej ? '#9CA3AF' : '#D97706' }}>{isRej ? '0' : comm.toLocaleString('en-US')} أوقية</div>
                   </div>
-                  <div style={{ background: isRej ? '#F3F4F6' : '#D1FAE5', borderRadius: 12, padding: '10px 14px' }}>
-                    <div style={{ fontSize: 11, color: isRej ? '#9CA3AF' : '#065F46', marginBottom: 3 }}>صافي الأستاذ{isRej ? ' — مرفوض' : ''}</div>
-                    <div style={{ fontSize: 17, fontWeight: 700, color: isRej ? '#9CA3AF' : '#059669' }}>{isRej ? '0' : net.toLocaleString('ar')} أوقية</div>
+                  <div style={{ background: isRej ? '#F3F4F6' : '#D7F2E6', borderRadius: 12, padding: '10px 14px' }}>
+                    <div style={{ fontSize: 11, color: isRej ? '#9CA3AF' : '#0A6E4E', marginBottom: 3 }}>صافي الأستاذ{isRej ? ' — مرفوض' : ''}</div>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: isRej ? '#9CA3AF' : '#059669' }}>{isRej ? '0' : net.toLocaleString('en-US')} أوقية</div>
                   </div>
                 </div>
               )
@@ -703,8 +763,142 @@ export default function Payments({ adminId }) {
 
             {/* ── Actions ──────────────────────────────────────── */}
             {(() => {
-              /* Already decided — close only */
-              if (['rejected', 'refunded', 'confirmed', 'active', 'expired'].includes(modal.row.status)) {
+              /* Already decided — show close + dispute options for confirmed sessions */
+              if (['rejected', 'refunded', 'active', 'expired'].includes(modal.row.status)) {
+                return <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center' }} onClick={closeModal}>إغلاق</button>
+              }
+
+              if (modal.row.status === 'confirmed' && modal.type === 'session') {
+                const ds = modal.row.dispute_status || 'confirmed'
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {/* Dispute status badge */}
+                    {ds !== 'confirmed' && (
+                      <div style={{
+                        padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+                        background: ds === 'frozen' ? '#FEF3C7' : '#ECE5F7',
+                        color: ds === 'frozen' ? '#92400E' : '#5A3B95',
+                        border: `1px solid ${ds === 'frozen' ? '#FCD34D' : '#C4B5FD'}`,
+                      }}>
+                        {ds === 'frozen' ? '⚠ المبلغ مجمّد للتحقيق' : '✓ تم الاسترداد بعد النزاع'}
+                        {ds === 'refunded' && modal.row.dispute_refund_amount && (
+                          <span style={{ marginRight: 6 }}>· {modal.row.dispute_refund_amount?.toLocaleString('en-US')} أوقية</span>
+                        )}
+                      </div>
+                    )}
+
+                    {!disputeMode ? (
+                      <div style={{ display: 'flex', gap: 10 }}>
+                        <button className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }} onClick={closeModal}>إغلاق</button>
+                        {ds !== 'refunded' && (
+                          <button
+                            className="btn"
+                            style={{ flex: 1, justifyContent: 'center', background: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D', fontWeight: 700 }}
+                            onClick={() => setDisputeMode(true)}
+                          >
+                            ⚠ فتح نزاع
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>إجراء النزاع</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+                          {/* Option 1: Freeze */}
+                          <label style={{
+                            display: 'flex', alignItems: 'flex-start', gap: 10,
+                            padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
+                            border: `2px solid ${disputeAction === 'frozen' ? '#F59E0B' : 'var(--border)'}`,
+                            background: disputeAction === 'frozen' ? '#FEF3C7' : '#F9FAFB',
+                          }}>
+                            <input type="radio" name="dispute_action" value="frozen"
+                              checked={disputeAction === 'frozen'}
+                              onChange={() => { setDisputeAction('frozen'); setDisputeAmount('') }}
+                              style={{ marginTop: 2 }} />
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: '#92400E' }}>⚠ تجميد المبلغ</div>
+                              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                                يُجمَّد المبلغ مؤقتاً ويُشعَر كل من الأستاذ والطالب بالتجميد وبدء التحقيق
+                              </div>
+                            </div>
+                          </label>
+
+                          {/* Option 2: Refund student */}
+                          <label style={{
+                            display: 'flex', alignItems: 'flex-start', gap: 10,
+                            padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
+                            border: `2px solid ${disputeAction === 'refunded' ? '#7C3AED' : 'var(--border)'}`,
+                            background: disputeAction === 'refunded' ? '#F0EDFF' : '#F9FAFB',
+                          }}>
+                            <input type="radio" name="dispute_action" value="refunded"
+                              checked={disputeAction === 'refunded'}
+                              onChange={() => setDisputeAction('refunded')}
+                              style={{ marginTop: 2 }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: '#5A3B95' }}>↩ استرداد للطالب</div>
+                              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                                الطالب صاحب الحق — يُشعَر كلاهما ويُضاف للمستردات
+                              </div>
+                              {disputeAction === 'refunded' && (
+                                <input
+                                  type="number" min="0" max={modal.row.amount}
+                                  placeholder={`المبلغ المسترد (من ${modal.row.amount} أوقية)`}
+                                  value={disputeAmount}
+                                  onChange={e => setDisputeAmount(e.target.value)}
+                                  onClick={e => e.stopPropagation()}
+                                  style={{
+                                    marginTop: 8, width: '100%', padding: '7px 10px',
+                                    borderRadius: 8, border: '1.5px solid #C4B5FD',
+                                    fontSize: 13, fontWeight: 700, color: '#5A3B95', outline: 'none',
+                                  }}
+                                />
+                              )}
+                            </div>
+                          </label>
+
+                          {/* Option 3: Confirm teacher's right */}
+                          <label style={{
+                            display: 'flex', alignItems: 'flex-start', gap: 10,
+                            padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
+                            border: `2px solid ${disputeAction === 'confirm' ? '#059669' : 'var(--border)'}`,
+                            background: disputeAction === 'confirm' ? '#D7F2E6' : '#F9FAFB',
+                          }}>
+                            <input type="radio" name="dispute_action" value="confirm"
+                              checked={disputeAction === 'confirm'}
+                              onChange={() => { setDisputeAction('confirm'); setDisputeAmount('') }}
+                              style={{ marginTop: 2 }} />
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: '#059669' }}>✓ تأكيد حق الأستاذ</div>
+                              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                                الأستاذ صاحب الحق — يُشعَر الأستاذ بتأكيد المبلغ والطالب برفض الشكوى
+                              </div>
+                            </div>
+                          </label>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 10 }}>
+                          <button
+                            className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}
+                            disabled={!!actionId || !disputeAction || (disputeAction === 'refunded' && !disputeAmount)}
+                            onClick={() => {
+                              if (disputeAction === 'frozen')   return freezePayment(modal.row.id)
+                              if (disputeAction === 'refunded') return disputeRefund(modal.row.id, disputeAmount)
+                              if (disputeAction === 'confirm')  return confirmAfterDispute(modal.row.id)
+                            }}
+                          >
+                            {actionId
+                              ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2, borderColor: 'rgba(255,255,255,.3)', borderTopColor: '#fff' }} />
+                              : 'تنفيذ الإجراء'}
+                          </button>
+                          <button className="btn btn-secondary" onClick={() => { setDisputeMode(false); setDisputeAction(''); setDisputeAmount('') }}>رجوع</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+
+              if (modal.row.status === 'confirmed') {
                 return <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center' }} onClick={closeModal}>إغلاق</button>
               }
 
@@ -716,14 +910,14 @@ export default function Payments({ adminId }) {
                     label: 'الوصل مزيف',
                     desc:  'الإثبات غير حقيقي — مرفوض نهائياً، لا استرداد',
                     icon:  '🚫',
-                    badge: { bg: '#FEE2E2', fg: '#991B1B', text: 'ملغى' },
+                    badge: { bg: '#FBE0DB', fg: '#A12B1D', text: 'ملغى' },
                   },
                   {
                     value: 'INCOMPLETE_AMOUNT',
                     label: 'المبلغ غير مكتمل',
                     desc:  'المبلغ أقل من المطلوب — يُلغى ويُسترد فوراً',
                     icon:  '💰',
-                    badge: { bg: '#EDE9FE', fg: '#5B21B6', text: 'ملغى + مسترد' },
+                    badge: { bg: '#ECE5F7', fg: '#5A3B95', text: 'ملغى + مسترد' },
                   },
                 ]
                 return (
@@ -734,18 +928,18 @@ export default function Payments({ adminId }) {
                         <label key={opt.value} style={{
                           display: 'flex', alignItems: 'center', gap: 12,
                           padding: '13px 14px', borderRadius: 12, cursor: 'pointer',
-                          border: `2px solid ${rejectReason === opt.value ? '#DC2626' : 'var(--border)'}`,
-                          background: rejectReason === opt.value ? '#FEF2F2' : '#F9FAFB',
+                          border: `2px solid ${rejectReason === opt.value ? '#A12B1D' : 'var(--border)'}`,
+                          background: rejectReason === opt.value ? '#FBE0DB' : '#F9FAFB',
                           transition: 'all .15s',
                         }}>
                           <input type="radio" name="reject_reason" value={opt.value}
                             checked={rejectReason === opt.value}
                             onChange={() => setRejectReason(opt.value)}
-                            style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#DC2626' }} />
+                            style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#A12B1D' }} />
                           <span style={{ fontSize: 22, flexShrink: 0 }}>{opt.icon}</span>
                           <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: 13.5, fontWeight: 700, color: rejectReason === opt.value ? '#DC2626' : 'var(--text)' }}>{opt.label}</span>
+                              <span style={{ fontSize: 13.5, fontWeight: 700, color: rejectReason === opt.value ? '#A12B1D' : 'var(--text)' }}>{opt.label}</span>
                               <span className="badge" style={{ background: opt.badge.bg, color: opt.badge.fg, fontSize: 10 }}>{opt.badge.text}</span>
                             </div>
                             <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 3 }}>{opt.desc}</div>
@@ -754,22 +948,51 @@ export default function Payments({ adminId }) {
                       ))}
                     </div>
 
+                    {/* Problem 1: refund amount input for incomplete payment */}
+                    {rejectReason === 'INCOMPLETE_AMOUNT' && (
+                      <div style={{ background: '#F0EDFF', borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#5A3B95', marginBottom: 6 }}>
+                          💰 المبلغ الفعلي الذي سيُسترد للطالب (أوقية)
+                        </div>
+                        <input
+                          type="number"
+                          min="0"
+                          max={modal.row.amount}
+                          placeholder={`الحد الأقصى: ${modal.row.amount} أوقية`}
+                          value={refundAmountInput}
+                          onChange={e => setRefundAmountInput(e.target.value)}
+                          style={{
+                            width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #C4B5FD',
+                            fontSize: 14, fontWeight: 700, color: '#5A3B95', outline: 'none',
+                          }}
+                        />
+                      </div>
+                    )}
+
                     <div style={{ display: 'flex', gap: 10 }}>
                       <button
                         className="btn btn-danger" style={{ flex: 1, justifyContent: 'center' }}
-                        disabled={!!actionId || !rejectReason}
-                        onClick={() => {
-                          if (modal.type === 'session') return rejectPayment(modal.row.id, rejectReason)
-                          // INCOMPLETE_AMOUNT always triggers auto-refund for subscriptions
-                          if (rejectReason === 'INCOMPLETE_AMOUNT') return rejectSubWithRefund(modal.row.id, rejectReason)
+                        disabled={!!actionId || !rejectReason || (rejectReason === 'INCOMPLETE_AMOUNT' && !refundAmountInput)}
+                        onClick={async () => {
+                          if (modal.type === 'session') {
+                            await rejectPayment(modal.row.id, rejectReason)
+                            // Save actual refund amount for incomplete payment
+                            if (rejectReason === 'INCOMPLETE_AMOUNT' && refundAmountInput) {
+                              await supabase.from('payments')
+                                .update({ actual_refund_amount: parseFloat(refundAmountInput) })
+                                .eq('id', modal.row.id)
+                            }
+                            return
+                          }
+                          if (rejectReason === 'INCOMPLETE_AMOUNT') return rejectSubWithRefund(modal.row.id, rejectReason, refundAmountInput)
                           return rejectSub(modal.row.id, rejectReason)
                         }}
                       >
                         {actionId
                           ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2, borderColor: 'rgba(255,255,255,.3)', borderTopColor: '#fff' }} />
-                          : rejectReason === 'INCOMPLETE_AMOUNT' ? '↩ رفض + استرداد فوري' : '✕ رفض نهائي'}
+                          : rejectReason === 'INCOMPLETE_AMOUNT' ? '↩ رفض + استرداد' : '✕ رفض نهائي'}
                       </button>
-                      <button className="btn btn-secondary" onClick={() => { setRejectInput(false); setRejectReason('') }}>رجوع</button>
+                      <button className="btn btn-secondary" onClick={() => { setRejectInput(false); setRejectReason(''); setRefundAmountInput('') }}>رجوع</button>
                     </div>
                   </div>
                 )
@@ -780,7 +1003,7 @@ export default function Payments({ adminId }) {
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {noProof && (
-                    <div style={{ background: '#FEE2E2', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#991B1B' }}>
+                    <div style={{ background: '#FBE0DB', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#A12B1D' }}>
                       🚫 لا يمكن تأكيد الدفع — لم يُرفق وصل دفع
                     </div>
                   )}
@@ -806,7 +1029,7 @@ export default function Payments({ adminId }) {
 
       {/* ── Refunds tab ────────────────────────────────────────── */}
       {tab === 'refunds' && (
-        (refundedRows.length === 0 && subRefundedRows.length === 0)
+        (refundedRows.length === 0 && subRefundedRows.length === 0 && disputeRefundedRows.length === 0)
           ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text3)' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>💰</div>
@@ -828,8 +1051,8 @@ export default function Payments({ adminId }) {
                     {refundedRows.map(r => {
                       const cr = r.cancellation_reason
                       const [reasonLabel, rBg, rFg] =
-                        cr === 'teacher_no_show_refund' ? ['غياب الأستاذ',      '#FEE2E2', '#991B1B']
-                        : cr === 'insufficient_refund'  ? ['مبلغ ناقص',          '#EDE9FE', '#5B21B6']
+                        cr === 'teacher_no_show_refund' ? ['غياب الأستاذ',      '#FBE0DB', '#A12B1D']
+                        : cr === 'insufficient_refund'  ? ['مبلغ ناقص',          '#ECE5F7', '#5A3B95']
                         :                                [cr || '—',             '#F1F5F9', '#475569']
                       const pay = r.payment
                       const refAmt = pay?.amount || r.amount
@@ -841,12 +1064,36 @@ export default function Payments({ adminId }) {
                           <span>
                             <span className="badge" style={{ background: rBg, color: rFg }}>{reasonLabel}</span>
                           </span>
-                          <span className="fw-700" style={{ color: '#7B61FF' }}>{fmt(refAmt)} أوقية</span>
+                          <span className="fw-700" style={{ color: 'var(--purple)' }}>{fmt(refAmt)} أوقية</span>
                           <span style={{ fontSize: 12 }}>{fmtMethod(pay?.method)}</span>
                           <span className="text-muted" style={{ fontSize: 11 }}>{r.updated_at?.slice(0, 10)}</span>
                         </div>
                       )
                     })}
+                  </div>
+                </>
+              )}
+
+              {disputeRefundedRows.length > 0 && (
+                <>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text2)', marginBottom: 8 }}>
+                    استردادات النزاعات ⚖ <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text3)' }}>({disputeRefundedRows.length})</span>
+                  </div>
+                  <div className="table-wrap" style={{ marginBottom: 24 }}>
+                    <div className="table-head" style={{ gridTemplateColumns: '1.2fr 1fr 1fr 0.9fr 0.9fr 0.7fr' }}>
+                      <span>الطالب</span><span>المادة</span><span>المبلغ الكلي</span>
+                      <span>المسترد فعلياً</span><span>طريقة الدفع</span><span>تاريخ الإجراء</span>
+                    </div>
+                    {disputeRefundedRows.map(r => (
+                      <div key={r.id} className="table-row" style={{ gridTemplateColumns: '1.2fr 1fr 1fr 0.9fr 0.9fr 0.7fr', alignItems: 'center' }}>
+                        <span className="fw-700">{r.student?.full_name || '—'}</span>
+                        <span className="text-2">{r.session?.subject || '—'}</span>
+                        <span className="fw-700">{fmt(r.amount)} أوقية</span>
+                        <span className="fw-700" style={{ color: 'var(--purple)' }}>{fmt(r.dispute_refund_amount)} أوقية</span>
+                        <span style={{ fontSize: 12 }}>{fmtMethod(r.method)}</span>
+                        <span className="text-muted" style={{ fontSize: 11 }}>{r.dispute_updated_at?.slice(0, 10)}</span>
+                      </div>
+                    ))}
                   </div>
                 </>
               )}
@@ -873,9 +1120,9 @@ export default function Payments({ adminId }) {
                           <span className="text-2">{r.course?.title || r.package?.title || '—'}</span>
                           <span className="text-2">{r.course?.teacher_name || '—'}</span>
                           <span>
-                            <span className="badge" style={{ background: '#EDE9FE', color: '#5B21B6' }}>{reasonLabel}</span>
+                            <span className="badge" style={{ background: '#ECE5F7', color: '#5A3B95' }}>{reasonLabel}</span>
                           </span>
-                          <span className="fw-700" style={{ color: '#7B61FF' }}>{fmt(r.amount)} أوقية</span>
+                          <span className="fw-700" style={{ color: 'var(--purple)' }}>{fmt(r.amount)} أوقية</span>
                           <span style={{ fontSize: 12 }}>{r.plan_type === 'yearly' ? 'سنوي' : 'شهري'}</span>
                           <span className="text-muted" style={{ fontSize: 11 }}>{r.updated_at?.slice(0, 10)}</span>
                         </div>

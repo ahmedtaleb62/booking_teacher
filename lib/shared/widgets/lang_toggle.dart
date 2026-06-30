@@ -30,7 +30,7 @@ class LangToggle extends ConsumerWidget {
           activeColor: activeColor,
           activeFg: activeFg,
           inactiveFg: inactiveFg,
-          onTap: () => ref.read(localeProvider.notifier).state = const Locale('ar'),
+          onTap: () => ref.read(localeProvider.notifier).setLocale(const Locale('ar')),
         ),
         const SizedBox(width: 6),
         _Pill(
@@ -39,7 +39,7 @@ class LangToggle extends ConsumerWidget {
           activeColor: activeColor,
           activeFg: activeFg,
           inactiveFg: inactiveFg,
-          onTap: () => ref.read(localeProvider.notifier).state = const Locale('fr'),
+          onTap: () => ref.read(localeProvider.notifier).setLocale(const Locale('fr')),
         ),
       ],
     );

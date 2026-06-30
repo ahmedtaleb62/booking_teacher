@@ -88,16 +88,16 @@ class MessagingService {
   static Future<void> deleteMessage(String msgId) async {
     await _db.from('session_messages')
         .delete()
-        .eq('id', msgId)
-        .eq('sender_id', SupabaseService.userId!);
+        .eq('id', msgId);
+    // RLS policy "Users can delete own messages" enforces sender_id = auth.uid()
   }
 
   static Future<void> editMessage(String msgId, String newContent) async {
     await _db.from('session_messages')
         .update({'content': newContent.trim()})
         .eq('id', msgId)
-        .eq('sender_id', SupabaseService.userId!)
         .eq('type', 'text');
+    // RLS policy "Users can update own messages" enforces sender_id = auth.uid()
   }
 
   static Future<void> sendText(String sessionId, String text) async {

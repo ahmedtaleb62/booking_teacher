@@ -11,10 +11,9 @@ const TARGET_OPTIONS = [
 
 const TYPE_ICONS = {
   PAYMENT_SUBMITTED:  { icon: '💳', bg: '#FFFBEB', border: '#FCD34D', label: 'دفع' },
-  DISPUTE_OPENED:     { icon: '⚠️', bg: '#FEF2F2', border: '#FCA5A5', label: 'نزاع' },
   TEACHER_ONBOARDING: { icon: '👨‍🏫', bg: '#EFF6FF', border: '#93C5FD', label: 'أستاذ' },
   ADMIN_BROADCAST:    { icon: '📢', bg: '#F0FDF4', border: '#86EFAC', label: 'بث' },
-  SESSION_REQUESTED:  { icon: '📅', bg: '#F5F3FF', border: '#C4B5FD', label: 'جلسة' },
+  SESSION_REQUESTED:  { icon: '📅', bg: '#E3F4EF', border: '#9FD5C4', label: 'جلسة' },
   default:            { icon: '🔔', bg: '#F8FAFC', border: '#CBD5E1', label: 'إشعار' },
 }
 
@@ -336,10 +335,10 @@ export default function Notifications({ adminId }) {
                         >
                           <div style={{
                             width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                            background: u.role === 'teacher' ? '#EDE9FE' : '#DBEAFE',
+                            background: u.role === 'teacher' ? '#ECE5F7' : '#DEEAF7',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             fontWeight: 700, fontSize: 14,
-                            color: u.role === 'teacher' ? '#5B21B6' : '#1D4ED8',
+                            color: u.role === 'teacher' ? '#5A3B95' : '#1F5C99',
                           }}>{u.full_name?.[0] ?? '?'}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 13.5, fontWeight: 600, color: '#1E293B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
 import '../constants/session_states.dart';
 import '../models/session.dart';
 import '../services/session_service.dart';
@@ -34,6 +35,40 @@ class TeacherDashboardStats {
     required this.upcomingSessions,
   });
 }
+
+// ── Global sessions realtime (invalidates lists on any change) ───
+//
+// Activated from home screens via ref.watch(sessionsRealtimeProvider).
+// Subscribes to sessions + payments tables and invalidates all list
+// providers whenever any row changes for the current user.
+final sessionsRealtimeProvider = Provider.autoDispose<void>((ref) {
+  final uid = SupabaseService.userId;
+  if (uid == null) return;
+
+  void invalidateAll() {
+    ref.invalidate(studentSessionsProvider);
+    ref.invalidate(teacherSessionsProvider);
+    ref.invalidate(teacherDashboardProvider);
+  }
+
+  final channel = SupabaseService.client
+      .channel('global-sessions-$uid')
+      .onPostgresChanges(
+        event:  PostgresChangeEvent.all,
+        schema: 'public',
+        table:  'sessions',
+        callback: (_) => invalidateAll(),
+      )
+      .onPostgresChanges(
+        event:  PostgresChangeEvent.all,
+        schema: 'public',
+        table:  'payments',
+        callback: (_) => invalidateAll(),
+      )
+      .subscribe();
+
+  ref.onDispose(() => SupabaseService.client.removeChannel(channel));
+});
 
 // ── Student sessions list ───────────────────────────────────
 final studentSessionsProvider = FutureProvider.autoDispose<List<Session>>((ref) async {
@@ -82,8 +117,8 @@ final sessionProvider = StreamProvider.autoDispose.family<Session?, String>((ref
 
   final channel = SessionService.subscribeToSession(sessionId, (s) {
     if (!controller.isClosed) controller.add(s);
-    // Keep the sessions list in sync when a single session changes via realtime
     ref.invalidate(studentSessionsProvider);
+    ref.invalidate(teacherSessionsProvider);
   });
 
   ref.onDispose(() {
@@ -92,20 +127,6 @@ final sessionProvider = StreamProvider.autoDispose.family<Session?, String>((ref
   });
 
   return controller.stream;
-});
-
-// ── Teacher pending requests count ─────────────────────────
-final pendingRequestsCountProvider = FutureProvider.autoDispose<int>((ref) async {
-  final session = ref.watch(currentSessionProvider);
-  if (session == null) return 0;
-  final uid = SupabaseService.userId;
-  if (uid == null) return 0;
-  final data = await SupabaseService.client
-      .from('sessions')
-      .select('id')
-      .eq('teacher_id', uid)
-      .eq('state', SessionState.requested.englishKey);
-  return (data as List).length;
 });
 
 // ── Teacher profile ─────────────────────────────────────────
@@ -177,7 +198,7 @@ final teacherDashboardProvider = FutureProvider.autoDispose<TeacherDashboardStat
         .lt('scheduled_at', todayEnd),
     SupabaseService.client
         .from('ledger_entries')
-        .select('net_amount')
+        .select('net_amount, type')
         .eq('teacher_id', uid)
         .gte('created_at', weekStart),
     SupabaseService.client
@@ -293,8 +314,6 @@ final teacherTodaySessionsProvider = FutureProvider.autoDispose<List<Map<String,
         SessionState.paymentConfirmed.englishKey,
         SessionState.confirmedBooking.englishKey,
         SessionState.activeSession.englishKey,
-        SessionState.teacherNoShow.englishKey,
-        SessionState.studentNoShow.englishKey,
       ])
       .gte('scheduled_at', todayStart)
       .lt('scheduled_at', todayEnd)
@@ -338,9 +357,6 @@ final teacherCompletedSessionsProvider = FutureProvider.autoDispose<List<Map<Str
         SessionState.completed.englishKey,
         SessionState.teacherRejected.englishKey,
         SessionState.cancelled.englishKey,
-        SessionState.studentNoShow.englishKey,
-        SessionState.teacherNoShow.englishKey,
-        SessionState.dispute.englishKey,
       ])
       .order('scheduled_at', ascending: false)
       .limit(50);
@@ -378,36 +394,46 @@ final teacherEarningsProvider = FutureProvider.autoDispose<TeacherEarningsData>(
   final uid = SupabaseService.userId;
   if (uid == null) return const TeacherEarningsData(totalBalance: 0, weekEarnings: 0, monthEarnings: 0, entries: []);
 
-  final now = DateTime.now();
+  final now        = DateTime.now();
   final weekStart  = DateTime(now.year, now.month, now.day - now.weekday);
   final monthStart = DateTime(now.year, now.month, 1);
 
-  final data = await SupabaseService.client
-      .from('ledger_entries')
-      .select('id, net_amount, description, created_at, type, session:session_id(subject, student:student_id(full_name))')
-      .eq('teacher_id', uid)
-      .order('created_at', ascending: false)
-      .limit(100);
+  // Two queries in parallel:
+  // 1. All entries (lightweight) for accurate financial totals — no limit
+  // 2. Recent 100 entries with full details for the display list
+  final results = await Future.wait([
+    SupabaseService.client
+        .from('ledger_entries')
+        .select('net_amount, type, created_at')
+        .eq('teacher_id', uid),
+    SupabaseService.client
+        .from('ledger_entries')
+        .select('id, net_amount, description, created_at, type, session:session_id(subject, student:student_id(full_name))')
+        .eq('teacher_id', uid)
+        .order('created_at', ascending: false)
+        .limit(100),
+  ]);
 
-  final entries = List<Map<String, dynamic>>.from(data as List);
+  final allEntries  = List<Map<String, dynamic>>.from(results[0] as List);
+  final listEntries = List<Map<String, dynamic>>.from(results[1] as List);
 
   double earned = 0, week = 0, month = 0, courseTot = 0, sessionTot = 0, payouts = 0;
-  for (final e in entries) {
-    final amt      = (e['net_amount'] as num?)?.toDouble() ?? 0;
-    final type     = e['type'] as String? ?? '';
-    final created  = DateTime.tryParse(e['created_at'] as String? ?? '') ?? DateTime(2000);
-    // payout_sent appears in the ledger list but does NOT count toward displayed earnings
+  for (final e in allEntries) {
+    final amt     = (e['net_amount'] as num?)?.toDouble() ?? 0;
+    final type    = e['type'] as String? ?? '';
+    final created = DateTime.tryParse(e['created_at'] as String? ?? '') ?? DateTime(2000);
     if (type == 'payout_sent') {
-      payouts += amt; // negative value
+      payouts += amt; // stored as negative in DB
       continue;
     }
     earned += amt;
-    if (created.isAfter(weekStart))  { week  += amt; }
-    if (created.isAfter(monthStart)) { month += amt; }
-    if (type == 'course_subscription') { courseTot  += amt; }
-    else if (type == 'session_payment') { sessionTot += amt; }
+    if (created.isAfter(weekStart))  week  += amt;
+    if (created.isAfter(monthStart)) month += amt;
+    if (type == 'course_subscription')    courseTot  += amt;
+    else if (type == 'session_payment')   sessionTot += amt;
   }
-  final total = earned + payouts; // payouts is negative, so subtracts
+  // earned + payouts = 0 after full settlement; clamp to 0 to avoid floating-point negatives
+  final total = (earned + payouts).clamp(0.0, double.infinity);
 
   return TeacherEarningsData(
     totalBalance:    total,
@@ -415,6 +441,6 @@ final teacherEarningsProvider = FutureProvider.autoDispose<TeacherEarningsData>(
     monthEarnings:   month,
     courseEarnings:  courseTot,
     sessionEarnings: sessionTot,
-    entries:         entries,
+    entries:         listEntries,
   );
 });

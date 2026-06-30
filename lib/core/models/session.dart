@@ -212,7 +212,7 @@ class SessionEvent {
     required this.createdAt,
   });
 
-  String labelFor(AppLocalizations l) {
+  String labelFor(AppLocalizations l, {String? cancellationReason}) {
     switch (eventType) {
       case 'REQUESTED':         return l.evtRequested;
       case 'TEACHER_APPROVED':  return l.evtTeacherApproved;
@@ -226,10 +226,16 @@ class SessionEvent {
       case 'SESSION_COMPLETED': return l.evtSessionCompleted;
       case 'ACTIVE_SESSION':    return l.evtActiveSession;
       case 'COMPLETED':         return l.evtCompleted;
-      case 'TEACHER_NO_SHOW':   return l.evtTeacherNoShow;
-      case 'STUDENT_NO_SHOW':   return l.evtStudentNoShow;
-      case 'DISPUTE_OPENED':    return l.evtDisputeOpened;
-      case 'CANCELLED':         return l.evtCancelled;
+      case 'CANCELLED':
+        switch (cancellationReason) {
+          case 'teacher_timeout':        return 'انتهت مهلة رد الأستاذ — إلغاء تلقائي';
+          case 'payment_timeout':
+          case 'no_payment_deadline':    return 'انتهت مهلة الدفع — إلغاء تلقائي';
+          case 'fake_proof':             return 'رُفض الدفع — الوصل مزيف';
+          case 'insufficient_refund':    return 'رُفض الدفع — المبلغ غير مكتمل';
+          case 'teacher_no_show_refund': return 'إلغاء — غياب الأستاذ · سيُستَرد مبلغك';
+          default:                       return l.evtCancelled;
+        }
       case 'RESCHEDULED':       return l.evtRescheduled;
       case 'REFUND_REQUESTED':  return l.evtRefundRequested;
       case 'REFUND_PROCESSED':  return l.evtRefundProcessed;
@@ -237,7 +243,7 @@ class SessionEvent {
     }
   }
 
-  String teacherLabelFor(AppLocalizations l) {
+  String teacherLabelFor(AppLocalizations l, {String? cancellationReason}) {
     switch (eventType) {
       case 'REQUESTED':         return l.evtTRequested;
       case 'TEACHER_APPROVED':  return l.evtTApproved;
@@ -251,10 +257,17 @@ class SessionEvent {
       case 'SESSION_COMPLETED': return l.evtTSessionCompleted;
       case 'ACTIVE_SESSION':    return l.evtTActiveSession;
       case 'COMPLETED':         return l.evtTCompleted;
-      case 'TEACHER_NO_SHOW':   return l.evtTTeacherNoShow;
-      case 'STUDENT_NO_SHOW':   return l.evtTStudentNoShow;
-      case 'DISPUTE_OPENED':    return l.evtTDisputeOpened;
-      case 'CANCELLED':         return l.evtTCancelled;
+      case 'CANCELLED':
+        switch (cancellationReason) {
+          case 'teacher_timeout':        return 'انتهت مهلة ردك — إلغاء تلقائي';
+          case 'payment_timeout':
+          case 'no_payment_deadline':    return 'انتهت مهلة دفع الطالب — إلغاء تلقائي';
+          case 'student_cancelled':      return l.evtTCancelled;
+          case 'fake_proof':             return 'رُفض الدفع — الوصل مزيف';
+          case 'insufficient_refund':    return 'رُفض الدفع — المبلغ غير مكتمل';
+          case 'teacher_no_show_refund': return 'إلغاء — غياب الأستاذ';
+          default:                       return l.evtTCancelled;
+        }
       case 'RESCHEDULED':       return l.evtTRescheduled;
       case 'REFUND_REQUESTED':  return l.evtTRefundRequested;
       case 'REFUND_PROCESSED':  return l.evtTRefundProcessed;
@@ -274,65 +287,3 @@ class SessionEvent {
   }
 }
 
-// Mock sessions for UI development
-class MockSessions {
-  static List<Session> get list => [
-    Session(
-      id: 'ses-001',
-      studentId: 'stu-1',
-      teacherId: 'tch-1',
-      teacherName: 'د. محمد الأمين',
-      teacherInitial: 'م',
-      subject: 'رياضيات',
-      state: SessionState.confirmedBooking,
-      scheduledAt: DateTime.now().add(const Duration(hours: 2)),
-      durationMinutes: 60,
-      amount: 500,
-      studentNote: 'أحتاج مراجعة الدوال والنهايات',
-      events: [
-        SessionEvent(id: 'e1', sessionId: 'ses-001', eventType: 'REQUESTED', createdAt: DateTime.now().subtract(const Duration(hours: 3))),
-        SessionEvent(id: 'e2', sessionId: 'ses-001', eventType: 'TEACHER_APPROVED', createdAt: DateTime.now().subtract(const Duration(hours: 2, minutes: 30))),
-        SessionEvent(id: 'e3', sessionId: 'ses-001', eventType: 'PAYMENT_CONFIRMED', createdAt: DateTime.now().subtract(const Duration(hours: 2))),
-      ],
-      createdAt: DateTime.now().subtract(const Duration(hours: 3)),
-      updatedAt: DateTime.now().subtract(const Duration(hours: 2)),
-    ),
-    Session(
-      id: 'ses-002',
-      studentId: 'stu-1',
-      teacherId: 'tch-2',
-      teacherName: 'أ. فاطمة محمود',
-      teacherInitial: 'ف',
-      subject: 'فيزياء',
-      state: SessionState.requested,
-      scheduledAt: DateTime.now().add(const Duration(days: 1, hours: 4)),
-      durationMinutes: 60,
-      amount: 450,
-      events: [
-        SessionEvent(id: 'e4', sessionId: 'ses-002', eventType: 'REQUESTED', createdAt: DateTime.now().subtract(const Duration(minutes: 30))),
-      ],
-      createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
-      updatedAt: DateTime.now().subtract(const Duration(minutes: 30)),
-    ),
-    Session(
-      id: 'ses-003',
-      studentId: 'stu-1',
-      teacherId: 'tch-3',
-      teacherName: 'د. أحمد ولد سيدي',
-      teacherInitial: 'أ',
-      subject: 'لغة عربية',
-      state: SessionState.completed,
-      scheduledAt: DateTime.now().subtract(const Duration(days: 2)),
-      durationMinutes: 60,
-      amount: 400,
-      events: [
-        SessionEvent(id: 'e5', sessionId: 'ses-003', eventType: 'REQUESTED', createdAt: DateTime.now().subtract(const Duration(days: 3))),
-        SessionEvent(id: 'e6', sessionId: 'ses-003', eventType: 'TEACHER_APPROVED', createdAt: DateTime.now().subtract(const Duration(days: 2, hours: 23))),
-        SessionEvent(id: 'e7', sessionId: 'ses-003', eventType: 'PAYMENT_CONFIRMED', createdAt: DateTime.now().subtract(const Duration(days: 2, hours: 22))),
-        SessionEvent(id: 'e8', sessionId: 'ses-003', eventType: 'SESSION_COMPLETED', createdAt: DateTime.now().subtract(const Duration(days: 2))),
-      ],
-      createdAt: DateTime.now().subtract(const Duration(days: 3)),
-      updatedAt: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-  ];
-}

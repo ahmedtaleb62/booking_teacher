@@ -7,6 +7,7 @@ import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/course.dart';
 import '../../../core/providers/courses_provider.dart';
+import '../../../core/utils/app_errors.dart';
 
 class PackageDetailsScreen extends ConsumerWidget {
   final String packageId;
@@ -26,10 +27,41 @@ class PackageDetailsScreen extends ConsumerWidget {
       error: (e, _) => Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(backgroundColor: AppColors.background, elevation: 0),
-        body: Center(child: Text('${l.commonErrorLoading}: $e')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
+                const SizedBox(height: 12),
+                Text(l.commonErrorLoading,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
+                const SizedBox(height: 8),
+                Text(AppErrors.friendly(e, l),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => ref.invalidate(packageDetailsProvider(packageId)),
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: Text(l.commonRetry),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
       data: (pkg) {
         final subStatus = subStatusAsync.valueOrNull;
+        final isFree    = pkg.priceMonthly == 0;
         return Scaffold(
           backgroundColor: AppColors.background,
           body: CustomScrollView(
@@ -41,7 +73,7 @@ class PackageDetailsScreen extends ConsumerWidget {
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
-          bottomNavigationBar: _buildBottomBar(context, pkg, subStatus),
+          bottomNavigationBar: _buildBottomBar(context, pkg, subStatus, isFree),
         );
       },
     );
@@ -239,7 +271,7 @@ class PackageDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBottomBar(BuildContext context, CoursePackage pkg, String? subStatus) {
+  Widget _buildBottomBar(BuildContext context, CoursePackage pkg, String? subStatus, bool isFree) {
     final l = context.l10n;
     return SafeArea(
       top: false,
@@ -251,45 +283,56 @@ class PackageDetailsScreen extends ConsumerWidget {
             color: AppColors.surface,
             border: Border(top: BorderSide(color: AppColors.border)),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (pkg.originalPrice != null)
-                    Text(
-                      l.homeOriginalPrice(pkg.originalPrice!.toStringAsFixed(0)),
-                      style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textHint,
-                          decoration: TextDecoration.lineThrough),
-                    ),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
+          child: isFree
+              ? Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF15805F),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(pkg.priceMonthly.toStringAsFixed(0),
+                      const Icon(Icons.play_circle_filled_rounded, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Text(l.homeLearnFree,
                           style: const TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                      Text(' ${l.homeOugiyaPerMonth}',
-                          style: const TextStyle(fontSize: 10, color: AppColors.textHint)),
+                              color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
                     ],
                   ),
-                  if (pkg.priceYearly != null)
-                    Text(
-                      l.coursePriceYearly(pkg.priceYearly!.toStringAsFixed(0)),
-                      style: const TextStyle(
-                          fontSize: 10, color: AppColors.statusConfirmed, fontWeight: FontWeight.w600),
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (pkg.originalPrice != null)
+                          Text(
+                            l.homeOriginalPrice(pkg.originalPrice!.toStringAsFixed(0)),
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textHint,
+                                decoration: TextDecoration.lineThrough),
+                          ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text((pkg.priceYearly ?? pkg.priceMonthly).toStringAsFixed(0),
+                                style: const TextStyle(
+                                    fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                            Text(' ${l.subscriptionPerYear}',
+                                style: const TextStyle(fontSize: 10, color: AppColors.textHint)),
+                          ],
+                        ),
+                      ],
                     ),
-                ],
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: _subscribeButton(context, pkg, subStatus, l)),
-            ],
-          ),
+                    const SizedBox(width: 12),
+                    Expanded(child: _subscribeButton(context, pkg, subStatus, l)),
+                  ],
+                ),
         ),
       ),
     );
@@ -337,7 +380,7 @@ class PackageDetailsScreen extends ConsumerWidget {
     if (subStatus == 'expired') {
       return GestureDetector(
         onTap: () => context.push('/subscribe/package/${pkg.id}',
-            extra: {'priceMonthly': pkg.priceMonthly, 'priceYearly': pkg.priceYearly, 'title': pkg.title}),
+            extra: {'priceMonthly': pkg.priceYearly ?? pkg.priceMonthly, 'priceYearly': pkg.priceYearly ?? pkg.priceMonthly, 'title': pkg.title}),
         child: Container(
           decoration: BoxDecoration(
             color: const Color(0xFFFEF3C7),
@@ -360,7 +403,7 @@ class PackageDetailsScreen extends ConsumerWidget {
     if (subStatus == 'rejected') {
       return GestureDetector(
         onTap: () => context.push('/subscribe/package/${pkg.id}',
-            extra: {'priceMonthly': pkg.priceMonthly, 'priceYearly': pkg.priceYearly, 'title': pkg.title}),
+            extra: {'priceMonthly': pkg.priceYearly ?? pkg.priceMonthly, 'priceYearly': pkg.priceYearly ?? pkg.priceMonthly, 'title': pkg.title}),
         child: Container(
           decoration: BoxDecoration(
             color: const Color(0xFFFEE2E2),
@@ -386,7 +429,7 @@ class PackageDetailsScreen extends ConsumerWidget {
     // null — no subscription yet
     return GestureDetector(
       onTap: () => context.push('/subscribe/package/${pkg.id}',
-          extra: {'priceMonthly': pkg.priceMonthly, 'priceYearly': pkg.priceYearly, 'title': pkg.title}),
+          extra: {'priceMonthly': pkg.priceYearly ?? pkg.priceMonthly, 'priceYearly': pkg.priceYearly ?? pkg.priceMonthly, 'title': pkg.title}),
       child: Container(
         decoration: BoxDecoration(
           color: pkg.coverColor,

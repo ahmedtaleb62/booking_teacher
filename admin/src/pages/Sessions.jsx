@@ -3,11 +3,13 @@ import { supabase } from '../supabase'
 
 /* ── Readable labels for DB enum values ─────────────────────── */
 const CANCEL_REASON_LABELS = {
+  teacher_timeout:        'انتهت مهلة رد الأستاذ — إلغاء تلقائي',
+  payment_timeout:        'انتهت مهلة الدفع — إلغاء تلقائي',
+  student_cancelled:      'إلغاء الطالب',
   fake_proof:             'الوصل مزيف — مرفوض نهائياً',
   insufficient_refund:    'مبلغ ناقص — سيُستَرد',
-  no_payment_deadline:    'انتهت مهلة الدفع قبل الدفع',
+  no_payment_deadline:    'انتهت مهلة الدفع — لم يُرسَل إثبات',
   teacher_no_show_refund: 'غياب الأستاذ — سيُستَرد',
-  student_cancelled:      'إلغاء الطالب',
 }
 
 const REJECT_REASON_LABELS = {
@@ -16,19 +18,16 @@ const REJECT_REASON_LABELS = {
 }
 
 const STATE_MAP = {
-  REQUESTED:         ['بانتظار الأستاذ',  '#FEF3C7', '#92400E'],
-  TEACHER_APPROVED:  ['وافق الأستاذ',     '#DBEAFE', '#1D4ED8'],
-  AWAITING_PAYMENT:  ['انتظار الدفع',     '#FEF3C7', '#92400E'],
-  PAYMENT_SUBMITTED: ['دفع مُرسَل',        '#EDE9FE', '#5B21B6'],
-  PAYMENT_REJECTED:  ['دفع مرفوض',        '#FEE2E2', '#DC2626'],
-  CONFIRMED_BOOKING: ['محجوز ✅',          '#D1FAE5', '#065F46'],
-  ACTIVE_SESSION:    ['جارية 🔴',          '#DCFCE7', '#15803D'],
-  COMPLETED:         ['مكتملة',            '#F1F5F9', '#475569'],
-  CANCELLED:         ['ملغية',             '#FEE2E2', '#991B1B'],
-  TEACHER_REJECTED:  ['رفض الأستاذ',      '#FEE2E2', '#991B1B'],
-  TEACHER_NO_SHOW:   ['أستاذ غائب',       '#FEE2E2', '#991B1B'],
-  STUDENT_NO_SHOW:   ['طالب غائب',        '#FEF3C7', '#92400E'],
-  DISPUTE:           ['نزاع ⚠️',           '#FEE2E2', '#991B1B'],
+  REQUESTED:         ['بانتظار الأستاذ',  '#FBEFD6', '#92620F'],
+  TEACHER_APPROVED:  ['وافق الأستاذ',     '#DEEAF7', '#1F5C99'],
+  AWAITING_PAYMENT:  ['انتظار الدفع',     '#FBEFD6', '#92620F'],
+  PAYMENT_SUBMITTED: ['دفع مُرسَل',        '#ECE5F7', '#5A3B95'],
+  PAYMENT_REJECTED:  ['دفع مرفوض',        '#FBE0DB', '#A12B1D'],
+  CONFIRMED_BOOKING: ['محجوز',            '#D7F2E6', '#0A6E4E'],
+  ACTIVE_SESSION:    ['جارية',            '#D7F2E6', '#0A6E4E'],
+  COMPLETED:         ['مكتملة',           '#F1F5F3', '#566963'],
+  CANCELLED:         ['ملغية',            '#FBE0DB', '#A12B1D'],
+  TEACHER_REJECTED:  ['رفض الأستاذ',     '#FBE0DB', '#A12B1D'],
 }
 
 const EVENT_LABELS = {
@@ -42,9 +41,6 @@ const EVENT_LABELS = {
   COMPLETED:         { label: 'اكتملت الجلسة بنجاح',              icon: '🏁' },
   CANCELLED:         { label: 'أُلغيت الجلسة',                     icon: '🚫' },
   TEACHER_REJECTED:  { label: 'رفض الأستاذ طلب الجلسة',           icon: '🙅' },
-  TEACHER_NO_SHOW:   { label: 'غاب الأستاذ عن الجلسة',            icon: '👻' },
-  STUDENT_NO_SHOW:   { label: 'غاب الطالب عن الجلسة',             icon: '💤' },
-  DISPUTE:           { label: 'فُتح نزاع على الجلسة',              icon: '⚠️' },
   PAYMENT_CONFIRMED: { label: 'تأكدت الدفعة',                     icon: '✅' },
 }
 
@@ -63,7 +59,10 @@ function buildTimeline(dbEvents, s, payments = []) {
   if (dbEvents.length > 0) return dbEvents.map(ev => ({
     event_type: ev.event_type,
     created_at: ev.created_at,
-    note:       ev.note || ev.metadata?.reason || ev.metadata?.reject_reason || '',
+    note:       ev.note || ev.metadata?.reason || ev.metadata?.reject_reason ||
+                (ev.event_type === 'CANCELLED' && s.cancellation_reason
+                  ? CANCEL_REASON_LABELS[s.cancellation_reason] || s.cancellation_reason
+                  : ''),
     synthetic:  false,
   }))
 
@@ -115,30 +114,34 @@ function buildTimeline(dbEvents, s, payments = []) {
     const cr       = s.cancellation_reason
     const payTs    = rejectedPay?.confirmed_at || rejectedPay?.updated_at || s.updated_at
 
-    if (cr === 'fake_proof') {
-      // Admin rejected for fake proof → immediate CANCELLED, no real payment to refund
+    if (cr === 'teacher_timeout') {
+      push('CANCELLED', s.updated_at, 'انتهت مهلة رد الأستاذ — أُلغيت تلقائياً')
+
+    } else if (cr === 'payment_timeout') {
+      push('CANCELLED', s.updated_at, 'انتهت مهلة الدفع — أُلغيت تلقائياً')
+
+    } else if (cr === 'student_cancelled') {
+      push('CANCELLED', s.updated_at, 'ألغى الطالب الجلسة')
+
+    } else if (cr === 'fake_proof') {
       push('PAYMENT_REJECTED', payTs, 'الوصل مزيف')
       push('CANCELLED', s.updated_at, 'الوصل مزيف — مرفوض نهائياً · لا استرداد')
 
     } else if (cr === 'insufficient_refund') {
-      // Admin rejected for incomplete amount → CANCELLED + auto-refund
       push('PAYMENT_REJECTED', payTs, 'المبلغ غير مكتمل')
       push('CANCELLED', s.updated_at, 'مبلغ ناقص — سيُستَرد المبلغ تلقائياً')
 
     } else if (cr === 'no_payment_deadline') {
-      // Payment deadline expired before proof was submitted
       push('CANCELLED', s.updated_at, 'انتهت مهلة الدفع — لم يُرسَل إثبات الدفع')
 
     } else if (cr === 'teacher_no_show_refund') {
       push('CANCELLED', s.updated_at, 'غياب الأستاذ — سيُستَرد المبلغ')
 
     } else if (hadPayment) {
-      // Payment exists but no recognized cancellation reason
       push('CANCELLED', s.updated_at, 'ملغاة بعد تقديم الدفع')
 
     } else {
-      // No payment at all → student cancelled before paying
-      push('CANCELLED', s.updated_at, 'ألغى الطالب الجلسة قبل الدفع')
+      push('CANCELLED', s.updated_at, 'ملغاة')
     }
     return steps
   }
@@ -162,16 +165,13 @@ function buildTimeline(dbEvents, s, payments = []) {
   if (state === 'COMPLETED' && s.ended_at)
     push('COMPLETED', s.ended_at)
 
-  if (state === 'TEACHER_NO_SHOW') push('TEACHER_NO_SHOW', s.updated_at)
-  if (state === 'STUDENT_NO_SHOW') push('STUDENT_NO_SHOW', s.updated_at)
-  if (state === 'DISPUTE')         push('DISPUTE', s.updated_at)
 
   return steps
 }
 
 function Timeline({ events, payments, session }) {
   const fmtFull = dt => dt
-    ? new Date(dt).toLocaleString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    ? new Date(dt).toLocaleString('ar-EG-u-nu-latn', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     : '—'
 
   const steps = buildTimeline(events, session, payments)
@@ -198,7 +198,7 @@ function Timeline({ events, payments, session }) {
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text1)' }}>{info.label}</div>
               {ev.note && (
-                <div style={{ fontSize: 11, color: '#DC2626', marginTop: 3, background: '#FEF2F2', borderRadius: 6, padding: '3px 8px', display: 'inline-block' }}>
+                <div style={{ fontSize: 11, color: '#A12B1D', marginTop: 3, background: '#FBE0DB', borderRadius: 6, padding: '3px 8px', display: 'inline-block' }}>
                   {ev.note}
                 </div>
               )}
@@ -258,7 +258,7 @@ export default function Sessions() {
       active:    sessions.filter(s => s.state === 'ACTIVE_SESSION').length,
       booked:    sessions.filter(s => s.state === 'CONFIRMED_BOOKING').length,
       cancelled: sessions.filter(s => s.state === 'CANCELLED' && s.created_at?.startsWith(today)).length,
-      disputes:  sessions.filter(s => ['DISPUTE', 'TEACHER_NO_SHOW', 'STUDENT_NO_SHOW'].includes(s.state)).length,
+      completed: sessions.filter(s => s.state === 'COMPLETED').length,
     })
     setRows(sessions)
     setLoading(false)
@@ -277,7 +277,7 @@ export default function Sessions() {
   }
 
   const fmtDate = dt => dt
-    ? new Date(dt).toLocaleString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    ? new Date(dt).toLocaleString('ar-EG-u-nu-latn', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     : '—'
 
   if (loading) return <div className="loading-center"><div className="spinner" /></div>
@@ -297,15 +297,15 @@ export default function Sessions() {
         </div>
         <div className="card-sm">
           <div className="text-muted" style={{ fontSize: 12 }}>محجوزة قادمة</div>
-          <div style={{ fontSize: 21, fontWeight: 700, color: '#065F46', marginTop: 3 }}>{stats.booked}</div>
+          <div style={{ fontSize: 21, fontWeight: 700, color: '#0A6E4E', marginTop: 3 }}>{stats.booked}</div>
         </div>
         <div className="card-sm">
           <div className="text-muted" style={{ fontSize: 12 }}>ملغية اليوم</div>
-          <div style={{ fontSize: 21, fontWeight: 700, color: '#DC2626', marginTop: 3 }}>{stats.cancelled}</div>
+          <div style={{ fontSize: 21, fontWeight: 700, color: '#A12B1D', marginTop: 3 }}>{stats.cancelled}</div>
         </div>
         <div className="card-sm">
-          <div className="text-muted" style={{ fontSize: 12 }}>نزاعات / غياب</div>
-          <div style={{ fontSize: 21, fontWeight: 700, color: '#D97706', marginTop: 3 }}>{stats.disputes}</div>
+          <div className="text-muted" style={{ fontSize: 12 }}>مكتملة</div>
+          <div style={{ fontSize: 21, fontWeight: 700, color: 'var(--text2)', marginTop: 3 }}>{stats.completed}</div>
         </div>
       </div>
 
@@ -342,7 +342,7 @@ export default function Sessions() {
             <span style={{ fontSize: 12 }}>{s.teacherName}</span>
             <span className="text-2 dir-ltr" style={{ fontSize: 11 }}>{fmtDate(s.scheduled_at)}</span>
             <span className="text-2" style={{ fontSize: 12 }}>{s.duration_minutes} د</span>
-            <span className="fw-700" style={{ fontSize: 12 }}>{s.amount?.toLocaleString('ar')}</span>
+            <span className="fw-700" style={{ fontSize: 12 }}>{s.amount?.toLocaleString('en-US')}</span>
             <span style={{ textAlign: 'left' }}><StateBadge state={s.state} /></span>
           </div>
         ))}
@@ -370,10 +370,10 @@ export default function Sessions() {
             </div>
 
             {/* Session info */}
-            <div style={{ background: '#F5F7FF', borderRadius: 12, padding: 14, marginBottom: 22, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12 }}>
+            <div style={{ background: '#F2F7F5', borderRadius: 12, padding: 14, marginBottom: 22, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12 }}>
               <div><span style={{ color: 'var(--text3)' }}>الموعد: </span><b>{fmtDate(modal.session.scheduled_at)}</b></div>
               <div><span style={{ color: 'var(--text3)' }}>المدة: </span><b>{modal.session.duration_minutes} دقيقة</b></div>
-              <div><span style={{ color: 'var(--text3)' }}>المبلغ: </span><b>{modal.session.amount?.toLocaleString('ar')} أوقية</b></div>
+              <div><span style={{ color: 'var(--text3)' }}>المبلغ: </span><b>{modal.session.amount?.toLocaleString('en-US')} أوقية</b></div>
               <div><span style={{ color: 'var(--text3)' }}>المرجع: </span><b className="dir-ltr">{modal.session.id.slice(0, 8)}</b></div>
               {modal.session.rejection_reason && (() => {
                 const raw   = (modal.session.rejection_reason || '').toUpperCase()
@@ -381,7 +381,7 @@ export default function Sessions() {
                 return (
                   <div style={{ gridColumn: '1/-1' }}>
                     <span style={{ color: 'var(--text3)' }}>سبب الرفض: </span>
-                    <b style={{ color: '#DC2626' }}>{label}</b>
+                    <b style={{ color: '#A12B1D' }}>{label}</b>
                   </div>
                 )
               })()}
@@ -390,8 +390,8 @@ export default function Sessions() {
                 const label   = CANCEL_REASON_LABELS[cr] || cr
                 const isRefund = cr === 'insufficient_refund' || cr === 'teacher_no_show_refund'
                 const noPayment = cr === 'no_payment_deadline'
-                const color   = isRefund ? '#5B21B6' : '#991B1B'
-                const bg      = isRefund ? '#EDE9FE' : noPayment ? '#FEF3C7' : '#FEE2E2'
+                const color   = isRefund ? '#5A3B95' : '#A12B1D'
+                const bg      = isRefund ? '#ECE5F7' : noPayment ? '#FBEFD6' : '#FBE0DB'
                 return (
                   <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ color: 'var(--text3)' }}>سبب الإلغاء: </span>
@@ -401,14 +401,14 @@ export default function Sessions() {
                   </div>
                 )
               })()}
-              {modal.session.payment_deadline && modal.session.state !== 'CANCELLED' && (() => {
+              {modal.session.payment_deadline && !['CANCELLED','CONFIRMED_BOOKING','ACTIVE_SESSION','COMPLETED'].includes(modal.session.state) && (() => {
                 const dl  = new Date(modal.session.payment_deadline)
                 const exp = dl < new Date()
                 return (
                   <div style={{ gridColumn: '1/-1' }}>
                     <span style={{ color: 'var(--text3)' }}>مهلة الدفع: </span>
-                    <span style={{ fontWeight: 700, color: exp ? '#DC2626' : '#92400E' }}>
-                      {dl.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
+                    <span style={{ fontWeight: 700, color: exp ? '#A12B1D' : '#92400E' }}>
+                      {dl.toLocaleString('ar-EG-u-nu-latn', { dateStyle: 'short', timeStyle: 'short' })}
                       {exp ? ' ⚠ منتهية' : ''}
                     </span>
                   </div>

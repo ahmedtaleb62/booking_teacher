@@ -79,7 +79,7 @@ export default function Overview({ onNavigate }) {
       if (day && last7Days.includes(day)) dayRevMap[day] = (dayRevMap[day] || 0) + (p.amount || 0)
     })
     setWeekData(last7Days.map(d => ({
-      label: new Date(d + 'T12:00:00').toLocaleDateString('ar-EG', { weekday: 'short' }),
+      label: new Date(d + 'T12:00:00').toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'short' }),
       revenue: dayRevMap[d] || 0,
     })))
 
@@ -87,7 +87,7 @@ export default function Overview({ onNavigate }) {
     if (payments.filter(p => p.status === 'submitted').length > 0)
       pendingList.push({ tag: 'دفع', bg: '#FEF3C7', fg: '#92400E', title: `${payments.filter(p => p.status === 'submitted').length} إثبات دفع بانتظار التأكيد`, sub: 'مدفوعات الجلسات', cta: 'مراجعة', page: 'payments' })
     if (subsPending.length > 0)
-      pendingList.push({ tag: 'اشتر', bg: '#EDE9FE', fg: '#5B21B6', title: `${subsPending.length} اشتراك قيد المراجعة`, sub: 'اشتراكات الدروس والباقات', cta: 'مراجعة', page: 'subscriptions' })
+      pendingList.push({ tag: 'اشتر', bg: '#ECE5F7', fg: '#5A3B95', title: `${subsPending.length} اشتراك قيد المراجعة`, sub: 'اشتراكات الدروس والباقات', cta: 'مراجعة', page: 'subscriptions' })
     if (teachersPending.length > 0)
       pendingList.push({ tag: 'أست', bg: '#DBEAFE', fg: '#1D4ED8', title: `${teachersPending.length} طلب اعتماد أستاذ`, sub: 'طلبات الانضمام الجديدة', cta: 'مراجعة', page: 'teachers' })
     setPending(pendingList)
@@ -101,10 +101,10 @@ export default function Overview({ onNavigate }) {
   if (loading) return <div className="loading-center"><div className="spinner" /></div>
 
   const kpis = [
-    { icon: '💼', bg: '#E0E7FF', value: stats?.totalSessions || 0, label: 'إجمالي الجلسات', trend: '', trendColor: '#4F46E5' },
-    { icon: '🎯', bg: '#D1FAE5', value: stats?.activeSessions || 0, label: 'نشطة الآن', trend: '', trendColor: '#059669' },
-    { icon: '💰', bg: '#FEF3C7', value: `${(stats?.revenue || 0).toLocaleString('ar')}`, label: 'إيرادات اليوم (أوقية)', trend: '', trendColor: '#D97706' },
-    { icon: '📊', bg: '#EDE9FE', value: `${(stats?.commission || 0).toLocaleString('ar')}`, label: 'عمولة المنصة اليوم', trend: '', trendColor: '#7C3AED' },
+    { icon: '💼', bg: '#D7F2E6', value: stats?.totalSessions || 0, label: 'إجمالي الجلسات', trend: '', trendColor: '#0A6E4E' },
+    { icon: '🎯', bg: '#D7F2E6', value: stats?.activeSessions || 0, label: 'نشطة الآن', trend: '', trendColor: '#0A6E4E' },
+    { icon: '💰', bg: '#FBEFD6', value: `${(stats?.revenue || 0).toLocaleString('en-US')}`, label: 'إيرادات اليوم (أوقية)', trend: '', trendColor: '#92620F' },
+    { icon: '📊', bg: '#DEEAF7', value: `${(stats?.commission || 0).toLocaleString('en-US')}`, label: 'عمولة المنصة اليوم', trend: '', trendColor: '#1F5C99' },
   ]
 
   return (
@@ -132,19 +132,19 @@ export default function Overview({ onNavigate }) {
               <span style={{ fontSize: 12, color: 'var(--text3)' }}>هذا الشهر</span>
             </div>
             <div style={{ display: 'flex', gap: 14 }}>
-              <div style={{ flex: 1, background: '#F5F7FF', borderRadius: 12, padding: 15 }}>
+              <div style={{ flex: 1, background: '#F2F7F5', borderRadius: 12, padding: 15 }}>
                 <div style={{ fontSize: 11.5, color: 'var(--text3)' }}>عمولة الجلسات ({Math.round(sessionCommRate * 100)}%)</div>
-                <div style={{ fontSize: 21, fontWeight: 700, color: '#4F46E5', marginTop: 3 }}>{stats?.monthlySessionComm?.toLocaleString('ar') ?? '—'}</div>
+                <div style={{ fontSize: 21, fontWeight: 700, color: 'var(--primary)', marginTop: 3 }}>{stats?.monthlySessionComm?.toLocaleString('en-US') ?? '—'}</div>
                 <div style={{ fontSize: 10.5, color: 'var(--text3)' }}>أوقية</div>
               </div>
-              <div style={{ flex: 1, background: '#F5F7FF', borderRadius: 12, padding: 15 }}>
+              <div style={{ flex: 1, background: '#F2F7F5', borderRadius: 12, padding: 15 }}>
                 <div style={{ fontSize: 11.5, color: 'var(--text3)' }}>عمولة الاشتراكات ({Math.round(subCommRate * 100)}%)</div>
-                <div style={{ fontSize: 21, fontWeight: 700, color: '#7C3AED', marginTop: 3 }}>{stats?.monthlySubComm?.toLocaleString('ar') ?? '—'}</div>
+                <div style={{ fontSize: 21, fontWeight: 700, color: '#13A88A', marginTop: 3 }}>{stats?.monthlySubComm?.toLocaleString('en-US') ?? '—'}</div>
                 <div style={{ fontSize: 10.5, color: 'var(--text3)' }}>أوقية</div>
               </div>
-              <div style={{ flex: 1, background: '#1E1B4B', borderRadius: 12, padding: 15, color: '#fff' }}>
+              <div style={{ flex: 1, background: '#0C2E28', borderRadius: 12, padding: 15, color: '#fff' }}>
                 <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.55)' }}>إجمالي عمولة الشهر</div>
-                <div style={{ fontSize: 21, fontWeight: 700, color: '#A5B4FC', marginTop: 3 }}>{stats?.monthlyTotalComm?.toLocaleString('ar') ?? '—'}</div>
+                <div style={{ fontSize: 21, fontWeight: 700, color: '#6FE3C4', marginTop: 3 }}>{stats?.monthlyTotalComm?.toLocaleString('en-US') ?? '—'}</div>
                 <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,.4)' }}>أوقية</div>
               </div>
             </div>
@@ -158,7 +158,7 @@ export default function Overview({ onNavigate }) {
                     const isToday = i === weekData.length - 1
                     return (
                       <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%', justifyContent: 'flex-end' }}>
-                        <div style={{ width: '100%', borderRadius: 6, background: isToday ? '#818CF8' : '#4F46E5', height: `${pct}%` }} />
+                        <div style={{ width: '100%', borderRadius: 6, background: isToday ? '#6FE3C4' : '#0E7C66', height: `${pct}%` }} />
                         <span style={{ fontSize: 10, color: 'var(--text3)' }}>{d.label}</span>
                       </div>
                     )
@@ -216,16 +216,6 @@ export default function Overview({ onNavigate }) {
             </div>
           )}
 
-          <div style={{ borderTop: '1px solid var(--border-table)', marginTop: 14, paddingTop: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>آخر النزاعات</div>
-            <div onClick={() => onNavigate('disputes')} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#FDECEC', borderRadius: 11, padding: 11, cursor: 'pointer' }}>
-              <span style={{ color: '#C0392B', fontSize: 20 }}>🛡</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, fontWeight: 700 }}>النزاعات المفتوحة</div>
-                <div style={{ fontSize: 10.5, color: '#8A5A5A' }}>مراجعة وحل النزاعات</div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

@@ -10,6 +10,7 @@ import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/payment_methods_provider.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/services/session_service.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/info_banner.dart';
 
@@ -51,9 +52,12 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         imageBytes: _proofBytes!,
         imageExt:   _proofExt,
       );
+      // Invalidate immediately — don't wait for realtime event
+      ref.invalidate(sessionProvider(widget.sessionId));
+      ref.invalidate(studentSessionsProvider);
       if (mounted) context.pushReplacement('/payment-submitted/${widget.sessionId}');
     } catch (e) {
-      setState(() => _error = '${context.l10n.commonError}: $e');
+      setState(() => _error = AppErrors.friendly(e, context.l10n));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

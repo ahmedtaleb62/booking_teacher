@@ -17,27 +17,11 @@ const SETTING_META = {
     min: 0, max: 100,
     displayFn: v => `${v}% من كل اشتراك`,
   },
-  payment_timeout_minutes: {
-    label: 'مهلة الدفع',
-    unit: 'دقيقة',
-    desc: 'بعد قبول الطلب، ينتهي فيها وقت إرسال إثبات الدفع وإلا يُلغى',
-    min: 1,
-    displayFn: v => v >= 60 ? `${Math.round(v / 60)} ساعة` : `${v} دقيقة`,
-  },
-  teacher_response_hours: {
-    label: 'وقت رد الأستاذ',
-    unit: 'ساعة',
-    desc: 'أقصى مهلة لقبول أو رفض الطلب الجديد',
-    min: 1,
-    displayFn: v => `${v} ساعة`,
-  },
 }
 
 const DEFAULTS = {
   session_commission_pct:      15,
   subscription_commission_pct: 15,
-  payment_timeout_minutes:     60,
-  teacher_response_hours:      24,
 }
 
 // Commission fields get a special accent color
@@ -99,7 +83,7 @@ export default function Policy() {
         {/* Session commission preview */}
         <div className="card">
           <div className="flex items-center gap-10" style={{ marginBottom: 6 }}>
-            <span style={{ width: 36, height: 36, borderRadius: 10, background: '#E0E7FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>💼</span>
+            <span style={{ width: 36, height: 36, borderRadius: 10, background: '#D7F2E6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>💼</span>
             <span className="card-title">عمولة الجلسات الحالية</span>
           </div>
           <div style={{ fontSize: 12.5, color: 'var(--text3)', marginBottom: 14 }}>تُخصم من كل جلسة مباشرة مؤكّدة</div>
@@ -107,7 +91,7 @@ export default function Policy() {
             <span style={{ fontSize: 46, fontWeight: 700, color: 'var(--primary)' }}>{commPct}</span>
             <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary)', paddingBottom: 9 }}>%</span>
           </div>
-          <div style={{ background: '#F5F7FF', borderRadius: 11, padding: 13, fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.7, marginTop: 12 }}>
+          <div style={{ background: '#F2F7F5', borderRadius: 11, padding: 13, fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.7, marginTop: 12 }}>
             جلسة بـ <b style={{ color: 'var(--text)' }}>500 أوقية</b> ← عمولة <b style={{ color: 'var(--text)' }}>{Math.round(500 * commPct / 100)}</b> · صافي الأستاذ <b style={{ color: '#059669' }}>{Math.round(500 * (1 - commPct / 100))}</b>
           </div>
         </div>
@@ -115,16 +99,16 @@ export default function Policy() {
         {/* Subscription commission preview */}
         <div className="card">
           <div className="flex items-center gap-10" style={{ marginBottom: 6 }}>
-            <span style={{ width: 36, height: 36, borderRadius: 10, background: '#EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📚</span>
+            <span style={{ width: 36, height: 36, borderRadius: 10, background: '#D7F2E6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📚</span>
             <span className="card-title">عمولة الاشتراكات الحالية</span>
           </div>
           <div style={{ fontSize: 12.5, color: 'var(--text3)', marginBottom: 14 }}>تُخصم من كل اشتراك في درس أو باقة</div>
           <div className="flex items-center" style={{ alignItems: 'flex-end', gap: 4 }}>
-            <span style={{ fontSize: 46, fontWeight: 700, color: '#7C3AED' }}>{subCommPct}</span>
-            <span style={{ fontSize: 20, fontWeight: 700, color: '#7C3AED', paddingBottom: 9 }}>%</span>
+            <span style={{ fontSize: 46, fontWeight: 700, color: '#13A88A' }}>{subCommPct}</span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: '#13A88A', paddingBottom: 9 }}>%</span>
           </div>
-          <div style={{ background: '#F5F7FF', borderRadius: 11, padding: 13, fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.7, marginTop: 12 }}>
-            اشتراك بـ <b style={{ color: 'var(--text)' }}>12,000 أوقية</b> ← عمولة <b style={{ color: 'var(--text)' }}>{(12000 * subCommPct / 100).toLocaleString('ar')}</b> · صافي الأستاذ <b style={{ color: '#059669' }}>{(12000 * (1 - subCommPct / 100)).toLocaleString('ar')}</b>
+          <div style={{ background: '#F2F7F5', borderRadius: 11, padding: 13, fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.7, marginTop: 12 }}>
+            اشتراك بـ <b style={{ color: 'var(--text)' }}>12,000 أوقية</b> ← عمولة <b style={{ color: 'var(--text)' }}>{(12000 * subCommPct / 100).toLocaleString('en-US')}</b> · صافي الأستاذ <b style={{ color: '#059669' }}>{(12000 * (1 - subCommPct / 100)).toLocaleString('en-US')}</b>
           </div>
         </div>
       </div>
@@ -135,12 +119,12 @@ export default function Policy() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 16, marginBottom: 24 }}>
           {Object.entries(SETTING_META).map(([key, meta]) => {
             const isComm  = COMMISSION_KEYS.has(key)
-            const accent  = isComm ? (key === 'session_commission_pct' ? 'var(--primary)' : '#7C3AED') : 'var(--primary)'
+            const accent  = isComm ? (key === 'session_commission_pct' ? 'var(--primary)' : '#13A88A') : 'var(--primary)'
             return (
               <div key={key} style={{
-                border: `1.5px solid ${isComm ? (key === 'session_commission_pct' ? '#C7D2FE' : '#DDD6FE') : 'var(--border-table)'}`,
+                border: `1.5px solid ${isComm ? (key === 'session_commission_pct' ? '#CFE9E0' : '#B8E2D6') : 'var(--border-table)'}`,
                 borderRadius: 12, padding: 16,
-                background: isComm ? (key === 'session_commission_pct' ? '#FAFAFE' : '#FDFAFF') : '#fff',
+                background: isComm ? '#F7FAF9' : '#fff',
               }}>
                 <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
                   {isComm && <span style={{ fontSize: 14 }}>{key === 'session_commission_pct' ? '💼' : '📚'}</span>}

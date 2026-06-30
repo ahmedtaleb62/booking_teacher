@@ -4,7 +4,9 @@ import '../services/course_service.dart';
 import 'auth_provider.dart';
 
 // ── Filter state ──────────────────────────────────────────────────
-final courseSubjectFilterProvider = StateProvider<String?>((ref) => null);
+final courseSubjectFilterProvider  = StateProvider<String?>((ref) => null);
+final courseSearchQueryProvider    = StateProvider<String>((ref) => '');
+final packageSearchQueryProvider   = StateProvider<String>((ref) => '');
 
 // ── Lists ─────────────────────────────────────────────────────────
 

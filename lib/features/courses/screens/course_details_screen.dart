@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,7 @@ import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/course.dart';
 import '../../../core/providers/courses_provider.dart';
+import '../../../core/utils/app_errors.dart';
 
 class CourseDetailsScreen extends ConsumerWidget {
   final String courseId;
@@ -27,11 +29,42 @@ class CourseDetailsScreen extends ConsumerWidget {
       error: (e, _) => Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(backgroundColor: AppColors.background, elevation: 0),
-        body: Center(child: Text('${l.commonErrorLoading}: $e')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
+                const SizedBox(height: 12),
+                Text(l.commonErrorLoading,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
+                const SizedBox(height: 8),
+                Text(AppErrors.friendly(e, l),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => ref.invalidate(courseDetailsProvider(courseId)),
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: Text(l.commonRetry),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
       data: (course) {
-        final subStatus    = subStatusAsync.valueOrNull;
-        final hasSub       = subStatus == 'active';
+        final subStatus      = subStatusAsync.valueOrNull;
+        final isFree         = course.priceMonthly == 0;
+        final hasSub         = isFree || subStatus == 'active';
         final subscriptionId = activeSubAsync.valueOrNull?.id;
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -143,14 +176,15 @@ class CourseDetailsScreen extends ConsumerWidget {
           // Teacher
           if (course.teacherName.isNotEmpty) ...[
             Row(children: [
-              Container(
-                width: 32, height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.accentLight, borderRadius: BorderRadius.circular(9)),
-                alignment: Alignment.center,
-                child: Text(course.teacherInitial,
-                    style: const TextStyle(
-                        color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13)),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(9),
+                child: course.teacherAvatarUrl != null
+                    ? CachedNetworkImage(
+                        imageUrl: course.teacherAvatarUrl!,
+                        width: 32, height: 32, fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => _teacherInitialBox(course.teacherInitial),
+                      )
+                    : _teacherInitialBox(course.teacherInitial),
               ),
               const SizedBox(width: 10),
               Text(course.teacherName,
@@ -204,6 +238,17 @@ class CourseDetailsScreen extends ConsumerWidget {
   String _formatCount(int n) {
     if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
     return '$n';
+  }
+
+  Widget _teacherInitialBox(String initial) {
+    return Container(
+      width: 32, height: 32,
+      color: AppColors.accentLight,
+      alignment: Alignment.center,
+      child: Text(initial,
+          style: const TextStyle(
+              color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13)),
+    );
   }
 
   Widget _statChip(IconData icon, String label) {
@@ -479,6 +524,7 @@ class CourseDetailsScreen extends ConsumerWidget {
 
   Widget _buildBottomBar(BuildContext context, Course course, String? subStatus) {
     final l = context.l10n;
+    final isFree = course.priceMonthly == 0;
     return SafeArea(
       top: false,
       child: SizedBox(
@@ -489,46 +535,62 @@ class CourseDetailsScreen extends ConsumerWidget {
             color: AppColors.surface,
             border: Border(top: BorderSide(color: AppColors.border)),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Price column
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (course.originalPrice != null)
-                    Text(
-                      l.homeOriginalPrice(course.originalPrice!.toStringAsFixed(0)),
-                      style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textHint,
-                          decoration: TextDecoration.lineThrough),
-                    ),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
+          child: isFree
+              ? Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF15805F),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(course.priceMonthly.toStringAsFixed(0),
+                      const Icon(Icons.play_circle_filled_rounded, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Text(l.homeLearnFree,
                           style: const TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                      Text(' ${l.homeOugiyaPerMonth}',
-                          style: const TextStyle(fontSize: 10, color: AppColors.textHint)),
+                              color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
                     ],
                   ),
-                  if (course.priceYearly != null)
-                    Text(
-                      l.coursePriceYearly(course.priceYearly!.toStringAsFixed(0)),
-                      style: const TextStyle(
-                          fontSize: 10, color: AppColors.statusConfirmed, fontWeight: FontWeight.w600),
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (course.originalPrice != null)
+                          Text(
+                            l.homeOriginalPrice(course.originalPrice!.toStringAsFixed(0)),
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textHint,
+                                decoration: TextDecoration.lineThrough),
+                          ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(course.priceMonthly.toStringAsFixed(0),
+                                style: const TextStyle(
+                                    fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                            Text(' ${l.homeOugiyaPerMonth}',
+                                style: const TextStyle(fontSize: 10, color: AppColors.textHint)),
+                          ],
+                        ),
+                        if (course.priceYearly != null)
+                          Text(
+                            l.coursePriceYearly(course.priceYearly!.toStringAsFixed(0)),
+                            style: const TextStyle(
+                                fontSize: 10, color: AppColors.statusConfirmed, fontWeight: FontWeight.w600),
+                          ),
+                      ],
                     ),
-                ],
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: _subscribeButton(context, course, subStatus)),
-            ],
-          ),
+                    const SizedBox(width: 12),
+                    Expanded(child: _subscribeButton(context, course, subStatus)),
+                  ],
+                ),
         ),
       ),
     );

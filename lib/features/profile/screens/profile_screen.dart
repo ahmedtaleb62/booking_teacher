@@ -228,7 +228,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     sessionsAsync.whenData((sessions) {
       totalSessions     = sessions.length;
       completedSessions = sessions.where((s) => s.state == SessionState.completed).length;
-      totalAmount      += sessions.fold(0.0, (sum, s) => sum + s.amount);
+      totalAmount      += sessions
+          .where((s) =>
+              s.state == SessionState.paymentConfirmed ||
+              s.state == SessionState.confirmedBooking ||
+              s.state == SessionState.activeSession ||
+              s.state == SessionState.completed)
+          .fold(0.0, (sum, s) => sum + s.amount);
     });
     // Add subscription payments (active or pending = paid)
     subsAsync.whenData((subs) {

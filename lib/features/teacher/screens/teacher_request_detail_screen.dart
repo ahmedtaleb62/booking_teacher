@@ -7,7 +7,9 @@ import '../../../core/constants/subjects.dart';
 import '../../../core/constants/session_states.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/session_service.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../l10n/app_localizations.dart';
 
 class TeacherRequestDetailScreen extends ConsumerStatefulWidget {
@@ -26,15 +28,16 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
     try {
       await SessionService.approveSession(widget.requestId);
       if (mounted) {
+        ref.invalidate(sessionProvider(widget.requestId));
         ref.invalidate(teacherDashboardProvider);
         ref.invalidate(teacherPendingRequestsProvider);
         ref.invalidate(teacherInProgressSessionsProvider);
+        ref.invalidate(studentSessionsProvider);
         context.pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${context.l10n.commonError}: $e')));
+        AppErrors.showSnackBar(e, context.l10n, ScaffoldMessenger.of(context));
       }
     } finally {
       if (mounted) setState(() => _approving = false);
@@ -46,15 +49,16 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
     try {
       await SessionService.rejectSession(widget.requestId, reason: reason);
       if (mounted) {
+        ref.invalidate(sessionProvider(widget.requestId));
         ref.invalidate(teacherDashboardProvider);
         ref.invalidate(teacherPendingRequestsProvider);
         ref.invalidate(teacherRejectedSessionsProvider);
+        ref.invalidate(studentSessionsProvider);
         context.pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${context.l10n.commonError}: $e')));
+        AppErrors.showSnackBar(e, context.l10n, ScaffoldMessenger.of(context));
       }
     } finally {
       if (mounted) setState(() => _rejecting = false);
@@ -92,9 +96,10 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
         data: (session) {
           if (session == null) return Center(child: Text(l.teacherRequestNotFound));
 
-          final isStillPending   = session.state == SessionState.requested;
-          const commissionRate   = 0.15;
-          final net              = session.amount * (1 - commissionRate);
+          final comm           = ref.watch(commissionSettingsProvider).asData?.value
+                                 ?? const CommissionSettings();
+          final isStillPending = session.state == SessionState.requested;
+          final net            = comm.sessionNet(session.amount);
 
           return Column(
             children: [
@@ -277,7 +282,7 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                                           color: Color(0xFF1B9E77)),
                                       ),
                                       TextSpan(
-                                        text: l.teacherCommissionNote('${session.amount.toInt()}'),
+                                        text: l.teacherCommissionNote('${session.amount.toInt()}', '${comm.sessionPctInt}'),
                                         style: const TextStyle(fontSize: 10, color: AppColors.textHint),
                                       ),
                                     ],
@@ -424,7 +429,6 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                 controller: reasonCtrl,
                 maxLines: 2,
                 style: const TextStyle(fontSize: 13),
-                onChanged: (_) => set(() {}),
                 decoration: InputDecoration(
                   hintText: l.teacherRejectReasonHint,
                   hintStyle: const TextStyle(fontSize: 13, color: AppColors.textHint),
@@ -435,8 +439,6 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
                     borderSide: BorderSide.none,
                   ),
                   contentPadding: const EdgeInsets.all(11),
-                  helperText: l.teacherRejectReasonRequired,
-                  helperStyle: const TextStyle(fontSize: 11, color: AppColors.textHint),
                 ),
               ),
             ],
@@ -444,14 +446,13 @@ class _TeacherRequestDetailScreenState extends ConsumerState<TeacherRequestDetai
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
             ElevatedButton(
-              onPressed: reasonCtrl.text.trim().isEmpty ? null : () {
+              onPressed: () {
                 final reason = reasonCtrl.text.trim();
                 Navigator.pop(ctx);
-                _reject(reason);
+                _reject(reason.isEmpty ? null : reason);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error, foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.error.withValues(alpha: 0.4)),
+                backgroundColor: AppColors.error, foregroundColor: Colors.white),
               child: Text(l.commonReject),
             ),
           ],

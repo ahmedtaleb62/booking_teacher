@@ -36,12 +36,15 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   bool _loading = false;
   String? _error;
 
+  bool get _isPackage => widget.type == 'package';
+
   double get _effectiveYearlyPrice => widget.priceYearly ?? (widget.priceMonthly * 10);
 
-  double get _amount =>
-      _selectedPlan == 'yearly'
-          ? _effectiveYearlyPrice
-          : widget.priceMonthly;
+  double get _amount => _isPackage
+      ? (widget.priceYearly ?? widget.priceMonthly)
+      : (_selectedPlan == 'yearly' ? _effectiveYearlyPrice : widget.priceMonthly);
+
+  String get _planType => _isPackage ? 'yearly' : _selectedPlan;
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -62,7 +65,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         courseId: widget.type == 'course' ? widget.itemId : null,
         packageId: widget.type == 'package' ? widget.itemId : null,
         amount: _amount,
-        planType: _selectedPlan,
+        planType: _planType,
         localProofPath: _proofImage!.path,
       );
       if (mounted) context.pushReplacement('/subscription-pending/$subId');
@@ -104,8 +107,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           children: [
             _buildItemCard(l),
             const SizedBox(height: 16),
-            _buildPlanSelector(l),
-            const SizedBox(height: 20),
+            if (!_isPackage) ...[
+              _buildPlanSelector(l),
+              const SizedBox(height: 20),
+            ],
             methodsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (_, __) => const SizedBox.shrink(),
@@ -292,7 +297,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               Text(_amount.toStringAsFixed(0),
                   style: const TextStyle(
                       fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
-              Text(_selectedPlan == 'yearly' ? l.subscriptionPerYear : l.subscriptionPerMonth,
+              Text(_planType == 'yearly' ? l.subscriptionPerYear : l.subscriptionPerMonth,
                   style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.75))),
             ],
           ),

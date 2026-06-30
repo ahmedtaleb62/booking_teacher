@@ -40,6 +40,12 @@ class FcmService {
       alert: true, badge: true, sound: true,
     );
 
+    // Request permission automatically — essential so FCM token can be obtained.
+    // On Android ≤12 this is a no-op; on Android 13+ and iOS it shows the dialog.
+    await _messaging.requestPermission(
+      alert: true, badge: true, sound: true, provisional: false,
+    );
+
     // Foreground: show system notification so it stays in the notification shade.
     // Background/terminated: Android auto-shows from FCM payload — no code needed.
     FirebaseMessaging.onMessage.listen(_showLocalNotification);
@@ -60,12 +66,18 @@ class FcmService {
 
   /// Save device FCM token to Supabase after login
   static Future<void> saveToken() async {
+    if (kIsWeb) return;
     final uid = SupabaseService.userId;
     if (uid == null) return;
     try {
+      // Ensure permission is granted before requesting token
+      final settings = await _messaging.getNotificationSettings();
+      if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
+        await _messaging.requestPermission(alert: true, badge: true, sound: true);
+      }
       final token = await _messaging.getToken();
       if (token == null) {
-        debugPrint('[FCM] getToken() returned null — permission not granted?');
+        debugPrint('[FCM] getToken() returned null — permission denied?');
         return;
       }
       await _upsertToken(uid, token);
@@ -106,20 +118,28 @@ class FcmService {
     final sessionId = message.data['session_id'] as String?;
     final role      = message.data['role']        as String?; // 'teacher' | 'student'
 
-    if (type != null && type.startsWith('SUB_')) {
-      return '/my-courses';
-    }
-    if (sessionId == null) return null;
+    // Subscription notifications → courses screen
+    if (type != null && type.startsWith('SUB_')) return '/my-courses';
+
+    // Session request → teacher request detail
     if (type == 'SESSION_REQUESTED' || type == 'TEACHER_REQUEST') {
-      return '/teacher/request/$sessionId';
+      return sessionId != null ? '/teacher/request/$sessionId' : null;
     }
-    // Both chat messages and video call rings open the live session room
+
+    // Live session / video call
     if (type == 'SESSION_MESSAGE' || type == 'VIDEO_CALL') {
-      return role == 'teacher'
-          ? '/teacher/live/$sessionId'
-          : '/live/$sessionId';
+      if (sessionId == null) return null;
+      return role == 'teacher' ? '/teacher/live/$sessionId' : '/live/$sessionId';
     }
-    return '/session/$sessionId';
+
+    // All other session notifications — route by role
+    if (sessionId != null && sessionId.isNotEmpty) {
+      return role == 'teacher'
+          ? '/teacher/session/$sessionId'
+          : '/session/$sessionId';
+    }
+
+    return null;
   }
 
   // ── Private helpers ─────────────────────────────────────────
@@ -155,7 +175,13 @@ class FcmService {
   static Future<void> _upsertToken(String uid, String token) async {
     if (kIsWeb) return;
     final platform = Platform.isAndroid ? 'android' : 'ios';
-    // Delete → Insert avoids ON CONFLICT constraint issues and cleans stale tokens.
+    // Remove this token from any OTHER user (same device, account switch).
+    await SupabaseService.client
+        .from('device_tokens')
+        .delete()
+        .eq('token', token)
+        .neq('user_id', uid);
+    // Remove old tokens for this user+platform.
     await SupabaseService.client
         .from('device_tokens')
         .delete()

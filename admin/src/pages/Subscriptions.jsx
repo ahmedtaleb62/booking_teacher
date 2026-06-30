@@ -5,8 +5,8 @@ import { useToast } from '../components/Toast'
 /* ── Rejection reason codes ─────────────────────────────────────── */
 // 2 outcomes only — INCOMPLETE_AMOUNT always auto-refunds (sent as REFUND:INCOMPLETE_AMOUNT)
 const REJECT_OPTIONS = [
-  { value: 'FAKE_PROOF',        label: 'الوصل مزيف',       sub: 'لا استرداد — الوصل غير حقيقي',          color: '#DC2626', bg: '#FFF5F5' },
-  { value: 'INCOMPLETE_AMOUNT', label: 'المبلغ غير مكتمل', sub: 'استرداد فوري — المبلغ أقل من المطلوب', color: '#7C3AED', bg: '#F5F3FF' },
+  { value: 'FAKE_PROOF',        label: 'الوصل مزيف',       sub: 'لا استرداد — الوصل غير حقيقي',          color: '#A12B1D', bg: '#FBE0DB' },
+  { value: 'INCOMPLETE_AMOUNT', label: 'المبلغ غير مكتمل', sub: 'استرداد فوري — المبلغ أقل من المطلوب', color: '#5A3B95', bg: '#ECE5F7' },
 ]
 
 const REASON_LABEL = {
@@ -17,11 +17,11 @@ const REASON_LABEL = {
 
 /* ── Trail component ────────────────────────────────────────────── */
 function SubStatusTrail({ reason, status }) {
-  if (status === 'active')  return <span className="badge" style={{ background: '#D1FAE5', color: '#065F46' }}>نشط</span>
+  if (status === 'active')  return <span className="badge" style={{ background: '#D7F2E6', color: '#0A6E4E' }}>نشط</span>
   if (status === 'expired') return <span className="badge" style={{ background: '#F1F5F9', color: '#475569' }}>منتهي</span>
-  if (status === 'pending') return <span className="badge" style={{ background: '#EDE9FE', color: '#5B21B6' }}>قيد المراجعة</span>
+  if (status === 'pending') return <span className="badge" style={{ background: '#ECE5F7', color: '#5A3B95' }}>قيد المراجعة</span>
 
-  if (!reason) return <span className="badge" style={{ background: '#FEE2E2', color: '#991B1B' }}>مرفوض</span>
+  if (!reason) return <span className="badge" style={{ background: '#FBE0DB', color: '#A12B1D' }}>مرفوض</span>
 
   if (reason === 'STUDENT_CANCEL') {
     return (
@@ -38,11 +38,11 @@ function SubStatusTrail({ reason, status }) {
   if (isFake) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#FEE2E2', color: '#DC2626', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#FBE0DB', color: '#A12B1D', whiteSpace: 'nowrap' }}>
           مرفوض
         </span>
         <span style={{ fontSize: 9, color: '#94A3B8' }}>·</span>
-        <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#FFF5F5', color: '#991B1B', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#FBE0DB', color: '#A12B1D', whiteSpace: 'nowrap' }}>
           الوصل مزيف
         </span>
       </div>
@@ -52,15 +52,15 @@ function SubStatusTrail({ reason, status }) {
   // INCOMPLETE_AMOUNT — always refund
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#FEE2E2', color: '#DC2626', whiteSpace: 'nowrap' }}>
+      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#FBE0DB', color: '#A12B1D', whiteSpace: 'nowrap' }}>
         ملغى
       </span>
       <span style={{ fontSize: 9, color: '#94A3B8' }}>·</span>
-      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#F5F3FF', color: '#6D28D9', whiteSpace: 'nowrap' }}>
+      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#ECE5F7', color: '#5A3B95', whiteSpace: 'nowrap' }}>
         مبلغ ناقص
       </span>
       <span style={{ fontSize: 9, color: '#94A3B8' }}>·</span>
-      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#D1FAE5', color: '#065F46', whiteSpace: 'nowrap' }}>
+      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#D7F2E6', color: '#0A6E4E', whiteSpace: 'nowrap' }}>
         مُسترد
       </span>
     </div>
@@ -159,7 +159,7 @@ export default function Subscriptions({ adminId }) {
   }
 
   const fmtDate = dt => dt
-    ? new Date(dt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', year: 'numeric' })
+    ? new Date(dt).toLocaleDateString('ar-EG-u-nu-latn', { month: 'short', day: 'numeric', year: 'numeric' })
     : '—'
 
   const daysLeft = dt => {
@@ -182,11 +182,11 @@ export default function Subscriptions({ adminId }) {
         </div>
         <div className="card-sm">
           <div className="text-muted" style={{ fontSize: 12 }}>قيد المراجعة</div>
-          <div style={{ fontSize: 21, fontWeight: 700, color: '#7C3AED', marginTop: 3 }}>{stats.pending}</div>
+          <div style={{ fontSize: 21, fontWeight: 700, color: 'var(--purple)', marginTop: 3 }}>{stats.pending}</div>
         </div>
         <div className="card-sm">
           <div className="text-muted" style={{ fontSize: 12 }}>ملغية / مرفوضة</div>
-          <div style={{ fontSize: 21, fontWeight: 700, color: '#DC2626', marginTop: 3 }}>{stats.rejected}</div>
+          <div style={{ fontSize: 21, fontWeight: 700, color: '#A12B1D', marginTop: 3 }}>{stats.rejected}</div>
         </div>
         <div className="card-sm">
           <div className="text-muted" style={{ fontSize: 12 }}>مُسترد منها</div>
@@ -219,7 +219,7 @@ export default function Subscriptions({ adminId }) {
               <span className="fw-700" style={{ fontSize: 13 }}>{s.student?.full_name || '—'}</span>
               <span className="text-2" style={{ fontSize: 12 }}>{content}</span>
               <span className="text-2" style={{ fontSize: 12 }}>{s.plan_type === 'yearly' ? 'سنوي' : 'شهري'}</span>
-              <span className="fw-700" style={{ fontSize: 12 }}>{s.amount?.toLocaleString('ar')} أوق</span>
+              <span className="fw-700" style={{ fontSize: 12 }}>{s.amount?.toLocaleString('en-US')} أوق</span>
               <span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <SubStatusTrail status={s.status} reason={s.reject_reason} />
@@ -265,17 +265,17 @@ export default function Subscriptions({ adminId }) {
                   ? <a href={proofUrl} target="_blank" rel="noreferrer">
                       <img src={proofUrl} alt="proof" style={{ width: '100%', borderRadius: 12, border: '1px solid var(--border)', maxHeight: 280, objectFit: 'contain', cursor: 'zoom-in' }} />
                     </a>
-                  : <div style={{ textAlign: 'center', padding: 18, color: 'var(--text3)', fontSize: 13, background: '#F5F7FF', borderRadius: 12 }}>جارٍ تحميل الإثبات…</div>
+                  : <div style={{ textAlign: 'center', padding: 18, color: 'var(--text3)', fontSize: 13, background: '#F2F7F5', borderRadius: 12 }}>جارٍ تحميل الإثبات…</div>
                 }
               </div>
             )}
 
             {/* Details */}
-            <div style={{ background: '#F5F7FF', borderRadius: 12, padding: 14, marginBottom: 20, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 7 }}>
+            <div style={{ background: '#F2F7F5', borderRadius: 12, padding: 14, marginBottom: 20, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 7 }}>
               <div><b>الطالب:</b> {modal.row.student?.full_name || '—'}</div>
               <div><b>المحتوى:</b> {modal.row.course?.title || modal.row.package?.title || '—'}</div>
               <div><b>نوع الاشتراك:</b> {modal.row.plan_type === 'yearly' ? 'سنوي (12 شهراً)' : 'شهري'}</div>
-              <div><b>المبلغ:</b> {modal.row.amount?.toLocaleString('ar')} أوقية</div>
+              <div><b>المبلغ:</b> {modal.row.amount?.toLocaleString('en-US')} أوقية</div>
               <div><b>تاريخ الطلب:</b> {modal.row.created_at?.slice(0, 10)}</div>
             </div>
 
@@ -326,7 +326,7 @@ export default function Subscriptions({ adminId }) {
                       />
                       <span style={{ fontSize: 13, fontWeight: 700, color: opt.color }}>{opt.label}</span>
                       {opt.value === 'INCOMPLETE_AMOUNT' && (
-                        <span style={{ marginRight: 'auto', fontSize: 11, background: '#D1FAE5', color: '#065F46', borderRadius: 6, padding: '2px 7px', fontWeight: 600 }}>استرداد فوري</span>
+                        <span style={{ marginRight: 'auto', fontSize: 11, background: '#D7F2E6', color: '#0A6E4E', borderRadius: 6, padding: '2px 7px', fontWeight: 600 }}>استرداد فوري</span>
                       )}
                     </div>
                     <span style={{ fontSize: 11, color: 'var(--text3)', paddingRight: 22 }}>{opt.sub}</span>
@@ -335,7 +335,7 @@ export default function Subscriptions({ adminId }) {
 
                 {/* Trail preview */}
                 {rejectValue && (
-                  <div style={{ background: '#F5F7FF', borderRadius: 10, padding: '10px 14px' }}>
+                  <div style={{ background: '#F2F7F5', borderRadius: 10, padding: '10px 14px' }}>
                     <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6 }}>ما سيظهر في السجل:</div>
                     <SubStatusTrail
                       status="rejected"

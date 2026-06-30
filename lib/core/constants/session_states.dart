@@ -13,9 +13,6 @@ enum SessionState {
   confirmedBooking,
   activeSession,
   completed,
-  teacherNoShow,
-  studentNoShow,
-  dispute,
   cancelled,
 }
 
@@ -32,9 +29,6 @@ extension SessionStateX on SessionState {
       case SessionState.confirmedBooking:  return 'حجز مؤكّد';
       case SessionState.activeSession:     return 'جلسة مباشرة';
       case SessionState.completed:         return 'مكتملة';
-      case SessionState.teacherNoShow:     return 'غياب الأستاذ';
-      case SessionState.studentNoShow:     return 'غياب الطالب';
-      case SessionState.dispute:           return 'نزاع إداري';
       case SessionState.cancelled:         return 'ملغاة';
     }
   }
@@ -51,9 +45,6 @@ extension SessionStateX on SessionState {
       case SessionState.confirmedBooking:  return l.stateConfirmedBooking;
       case SessionState.activeSession:     return l.stateActiveSession;
       case SessionState.completed:         return l.stateCompleted;
-      case SessionState.teacherNoShow:     return l.stateTeacherNoShow;
-      case SessionState.studentNoShow:     return l.stateStudentNoShow;
-      case SessionState.dispute:           return l.stateDispute;
       case SessionState.cancelled:         return l.stateCancelled;
     }
   }
@@ -70,9 +61,6 @@ extension SessionStateX on SessionState {
       case SessionState.confirmedBooking:  return 'CONFIRMED_BOOKING';
       case SessionState.activeSession:     return 'ACTIVE_SESSION';
       case SessionState.completed:         return 'COMPLETED';
-      case SessionState.teacherNoShow:     return 'TEACHER_NO_SHOW';
-      case SessionState.studentNoShow:     return 'STUDENT_NO_SHOW';
-      case SessionState.dispute:           return 'DISPUTE';
       case SessionState.cancelled:         return 'CANCELLED';
     }
   }
@@ -89,9 +77,6 @@ extension SessionStateX on SessionState {
       case SessionState.confirmedBooking:  return AppColors.statusConfirmed;
       case SessionState.activeSession:     return AppColors.statusActive;
       case SessionState.completed:         return AppColors.statusCompleted;
-      case SessionState.teacherNoShow:     return AppColors.statusNoShow;
-      case SessionState.studentNoShow:     return AppColors.statusNoShow;
-      case SessionState.dispute:           return AppColors.statusDispute;
       case SessionState.cancelled:         return AppColors.statusRejected;
     }
   }
@@ -108,9 +93,6 @@ extension SessionStateX on SessionState {
       case SessionState.confirmedBooking:  return AppColors.statusConfirmedBg;
       case SessionState.activeSession:     return AppColors.statusActiveBg;
       case SessionState.completed:         return AppColors.statusCompletedBg;
-      case SessionState.teacherNoShow:     return AppColors.statusRejectedBg;
-      case SessionState.studentNoShow:     return AppColors.statusRejectedBg;
-      case SessionState.dispute:           return AppColors.statusDisputeBg;
       case SessionState.cancelled:         return AppColors.statusRejectedBg;
     }
   }
@@ -125,10 +107,7 @@ extension SessionStateX on SessionState {
   bool get isTerminal {
     return this == SessionState.completed ||
         this == SessionState.teacherRejected ||
-        this == SessionState.cancelled ||
-        this == SessionState.teacherNoShow ||
-        this == SessionState.studentNoShow ||
-        this == SessionState.dispute;
+        this == SessionState.cancelled;
   }
 
   static SessionState fromString(String s) {

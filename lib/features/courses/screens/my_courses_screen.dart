@@ -7,6 +7,7 @@ import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/course.dart';
 import '../../../core/providers/courses_provider.dart';
+import '../../../core/utils/app_errors.dart';
 
 class MyCoursesScreen extends ConsumerWidget {
   const MyCoursesScreen({super.key});
@@ -62,7 +63,8 @@ class MyCoursesScreen extends ConsumerWidget {
                     children: [
                       const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textHint),
                       const SizedBox(height: 12),
-                      Text('${l.commonErrorLoading}: $e',
+                      Text(AppErrors.friendly(e, l),
+                          textAlign: TextAlign.center,
                           style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                       const SizedBox(height: 12),
                       TextButton(

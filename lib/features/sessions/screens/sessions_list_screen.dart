@@ -32,6 +32,7 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen>
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    ref.watch(sessionsRealtimeProvider);
     final sessionsAsync = ref.watch(studentSessionsProvider);
 
     return Scaffold(
@@ -87,10 +88,10 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen>
     final pending = sessions.where((s) =>
         [SessionState.requested, SessionState.teacherApproved,
          SessionState.awaitingPayment, SessionState.paymentSubmitted,
-         SessionState.paymentConfirmed].contains(s.state)).toList();
+         SessionState.paymentRejected, SessionState.paymentConfirmed].contains(s.state)).toList();
     final ended = sessions.where((s) =>
-        [SessionState.completed, SessionState.teacherRejected, SessionState.cancelled,
-         SessionState.teacherNoShow, SessionState.studentNoShow, SessionState.dispute].contains(s.state)).toList();
+        [SessionState.completed, SessionState.teacherRejected,
+         SessionState.cancelled].contains(s.state)).toList();
 
     return TabBarView(
       controller: _tabs,

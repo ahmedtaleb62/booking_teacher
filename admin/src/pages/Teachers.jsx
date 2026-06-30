@@ -4,9 +4,9 @@ import { useToast } from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 
 const AVATAR_COLORS = [
-  ['#E0E7FF', '#4338CA'], ['#D1FAE5', '#065F46'],
-  ['#EDE9FE', '#5B21B6'], ['#FEF3C7', '#92400E'],
-  ['#DBEAFE', '#1D4ED8'], ['#FEE2E2', '#991B1B'],
+  ['#D7F2E6', '#0A6E4E'], ['#E3F4EF', '#0E7C66'],
+  ['#ECE5F7', '#5A3B95'], ['#FBEFD6', '#92620F'],
+  ['#DEEAF7', '#1F5C99'], ['#FBE0DB', '#A12B1D'],
 ]
 
 function Avatar({ name, size = 52, bg, fg, photoUrl }) {
@@ -92,18 +92,17 @@ export default function Teachers() {
     setActionId(id)
     const { error } = await supabase.from('teacher_profiles').update({ is_approved: true }).eq('id', id)
     if (error) { toast('خطأ في الاعتماد: ' + error.message, 'error'); setActionId(null); return }
-    await supabase.functions.invoke('notify-user', {
-      body: {
-        user_id: id,
-        title:   'تهانينا! تم اعتماد حسابك 🎉',
-        body:    'يمكنك الآن استقبال طلبات الجلسات من الطلاب.',
-        data:    { type: 'TEACHER_APPROVED' },
-      },
-    }).catch(() => {})
-    await supabase.from('notifications').insert({
-      user_id: id, title: 'تهانينا! تم اعتماد حسابك 🎉',
-      body: 'يمكنك الآن استقبال طلبات الجلسات من الطلاب.', type: 'teacher_approved',
-    })
+    await supabase.rpc('admin_notify_teacher_approved', { p_teacher_id: id })
+    // Notify all students about the new teacher
+    const teacherName = modal?.name || 'أستاذ جديد'
+    try {
+      await supabase.rpc('send_admin_notification', {
+        p_target_type: 'students',
+        p_title: 'أستاذ جديد انضم 🎓',
+        p_body:  `${teacherName} أصبح متاحاً الآن لجلسات التدريس`,
+        p_type:  'NEW_TEACHER',
+      })
+    } catch (_) {}
     setActionId(null); setModal(null)
     toast('تم اعتماد الأستاذ بنجاح وإشعاره', 'success')
     await loadData()
@@ -116,10 +115,9 @@ export default function Teachers() {
     const { error: delErr } = await supabase.from('teacher_profiles').delete().eq('id', id)
     if (delErr) { toast('خطأ في رفض الطلب: ' + delErr.message, 'error'); setActionId(null); return }
     await supabase.from('profiles').update({ is_active: false }).eq('id', id)
-    await supabase.from('notifications').insert({
-      user_id: id, title: 'اعتذرنا عن طلبك',
-      body: 'لا يمكن قبول طلبك في الوقت الحالي. يرجى التواصل معنا للمزيد.', type: 'teacher_rejected',
-    })
+    try {
+      await supabase.rpc('admin_notify_teacher_rejected', { p_teacher_id: id })
+    } catch (_) {}
     setActionId(null); setModal(null)
     toast('تم رفض طلب الأستاذ', 'success')
     await loadData()
@@ -131,10 +129,9 @@ export default function Teachers() {
     setActionId(id)
     const { error } = await supabase.from('teacher_profiles').update({ is_approved: false }).eq('id', id)
     if (error) { toast('خطأ في إلغاء الاعتماد: ' + error.message, 'error'); setActionId(null); return }
-    await supabase.from('notifications').insert({
-      user_id: id, title: 'تم إيقاف حسابك مؤقتاً',
-      body: 'تم إلغاء اعتماد حسابك من قِبَل الإدارة. للاستفسار تواصل معنا.', type: 'teacher_revoked',
-    })
+    try {
+      await supabase.rpc('admin_notify_teacher_revoked', { p_teacher_id: id })
+    } catch (_) {}
     setActionId(null); setModal(null)
     toast('تم إلغاء اعتماد الأستاذ وإشعاره', 'success')
     await loadData()
@@ -180,7 +177,7 @@ export default function Teachers() {
         </div>
         <div className={`tab${tab === 'approved' ? ' active' : ''}`} onClick={() => setTab('approved')}>
           الأساتذة المعتمدون
-          <span className="badge" style={{ background: '#D1FAE5', color: '#065F46', marginRight: 6, fontSize: 10 }}>{approved.length}</span>
+          <span className="badge" style={{ background: '#D7F2E6', color: '#0A6E4E', marginRight: 6, fontSize: 10 }}>{approved.length}</span>
         </div>
       </div>
 
@@ -229,7 +226,7 @@ export default function Teachers() {
         {(hasFilter || statusFilter !== 'all') && (
           <button
             onClick={() => { setSearch(''); setStatusFilter('all'); setPriceMin(''); setPriceMax('') }}
-            style={{ padding: '7px 14px', borderRadius: 10, border: '1.5px solid var(--border)', background: '#FEE2E2', color: '#991B1B', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
+            style={{ padding: '7px 14px', borderRadius: 10, border: '1.5px solid var(--border)', background: '#FBE0DB', color: '#A12B1D', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
           >
             ✕ مسح
           </button>
@@ -243,7 +240,7 @@ export default function Teachers() {
       {/* ── Pending tab info banner ────────────────────────────── */}
       {tab === 'pending' && statusFilter !== 'approved' && (
         <div className="info-banner blue" style={{ marginBottom: 16 }}>
-          ℹ️ &nbsp;للاعتماد يكفي أن يرسل الأستاذ: المادة · سنوات الخبرة · صورة ورقم بطاقة التعريف. اضغط أي بطاقة للمراجعة.
+          ℹ️ &nbsp;للاعتماد يكفي أن يرسل الأستاذ: المادة · سنوات الخبرة · سعر الساعة. اضغط أي بطاقة للمراجعة.
         </div>
       )}
 
@@ -266,7 +263,7 @@ export default function Teachers() {
               <Avatar name={t.name} bg={t.bg} fg={t.fg} photoUrl={t.avatar_url || t.profile?.avatar_url} />
               {tab === 'pending'
                 ? <span className="badge" style={{ background: '#FEF3C7', color: '#92400E' }}>بانتظار</span>
-                : <span className="badge" style={{ background: '#D1FAE5', color: '#065F46' }}>✓ معتمد</span>
+                : <span className="badge" style={{ background: '#D7F2E6', color: '#0A6E4E' }}>✓ معتمد</span>
               }
             </div>
             <div style={{ fontSize: 16, fontWeight: 700, marginTop: 13 }}>{t.name}</div>
@@ -275,11 +272,11 @@ export default function Teachers() {
             </div>
             {t.price_per_hour && (
               <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>
-                💰 {t.price_per_hour.toLocaleString('ar')} أوقية / ساعة
+                💰 {t.price_per_hour.toLocaleString('en-US')} أوقية / ساعة
               </div>
             )}
             <div style={{ display: 'flex', gap: 12, marginTop: 10, fontSize: 12 }}>
-              <span style={{ background: '#EDE9FE', color: '#5B21B6', borderRadius: 8, padding: '3px 9px', fontWeight: 600 }}>
+              <span style={{ background: '#ECE5F7', color: '#5A3B95', borderRadius: 8, padding: '3px 9px', fontWeight: 600 }}>
                 🎓 {t.total_sessions ?? 0} جلسة
               </span>
               <span style={{ background: '#DBEAFE', color: '#1D4ED8', borderRadius: 8, padding: '3px 9px', fontWeight: 600 }}>
@@ -315,14 +312,14 @@ export default function Teachers() {
                   {modal.phone || modal.profile?.phone || '—'}
                 </div>
                 {modal.approved
-                  ? <span className="badge" style={{ background: '#D1FAE5', color: '#065F46', marginTop: 5, display: 'inline-block' }}>✓ معتمد</span>
+                  ? <span className="badge" style={{ background: '#D7F2E6', color: '#0A6E4E', marginTop: 5, display: 'inline-block' }}>✓ معتمد</span>
                   : <span className="badge" style={{ background: '#FEF3C7', color: '#92400E', marginTop: 5, display: 'inline-block' }}>بانتظار الاعتماد</span>
                 }
               </div>
             </div>
 
             {/* Teacher details */}
-            <div style={{ background: '#F5F7FF', borderRadius: 12, padding: 16, marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
+            <div style={{ background: '#F2F7F5', borderRadius: 12, padding: 16, marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
                   <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 2 }}>المواد</div>
@@ -334,7 +331,7 @@ export default function Teachers() {
                 </div>
                 <div>
                   <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 2 }}>سعر الساعة</div>
-                  <div style={{ fontWeight: 600, color: '#059669' }}>{modal.price_per_hour?.toLocaleString('ar') || '—'} أوقية</div>
+                  <div style={{ fontWeight: 600, color: '#059669' }}>{modal.price_per_hour?.toLocaleString('en-US') || '—'} أوقية</div>
                 </div>
                 <div>
                   <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 2 }}>تاريخ التسجيل</div>
@@ -364,16 +361,6 @@ export default function Teachers() {
               </div>
             </div>
 
-            {/* ID card image */}
-            {modal.id_card_url && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>🪪 بطاقة التعريف</div>
-                <a href={modal.id_card_url} target="_blank" rel="noreferrer">
-                  <img src={modal.id_card_url} alt="id" style={{ width: '100%', borderRadius: 10, maxHeight: 200, objectFit: 'cover', border: '1px solid var(--border)', cursor: 'zoom-in' }} />
-                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, textAlign: 'center' }}>انقر للعرض الكامل ↗</div>
-                </a>
-              </div>
-            )}
 
             {/* Profile photo — try avatar_url from teacher_profiles then profiles */}
             {(modal.avatar_url || modal.profile?.avatar_url) && (
@@ -411,17 +398,11 @@ export default function Teachers() {
             ) : (
               /* Pending teacher — approve / reject */
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {!modal.id_card_url && (
-                  <div style={{ background: '#FEE2E2', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#991B1B' }}>
-                    🚫 لا يمكن الاعتماد — لم يُرفق صورة بطاقة التعريف
-                  </div>
-                )}
                 <div style={{ display: 'flex', gap: 10 }}>
                 <button
                   className="btn btn-primary"
                   style={{ flex: 1, justifyContent: 'center' }}
-                  disabled={!!actionId || !modal.id_card_url}
-                  title={!modal.id_card_url ? 'يجب أن يرفق الأستاذ صورة بطاقته أولاً' : undefined}
+                  disabled={!!actionId}
                   onClick={() => approve(modal.id)}
                 >
                   {actionId === modal.id

@@ -4,9 +4,9 @@ import { useToast } from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 
 const AVATAR_COLORS = [
-  ['#E0E7FF', '#4338CA'], ['#D1FAE5', '#065F46'],
-  ['#EDE9FE', '#5B21B6'], ['#FEF3C7', '#92400E'],
-  ['#DBEAFE', '#1D4ED8'], ['#FEE2E2', '#991B1B'],
+  ['#D7F2E6', '#0A6E4E'], ['#E3F4EF', '#0E7C66'],
+  ['#ECE5F7', '#5A3B95'], ['#FBEFD6', '#92620F'],
+  ['#DEEAF7', '#1F5C99'], ['#FBE0DB', '#A12B1D'],
 ]
 
 function Avatar({ name, size = 34, bg, fg, photoUrl }) {
@@ -68,7 +68,7 @@ export default function Users() {
       const last = activityMap[p.id]
       return {
         ...p, bg, fg,
-        lastActive: last ? new Date(last.date).toLocaleDateString('ar-EG') : '—',
+        lastActive: last ? new Date(last.date).toLocaleDateString('ar-EG-u-nu-latn') : '—',
         sessCount:  sessCountMap[p.id] || 0,
       }
     }))
@@ -104,7 +104,7 @@ export default function Users() {
   if (loading) return <div className="loading-center"><div className="spinner" /></div>
 
   const fmtDate = dt => dt
-    ? new Date(dt).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })
+    ? new Date(dt).toLocaleDateString('ar-EG-u-nu-latn', { year: 'numeric', month: 'short', day: 'numeric' })
     : '—'
 
   const COLS = '52px 1.5fr 0.6fr 0.9fr 1.1fr 0.7fr 1.1fr'
@@ -145,8 +145,8 @@ export default function Users() {
             {/* Role */}
             <span>
               <span className="badge" style={{
-                background: u.role === 'teacher' ? '#EDE9FE' : '#DBEAFE',
-                color:      u.role === 'teacher' ? '#5B21B6' : '#1D4ED8',
+                background: u.role === 'teacher' ? '#ECE5F7' : '#DEEAF7',
+                color:      u.role === 'teacher' ? '#5A3B95' : '#1F5C99',
               }}>
                 {u.role === 'teacher' ? 'أستاذ' : 'طالب'}
               </span>
@@ -161,8 +161,8 @@ export default function Users() {
             {/* Status */}
             <span>
               <span className="badge" style={{
-                background: u.is_active === false ? '#FEE2E2' : '#D1FAE5',
-                color:      u.is_active === false ? '#991B1B' : '#065F46',
+                background: u.is_active === false ? '#FBE0DB' : '#D7F2E6',
+                color:      u.is_active === false ? '#A12B1D' : '#0A6E4E',
               }}>
                 {u.is_active === false ? 'موقوف' : 'نشط'}
               </span>
@@ -174,9 +174,9 @@ export default function Users() {
                 className="btn btn-sm"
                 style={{
                   padding: '4px 10px', fontSize: 11,
-                  background: u.is_active === false ? '#D1FAE5' : '#FEF2F2',
-                  color:      u.is_active === false ? '#065F46' : '#DC2626',
-                  border:     u.is_active === false ? '1px solid #6EE7B7' : '1px solid #FCA5A5',
+                  background: u.is_active === false ? '#D7F2E6' : '#FBE0DB',
+                  color:      u.is_active === false ? '#0A6E4E' : '#A12B1D',
+                  border:     u.is_active === false ? '1px solid #13A88A' : '1px solid #F3C5BD',
                 }}
                 disabled={!!actionId}
                 onClick={() => setSuspendTarget({ id: u.id, name: u.full_name || '—', is_active: u.is_active !== false })}
@@ -185,7 +185,7 @@ export default function Users() {
               </button>
               <button
                 className="btn btn-sm"
-                style={{ padding: '4px 10px', fontSize: 11, background: '#FEE2E2', color: '#991B1B', border: '1px solid #FCA5A5' }}
+                style={{ padding: '4px 10px', fontSize: 11, background: '#FBE0DB', color: '#A12B1D', border: '1px solid #F3C5BD' }}
                 disabled={!!actionId}
                 onClick={() => setDeleteTarget({ id: u.id, name: u.full_name || '—' })}
               >

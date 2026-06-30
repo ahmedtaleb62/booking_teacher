@@ -176,8 +176,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
               child: TextField(
                 controller: _searchCtrl,
-                onChanged: (v) =>
-                    ref.read(teacherSearchQueryProvider.notifier).state = v,
+                onChanged: (v) {
+                  ref.read(teacherSearchQueryProvider.notifier).state = v;
+                  ref.read(courseSearchQueryProvider.notifier).state = v;
+                  ref.read(packageSearchQueryProvider.notifier).state = v;
+                },
                 decoration: InputDecoration(
                   hintText: l.homeSearchHint,
                   prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textHint, size: 20),
@@ -387,6 +390,7 @@ class _CoursesTab extends ConsumerWidget {
     final l = context.l10n;
     final coursesAsync    = ref.watch(coursesProvider);
     final selectedSubject = ref.watch(courseSubjectFilterProvider);
+    final query           = ref.watch(courseSearchQueryProvider).toLowerCase().trim();
 
     return CustomScrollView(
       slivers: [
@@ -415,7 +419,12 @@ class _CoursesTab extends ConsumerWidget {
             ),
           ),
           data: (courses) {
-            if (courses.isEmpty) {
+            final filtered = query.isEmpty
+                ? courses
+                : courses.where((c) =>
+                    c.title.toLowerCase().contains(query) ||
+                    c.teacherName.toLowerCase().contains(query)).toList();
+            if (filtered.isEmpty) {
               return SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 60),
@@ -430,8 +439,8 @@ class _CoursesTab extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(22, 0, 22, 100),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
-                  (_, i) => _CourseCard(course: courses[i]),
-                  childCount: courses.length,
+                  (_, i) => _CourseCard(course: filtered[i]),
+                  childCount: filtered.length,
                 ),
               ),
             );
@@ -618,26 +627,42 @@ class _CourseCard extends StatelessWidget {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            if (course.originalPrice != null)
+                            if (course.priceMonthly == 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE6F9F2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  l.homeLearnFree,
+                                  style: const TextStyle(
+                                      fontSize: 11, fontWeight: FontWeight.w700,
+                                      color: Color(0xFF15805F)),
+                                ),
+                              )
+                            else ...[
+                              if (course.originalPrice != null)
+                                Text(
+                                  l.homeOriginalPrice(course.originalPrice!.toStringAsFixed(0)),
+                                  style: const TextStyle(
+                                      fontSize: 9, color: AppColors.textHint,
+                                      decoration: TextDecoration.lineThrough),
+                                ),
                               Text(
-                                l.homeOriginalPrice(course.originalPrice!.toStringAsFixed(0)),
+                                l.homePricePerMonth(course.priceMonthly.toStringAsFixed(0)),
                                 style: const TextStyle(
-                                    fontSize: 9, color: AppColors.textHint,
-                                    decoration: TextDecoration.lineThrough),
+                                    fontSize: 12.5, fontWeight: FontWeight.w700,
+                                    color: AppColors.primary),
                               ),
-                            Text(
-                              l.homePricePerMonth(course.priceMonthly.toStringAsFixed(0)),
-                              style: const TextStyle(
-                                  fontSize: 12.5, fontWeight: FontWeight.w700,
-                                  color: AppColors.primary),
-                            ),
-                            if (course.priceYearly != null)
-                              Text(
-                                l.homePricePerYear(course.priceYearly!.toStringAsFixed(0)),
-                                style: const TextStyle(
-                                    fontSize: 9.5, color: AppColors.statusConfirmed,
-                                    fontWeight: FontWeight.w600),
-                              ),
+                              if (course.priceYearly != null)
+                                Text(
+                                  l.homePricePerYear(course.priceYearly!.toStringAsFixed(0)),
+                                  style: const TextStyle(
+                                      fontSize: 9.5, color: AppColors.statusConfirmed,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                            ],
                           ],
                         ),
                       ],
@@ -661,6 +686,7 @@ class _PackagesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final pkgsAsync = ref.watch(packagesProvider);
+    final query     = ref.watch(packageSearchQueryProvider).toLowerCase().trim();
     return pkgsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(
@@ -676,7 +702,12 @@ class _PackagesTab extends ConsumerWidget {
         ]),
       ),
       data: (packages) {
-        if (packages.isEmpty) {
+        final filtered = query.isEmpty
+            ? packages
+            : packages.where((p) =>
+                p.title.toLowerCase().contains(query) ||
+                (p.subjects?.toLowerCase().contains(query) ?? false)).toList();
+        if (filtered.isEmpty) {
           return Center(
             child: Text(l.homeNoPackagesAvailable,
                 style: const TextStyle(color: AppColors.textHint, fontSize: 14)),
@@ -684,8 +715,8 @@ class _PackagesTab extends ConsumerWidget {
         }
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(22, 14, 22, 100),
-          itemCount: packages.length,
-          itemBuilder: (_, i) => _PackageCard(package: packages[i]),
+          itemCount: filtered.length,
+          itemBuilder: (_, i) => _PackageCard(package: filtered[i]),
         );
       },
     );
@@ -748,12 +779,24 @@ class _PackageCard extends StatelessWidget {
             const SizedBox(height: 14),
             Row(
               children: [
-                Text('${package.priceMonthly.toStringAsFixed(0)} ',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-                Text(l.homeOugiyaPerMonth,
-                    style: TextStyle(
-                        fontSize: 10, color: Colors.white.withValues(alpha: 0.75))),
+                if (package.priceMonthly == 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(l.homeLearnFree,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                  )
+                else ...[
+                  Text('${package.priceMonthly.toStringAsFixed(0)} ',
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+                  Text(l.homeOugiyaPerMonth,
+                      style: TextStyle(
+                          fontSize: 10, color: Colors.white.withValues(alpha: 0.75))),
+                ],
                 const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

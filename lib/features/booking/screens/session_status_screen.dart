@@ -9,6 +9,7 @@ import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/session.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/services/session_service.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/session_stepper.dart';
 
@@ -246,9 +247,6 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
     final isConfirmed  = s.state == SessionState.confirmedBooking;
     final isActive     = s.state == SessionState.activeSession;
     final isNegative   = s.state == SessionState.teacherRejected ||
-        s.state == SessionState.dispute ||
-        s.state == SessionState.teacherNoShow ||
-        s.state == SessionState.studentNoShow ||
         s.state == SessionState.paymentRejected;
 
     Color startColor = s.state.color;
@@ -396,7 +394,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(event.labelFor(l),
+                        Text(event.labelFor(l, cancellationReason: s.cancellationReason),
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                         Text(_formatTime(event.createdAt),
                           style: const TextStyle(fontSize: 10.5, color: AppColors.textHint)),
@@ -573,124 +571,6 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
       return _buildCancelledSection(context, s);
     }
 
-    if (s.state == SessionState.studentNoShow) {
-      return _buildInfoBanner(
-        icon: Icons.info_outline_rounded,
-        message: l.sessionStudentAbsentInfo,
-        color: const Color(0xFFC77A1A),
-        bgColor: const Color(0xFFFEF3E2),
-      );
-    }
-
-    if (s.state == SessionState.dispute) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFDECEC),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFFCA5A5)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.policy_outlined, color: AppColors.error, size: 18),
-                const SizedBox(width: 8),
-                Text(l.sessionDisputeTitle,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.error)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(l.sessionDisputeInfo,
-              style: const TextStyle(fontSize: 12.5, color: Color(0xFF7F1D1D), height: 1.5)),
-            const SizedBox(height: 10),
-            Text(l.sessionDisputeNextStep,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF9B1C1C), height: 1.5,
-                fontWeight: FontWeight.w600)),
-          ],
-        ),
-      );
-    }
-
-    if (s.state == SessionState.teacherNoShow) {
-      final alreadyRescheduled = s.events.any((e) => e.eventType == 'RESCHEDULED');
-      if (alreadyRescheduled) {
-        return _buildInfoBanner(
-          icon: Icons.check_circle_outline_rounded,
-          message: l.sessionRescheduledSuccess,
-          color: AppColors.statusConfirmed,
-          bgColor: AppColors.statusConfirmedBg,
-        );
-      }
-
-      if (s.hasRefundRequested) {
-        return _buildInfoBanner(
-          icon: Icons.hourglass_top_rounded,
-          message: l.sessionRefundPendingMsg,
-          color: const Color(0xFF7B61FF),
-          bgColor: const Color(0xFFF0EDFF),
-        );
-      }
-
-      return Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF2F2),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFFCA5A5)),
-            ),
-            child: Column(
-              children: [
-                const Icon(Icons.person_off_rounded, color: AppColors.error, size: 36),
-                const SizedBox(height: 10),
-                Text(
-                  l.sessionTeacherNoShowInfo,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13, height: 1.6, color: Color(0xFF7F1D1D)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => context.push('/reschedule/${s.id}'),
-                  icon: const Icon(Icons.calendar_today_rounded, size: 16),
-                  label: Text(l.actionReschedule),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    side: const BorderSide(color: AppColors.primary),
-                    foregroundColor: AppColors.primary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _showRefundDialog(context, s),
-                  icon: const Icon(Icons.account_balance_wallet_outlined, size: 16),
-                  label: Text(l.actionRequestRefund),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    backgroundColor: const Color(0xFF7B61FF),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-    }
-
     return const SizedBox.shrink();
   }
 
@@ -702,10 +582,24 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
     final bool withRefund = reason == 'teacher_no_show_refund' || reason == 'insufficient_refund';
 
     final (IconData icon, String title, String body, Color color, Color bg) = switch (reason) {
-      'no_payment_deadline' => (
+      'student_cancelled' => (
+        Icons.cancel_outlined,
+        l.cancelledStudentCancelledTitle,
+        l.cancelledStudentCancelledBody,
+        AppColors.textSecondary,
+        const Color(0xFFF3F4F6),
+      ),
+      'teacher_timeout' => (
         Icons.timer_off_rounded,
-        l.cancelledNoPaymentTitle,
-        l.cancelledNoPaymentBody,
+        l.cancelledTeacherTimeoutTitle,
+        l.cancelledTeacherTimeoutBody,
+        const Color(0xFFD97706),
+        const Color(0xFFFEF3C7),
+      ),
+      'payment_timeout' || 'no_payment_deadline' => (
+        Icons.timer_off_rounded,
+        l.cancelledPaymentTimeoutTitle,
+        l.cancelledPaymentTimeoutBody,
         AppColors.error,
         const Color(0xFFFDECEC),
       ),
@@ -792,53 +686,6 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
 
   // ── Dialogs ─────────────────────────────────────────────────────
 
-  void _showRefundDialog(BuildContext context, Session s) {
-    final l = context.l10n;
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(children: [
-          const Icon(Icons.account_balance_wallet_outlined, color: Color(0xFF7B61FF), size: 22),
-          const SizedBox(width: 8),
-          Text(l.dialogRefundTitle,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-        ]),
-        content: Text(
-          l.dialogRefundContent,
-          style: const TextStyle(fontSize: 13, height: 1.6),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l.dialogBack2),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                await SessionService.requestRefund(s.id);
-                ref.invalidate(sessionProvider(s.id));
-                ref.invalidate(studentSessionsProvider);
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('$e')));
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF7B61FF),
-              foregroundColor: Colors.white,
-              elevation: 0,
-            ),
-            child: Text(l.actionConfirmRequest),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showCancelDialog(BuildContext context) {
     final l = context.l10n;
     showDialog(
@@ -857,8 +704,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
                 if (context.mounted) context.go('/sessions');
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('$e')));
+                  AppErrors.showSnackBar(e, context.l10n, ScaffoldMessenger.of(context));
                 }
               }
             },
@@ -877,6 +723,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (_) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -887,7 +734,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(5, (i) => GestureDetector(
-                  onTap: () => set(() => rating = i + 1),
+                  onTap: sending ? null : () => set(() => rating = i + 1),
                   child: Icon(Icons.star_rounded, size: 36,
                     color: i < rating ? const Color(0xFFF59E0B) : AppColors.border),
                 )),
@@ -896,6 +743,7 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
               TextField(
                 controller: commentCtrl,
                 maxLines: 3,
+                enabled: !sending,
                 decoration: InputDecoration(
                   hintText: l.dialogRatingCommentOptional,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -905,9 +753,13 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.commonCancel)),
+            TextButton(
+              onPressed: sending ? null : () => Navigator.pop(ctx),
+              child: Text(l.commonCancel),
+            ),
             ElevatedButton(
               onPressed: sending ? null : () async {
+                if (!ctx.mounted) return;
                 set(() => sending = true);
                 try {
                   await SessionService.submitReview(
@@ -916,8 +768,10 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
                     rating: rating,
                     comment: commentCtrl.text.trim().isEmpty ? null : commentCtrl.text.trim(),
                   );
-                  ref.invalidate(studentSessionsProvider);
-                  if (mounted) setState(() => _rated = true);
+                  if (mounted) {
+                    ref.invalidate(studentSessionsProvider);
+                    setState(() => _rated = true);
+                  }
                   if (ctx.mounted) Navigator.pop(ctx);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -925,10 +779,10 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
                         backgroundColor: const Color(0xFF1B9E77)));
                   }
                 } catch (e) {
-                  set(() => sending = false);
                   if (ctx.mounted) {
+                    set(() => sending = false);
                     ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(content: Text('$e')));
+                      SnackBar(content: Text(l.commonError)));
                   }
                 }
               },
@@ -983,9 +837,6 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
       case SessionState.confirmedBooking: return Icons.event_available_rounded;
       case SessionState.activeSession:    return Icons.videocam_rounded;
       case SessionState.completed:        return Icons.star_rounded;
-      case SessionState.teacherNoShow:
-      case SessionState.studentNoShow:    return Icons.person_off_rounded;
-      case SessionState.dispute:          return Icons.warning_rounded;
       case SessionState.cancelled:        return Icons.cancel_rounded;
     }
   }
@@ -1003,9 +854,6 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
       case SessionState.confirmedBooking: return l.subConfirmedBooking;
       case SessionState.activeSession:    return l.subActiveSession;
       case SessionState.completed:        return l.subCompleted;
-      case SessionState.teacherNoShow:    return l.subTeacherNoShow;
-      case SessionState.studentNoShow:    return l.sessionStudentAbsentInfo;
-      case SessionState.dispute:          return l.subDispute;
       case SessionState.cancelled:        return l.subCancelled;
     }
   }
@@ -1021,7 +869,6 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
       case SessionState.confirmedBooking: return l.respNoneWaiting;
       case SessionState.activeSession:    return l.respBothJoin;
       case SessionState.completed:        return l.respCompleted;
-      case SessionState.dispute:          return l.respAdminDispute;
       default:                            return l.respNone;
     }
   }
@@ -1038,8 +885,6 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
       case SessionState.activeSession:    return l.nextEnterSession;
       case SessionState.completed:        return _rated ? l.nextRated : l.nextRateTeacher;
       case SessionState.teacherRejected:  return l.nextFindTeacher;
-      case SessionState.teacherNoShow:    return l.nextReschedule;
-      case SessionState.dispute:          return l.nextWaitDecision;
       default:                            return l.respNone;
     }
   }

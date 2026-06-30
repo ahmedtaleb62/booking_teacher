@@ -126,13 +126,11 @@ export default function Disputes() {
         })
         await supabase.from('payments')
           .update({ status: 'refunded' }).eq('session_id', sessionId)
-        await supabase.from('notifications').insert({
-          user_id:    sess.student_id,
-          title:      'تم استرداد مبلغك ✅',
-          body:       'تم حل النزاع لصالحك وسيتم تحويل المبلغ قريباً.',
-          type:       'dispute_resolved',
-          session_id: sessionId,
-        })
+        try {
+          await supabase.rpc('admin_notify_dispute_refund', {
+            p_student_id: sess.student_id, p_session_id: sessionId,
+          })
+        } catch (_) {}
       }
 
       if (newState === 'COMPLETED') {
@@ -149,13 +147,11 @@ export default function Disputes() {
           net_amount:  netAmt,
           description: 'جلسة مكتملة — نزاع محلول لصالح الأستاذ',
         })
-        await supabase.from('notifications').insert({
-          user_id:    sess.teacher_id,
-          title:      'تم إيداع مستحقاتك ✅',
-          body:       'تم حل النزاع لصالحك وسيُحوَّل مستحقك قريباً.',
-          type:       'dispute_resolved',
-          session_id: sessionId,
-        })
+        try {
+          await supabase.rpc('admin_notify_dispute_complete', {
+            p_teacher_id: sess.teacher_id, p_session_id: sessionId,
+          })
+        } catch (_) {}
       }
 
       setModal(null)
@@ -206,13 +202,11 @@ export default function Disputes() {
       await supabase.from('payments')
         .update({ status: 'refunded' }).eq('session_id', sess.id)
 
-      await supabase.from('notifications').insert({
-        user_id:    sess.student_id,
-        title:      'تم استرداد مبلغك ✅',
-        body:       'تمت معالجة طلب الاسترداد. سيُحوَّل المبلغ إليك قريباً.',
-        type:       'refund_processed',
-        session_id: sess.id,
-      })
+      try {
+        await supabase.rpc('admin_notify_noshow_refund', {
+          p_student_id: sess.student_id, p_session_id: sess.id,
+        })
+      } catch (_) {}
 
       await loadData()
       toast('تم تأكيد الاسترداد وإشعار الطالب', 'success')

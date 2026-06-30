@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../l10n/app_localizations.dart';
 
 class TeacherEarningsScreen extends ConsumerWidget {
@@ -28,8 +29,9 @@ class TeacherEarningsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l     = context.l10n;
-    final async = ref.watch(teacherEarningsProvider);
+    final l            = context.l10n;
+    final async        = ref.watch(teacherEarningsProvider);
+    final supportPhone = ref.watch(supportPhoneProvider).asData?.value ?? '';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -64,14 +66,17 @@ class TeacherEarningsScreen extends ConsumerWidget {
             ],
           ),
         ),
-        data: (data) => RefreshIndicator(
+        data: (data) {
+          final comm = ref.watch(commissionSettingsProvider).asData?.value
+              ?? const CommissionSettings();
+          return RefreshIndicator(
           onRefresh: () async => ref.invalidate(teacherEarningsProvider),
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 22),
             children: [
               const SizedBox(height: 16),
-              _BalanceCard(balance: data.totalBalance, fmtAmount: _fmtAmount),
+              _BalanceCard(balance: data.totalBalance, fmtAmount: _fmtAmount, supportPhone: supportPhone),
               const SizedBox(height: 16),
               _StatsRow(
                 weekEarnings: data.weekEarnings,
@@ -85,7 +90,7 @@ class TeacherEarningsScreen extends ConsumerWidget {
                 fmtAmount: _fmtAmount,
               ),
               const SizedBox(height: 14),
-              const _CommissionBanner(),
+              _CommissionBanner(sessionPct: comm.sessionPctInt, subPct: comm.subscriptionPctInt),
               const SizedBox(height: 20),
               Text(l.teacherLedgerTitle,
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
@@ -105,7 +110,8 @@ class TeacherEarningsScreen extends ConsumerWidget {
               const SizedBox(height: 20),
             ],
           ),
-        ),
+        );
+        },
       ),
     );
   }
@@ -114,7 +120,8 @@ class TeacherEarningsScreen extends ConsumerWidget {
 class _BalanceCard extends StatelessWidget {
   final double balance;
   final String Function(num) fmtAmount;
-  const _BalanceCard({required this.balance, required this.fmtAmount});
+  final String supportPhone;
+  const _BalanceCard({required this.balance, required this.fmtAmount, required this.supportPhone});
 
   @override
   Widget build(BuildContext context) {
@@ -150,7 +157,9 @@ class _BalanceCard extends StatelessWidget {
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(l.teacherEarningsWithdrawContact),
+                  content: Text(supportPhone.isNotEmpty
+                      ? 'للسحب تواصل مع الإدارة عبر واتساب: $supportPhone'
+                      : l.teacherEarningsWithdrawContact),
                   backgroundColor: const Color(0xFF1B6B7A),
                   duration: const Duration(seconds: 4),
                 ),
@@ -311,7 +320,9 @@ class _SourceBox extends StatelessWidget {
 }
 
 class _CommissionBanner extends StatelessWidget {
-  const _CommissionBanner();
+  final int sessionPct;
+  final int subPct;
+  const _CommissionBanner({required this.sessionPct, required this.subPct});
 
   @override
   Widget build(BuildContext context) {
@@ -328,7 +339,7 @@ class _CommissionBanner extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              l.earningsCommissionText,
+              l.earningsCommissionText('$sessionPct', '$subPct'),
               style: const TextStyle(fontSize: 11, color: Color(0xFF8A5A14), height: 1.5),
             ),
           ),

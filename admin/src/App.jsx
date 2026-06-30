@@ -13,11 +13,11 @@ import AddCourse from './pages/AddCourse'
 import Packages from './pages/Packages'
 import Teachers from './pages/Teachers'
 import Ratings from './pages/Ratings'
-import Disputes from './pages/Disputes'
 import Users from './pages/Users'
 import Policy from './pages/Policy'
 import Methods from './pages/Methods'
 import Notifications from './pages/Notifications'
+import Settings from './pages/Settings'
 
 const PAGE_META = {
   overview:     { title: 'لوحة المراقبة',        sub: 'مرحباً بك في لوحة تحكم حصتي' },
@@ -31,11 +31,11 @@ const PAGE_META = {
   packages:     { title: 'الباقات',              sub: 'إدارة باقات الدروس المجمّعة' },
   teachers:     { title: 'اعتماد الأساتذة',       sub: 'مراجعة طلبات الانضمام والاعتماد' },
   ratings:      { title: 'التقييمات',            sub: 'تقييمات الطلاب للأساتذة' },
-  disputes:     { title: 'النزاعات',             sub: 'إدارة النزاعات والشكاوى' },
   users:        { title: 'المستخدمون',           sub: 'إدارة حسابات الطلاب والأساتذة' },
   policy:       { title: 'السياسات والعمولات',    sub: 'ضبط عمولات المنصة وسياسات التشغيل' },
   methods:      { title: 'طرق الدفع',            sub: 'إدارة طرق الدفع المتاحة للطلاب' },
   notifications:{ title: 'الإشعارات',           sub: 'الإشعارات الواردة وإرسال إشعارات للمستخدمين' },
+  settings:     { title: 'الإعدادات',            sub: 'رقم دعم العملاء وكلمة مرور المدير' },
 }
 
 const PAGES = {
@@ -46,15 +46,15 @@ const PAGES = {
   subscriptions:Subscriptions,
   courses:      Courses,
   addCourse:    AddCourse,
-  editCourse:   AddCourse,   // same component, different mode via courseId prop
+  editCourse:   AddCourse,
   packages:     Packages,
   teachers:     Teachers,
   ratings:      Ratings,
-  disputes:     Disputes,
   users:        Users,
   policy:       Policy,
   methods:      Methods,
   notifications:Notifications,
+  settings:     Settings,
 }
 
 export default function App() {
@@ -63,6 +63,7 @@ export default function App() {
   const [loading, setLoading]     = useState(true)
   const [page, setPage]           = useState('overview')
   const [navParams, setNavParams] = useState({})
+  const [badges, setBadges]       = useState({})
 
   async function fetchRole(userId) {
     const { data } = await supabase
@@ -73,10 +74,28 @@ export default function App() {
     setUserRole(data?.role ?? null)
   }
 
+  async function fetchBadges() {
+    try {
+      const [payRes, teachRes, sessRes] = await Promise.all([
+        supabase.from('payments').select('id', { count: 'exact', head: true }).eq('status', 'submitted'),
+        supabase.from('teacher_profiles').select('id', { count: 'exact', head: true }).eq('is_approved', false),
+        supabase.from('sessions').select('id', { count: 'exact', head: true }).eq('state', 'ACTIVE_SESSION'),
+      ])
+      setBadges({
+        payments: payRes.count || 0,
+        teachers: teachRes.count || 0,
+        sessions: sessRes.count || 0,
+      })
+    } catch (_) {}
+  }
+
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session: s } }) => {
       setSession(s)
-      if (s) await fetchRole(s.user.id)
+      if (s) {
+        await fetchRole(s.user.id)
+        await fetchBadges()
+      }
       setLoading(false)
     })
 
@@ -84,11 +103,16 @@ export default function App() {
       setSession(s)
       if (s) {
         await fetchRole(s.user.id)
+        await fetchBadges()
       } else {
         setUserRole(null)
+        setBadges({})
       }
     })
-    return () => subscription.unsubscribe()
+
+    // Refresh badges every 60 seconds
+    const interval = setInterval(fetchBadges, 60_000)
+    return () => { subscription.unsubscribe(); clearInterval(interval) }
   }, [])
 
   if (loading) return (
@@ -97,7 +121,6 @@ export default function App() {
     </div>
   )
 
-  // Only users with role 'admin' may enter
   if (!session || userRole !== 'admin') return <Login />
 
   const meta = PAGE_META[page] || PAGE_META.overview
@@ -106,11 +129,12 @@ export default function App() {
   const goTo = (p, params = {}) => {
     setPage(p)
     setNavParams(params)
+    fetchBadges()
   }
 
   return (
     <ToastProvider>
-      <Layout page={page} onNavigate={goTo} meta={meta}>
+      <Layout page={page} onNavigate={goTo} meta={meta} badges={badges}>
         <PageComponent onNavigate={goTo} adminId={session.user.id} {...navParams} />
       </Layout>
     </ToastProvider>

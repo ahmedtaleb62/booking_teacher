@@ -135,7 +135,7 @@ class _OtpScreenState extends State<OtpScreen> {
     } on AuthException catch (e) {
       setState(() => _error = _authError(e.message));
     } catch (e) {
-      setState(() => _error = 'خطأ غير متوقع: $e');
+      setState(() => _error = 'حدث خطأ غير متوقع. حاول مجدداً أو تواصل مع الدعم.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }

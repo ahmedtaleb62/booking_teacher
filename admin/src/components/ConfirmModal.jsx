@@ -27,17 +27,17 @@ export default function ConfirmModal({
 }) {
   if (!open) return null
 
-  const confirmBg    = danger ? '#DC2626' : 'var(--primary)'
-  const confirmHover = danger ? '#B91C1C' : 'var(--primary-dark, #3730A3)'
-  const iconBg       = danger ? '#FEF2F2' : '#EEF2FF'
-  const iconColor    = danger ? '#DC2626' : 'var(--primary)'
+  const confirmBg    = danger ? 'var(--error)' : 'var(--primary)'
+  const confirmHover = danger ? '#8B1D13'     : 'var(--primary-dark)'
+  const iconBg       = danger ? 'var(--error-light)' : 'var(--primary-light)'
+  const iconColor    = danger ? 'var(--error)' : 'var(--primary)'
   const icon         = danger ? '⚠️'      : 'ℹ️'
 
   return (
     <div
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(30,27,75,.45)',
+        background: 'rgba(12,46,40,.4)',
         backdropFilter: 'blur(3px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 2000, padding: 20,
@@ -49,7 +49,7 @@ export default function ConfirmModal({
           background: '#fff', borderRadius: 20,
           padding: '32px 28px 26px',
           width: 400, maxWidth: '95vw',
-          boxShadow: '0 20px 60px rgba(30,27,75,.18)',
+          boxShadow: '0 20px 60px rgba(8,31,27,.18)',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           textAlign: 'center',
         }}

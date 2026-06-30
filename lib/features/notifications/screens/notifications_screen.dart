@@ -224,22 +224,22 @@ class _NotifTile extends StatelessWidget {
       case 'payment_confirmed':
       case 'PAYMENT_CONFIRMED':
       case 'SESSION_CONFIRMED':
-      case 'dispute_resolved':
-      case 'refund_processed':
-      case 'subscription_refunded':
-      case 'teacher_approved':   return AppColors.statusConfirmedBg;
+      case 'teacher_approved':
+      case 'SUB_ACTIVE':
+      case 'NEW_COURSE':
+      case 'NEW_PACKAGE':
+      case 'NEW_TEACHER':        return AppColors.statusConfirmedBg;
       case 'session_rejected':
       case 'TEACHER_REJECTED':
-      case 'payment_rejected':
       case 'teacher_rejected':
       case 'teacher_revoked':
-      case 'auto_cancelled':
-      case 'AUTO_CANCELLED':     return AppColors.statusRejectedBg;
-      case 'PAYMENT_REQUIRED':   return AppColors.statusApprovedBg;
+      case 'session_cancelled':
+      case 'payment_rejected':
+      case 'SUB_REJECTED':       return AppColors.statusRejectedBg;
       case 'session_started':
       case 'SESSION_STARTING':   return AppColors.statusActiveBg;
-      case 'dispute_opened':
-      case 'DISPUTE_OPENED':     return AppColors.statusDisputeBg;
+      case 'session_completed':  return AppColors.statusConfirmedBg;
+      case 'SUB_PENDING':        return AppColors.accentLight;
       default:                   return AppColors.accentLight;
     }
   }

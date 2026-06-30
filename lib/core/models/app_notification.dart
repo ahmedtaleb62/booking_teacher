@@ -26,39 +26,32 @@ class AppNotification {
       // ── Session lifecycle (DB trigger — lowercase) ──────────────────
       case 'session_requested':
       case 'SESSION_REQUESTED':   return l.notifTypeSessionRequested;
-      case 'session_approved':    return l.notifTypeSessionApproved;
+      case 'session_approved':
+      case 'TEACHER_APPROVED':    return l.notifTypeSessionApproved;
       case 'session_rejected':
       case 'TEACHER_REJECTED':    return l.notifTypeTeacherRejected;
       case 'payment_confirmed':
-      case 'PAYMENT_CONFIRMED':   return l.notifTypePaymentConfirmed;
-      case 'payment_rejected':    return l.notifTypePaymentRejected;
+      case 'PAYMENT_CONFIRMED':
+      case 'SESSION_CONFIRMED':   return l.notifTypePaymentConfirmed;
       case 'session_started':
       case 'SESSION_STARTING':    return l.notifTypeSessionStarting;
-      case 'teacher_no_show':
-      case 'TEACHER_NO_SHOW':     return l.notifTypeTeacherNoShow;
-      case 'student_no_show':
-      case 'STUDENT_NO_SHOW':     return l.notifTypeStudentNoShow;
-      case 'dispute_opened':
-      case 'DISPUTE_OPENED':      return l.notifTypeDisputeOpened;
-      // ── Legacy uppercase aliases ────────────────────────────────────
-      case 'TEACHER_APPROVED':    return l.notifTypeSessionApproved;
-      case 'PAYMENT_REQUIRED':    return l.notifTypePaymentRequired;
-      case 'SESSION_CONFIRMED':   return l.notifTypeSessionConfirmed;
+      case 'session_completed':
       case 'SESSION_COMPLETED':   return l.notifTypeSessionCompleted;
-      case 'RESCHEDULED':         return l.notifTypeRescheduled;
       // ── Subscriptions ───────────────────────────────────────────────
       case 'SUB_PENDING':         return l.notifTypeSubPending;
       case 'SUB_ACTIVE':          return l.notifTypeSubActive;
       case 'SUB_REJECTED':        return l.notifTypeSubRejected;
-      case 'subscription_refunded': return l.notifTypeSubscriptionRefunded;
-      // ── Admin actions ───────────────────────────────────────────────
-      case 'dispute_resolved':    return l.notifTypeDisputeResolved;
-      case 'refund_processed':    return l.notifTypeRefundProcessed;
+      // ── Admin / teacher account ──────────────────────────────────────
       case 'teacher_approved':    return l.notifTypeTeacherAccountApproved;
       case 'teacher_rejected':    return l.notifTypeTeacherAccountRejected;
       case 'teacher_revoked':     return l.notifTypeTeacherRevoked;
-      case 'auto_cancelled':
-      case 'AUTO_CANCELLED':      return l.notifTypeAutoCancelled;
+      // ── Platform announcements ───────────────────────────────────────
+      case 'NEW_COURSE':          return l.notifTypeNewCourse;
+      case 'NEW_PACKAGE':         return l.notifTypeNewPackage;
+      case 'NEW_TEACHER':         return l.notifTypeNewTeacher;
+      // ── Cancellations (title localized, body stays raw — reason-specific)
+      case 'session_cancelled':
+      case 'payment_rejected':    return l.notifTypeSessionCancelled;
       default:                    return title;
     }
   }
@@ -68,39 +61,32 @@ class AppNotification {
       // ── Session lifecycle (DB trigger — lowercase) ──────────────────
       case 'session_requested':
       case 'SESSION_REQUESTED':   return l.notifBodySessionRequested;
-      case 'session_approved':    return l.notifBodySessionApproved;
+      case 'session_approved':
+      case 'TEACHER_APPROVED':    return l.notifBodySessionApproved;
       case 'session_rejected':
       case 'TEACHER_REJECTED':    return l.notifBodyTeacherRejected;
       case 'payment_confirmed':
-      case 'PAYMENT_CONFIRMED':   return l.notifBodyPaymentConfirmed;
-      case 'payment_rejected':    return l.notifBodyPaymentRejected;
+      case 'PAYMENT_CONFIRMED':
+      case 'SESSION_CONFIRMED':   return l.notifBodyPaymentConfirmed;
       case 'session_started':
       case 'SESSION_STARTING':    return l.notifBodySessionStarting;
-      case 'teacher_no_show':
-      case 'TEACHER_NO_SHOW':     return l.notifBodyTeacherNoShow;
-      case 'student_no_show':
-      case 'STUDENT_NO_SHOW':     return l.notifBodyStudentNoShow;
-      case 'dispute_opened':
-      case 'DISPUTE_OPENED':      return l.notifBodyDisputeOpened;
-      // ── Legacy uppercase aliases ────────────────────────────────────
-      case 'TEACHER_APPROVED':    return l.notifBodyTeacherApproved;
-      case 'PAYMENT_REQUIRED':    return l.notifBodyPaymentRequired;
-      case 'SESSION_CONFIRMED':   return l.notifBodySessionConfirmed;
+      case 'session_completed':
       case 'SESSION_COMPLETED':   return l.notifBodySessionCompleted;
-      case 'RESCHEDULED':         return l.notifBodyRescheduled;
       // ── Subscriptions ───────────────────────────────────────────────
       case 'SUB_PENDING':         return l.notifBodySubPending;
       case 'SUB_ACTIVE':          return l.notifBodySubActive;
       case 'SUB_REJECTED':        return l.notifBodySubRejected;
-      case 'subscription_refunded': return l.notifBodySubscriptionRefunded;
-      // ── Admin actions ───────────────────────────────────────────────
-      case 'dispute_resolved':    return l.notifBodyDisputeResolved;
-      case 'refund_processed':    return l.notifBodyRefundProcessed;
+      // ── Admin / teacher account ──────────────────────────────────────
       case 'teacher_approved':    return l.notifBodyTeacherAccountApproved;
       case 'teacher_rejected':    return l.notifBodyTeacherAccountRejected;
       case 'teacher_revoked':     return l.notifBodyTeacherRevoked;
-      case 'auto_cancelled':
-      case 'AUTO_CANCELLED':      return l.notifBodyAutoCancelled;
+      // ── Platform announcements ───────────────────────────────────────
+      case 'NEW_COURSE':          return l.notifBodyNewCourse;
+      case 'NEW_PACKAGE':         return l.notifBodyNewPackage;
+      case 'NEW_TEACHER':         return l.notifBodyNewTeacher;
+      // ── Cancellations (body stays raw — reason-specific) ────────────
+      case 'session_cancelled':
+      case 'payment_rejected':
       default:                    return body;
     }
   }
@@ -113,32 +99,23 @@ class AppNotification {
       case 'TEACHER_APPROVED':    return '🎉';
       case 'session_rejected':
       case 'TEACHER_REJECTED':    return '❌';
-      case 'PAYMENT_REQUIRED':    return '💳';
       case 'payment_confirmed':
-      case 'PAYMENT_CONFIRMED':   return '✅';
-      case 'payment_rejected':    return '❌';
-      case 'SESSION_CONFIRMED':   return '🎉';
+      case 'PAYMENT_CONFIRMED':
+      case 'SESSION_CONFIRMED':   return '✅';
       case 'session_started':
       case 'SESSION_STARTING':    return '🔔';
-      case 'teacher_no_show':
-      case 'TEACHER_NO_SHOW':     return '⚠️';
-      case 'student_no_show':
-      case 'STUDENT_NO_SHOW':     return '⚠️';
-      case 'SESSION_COMPLETED':   return '⭐';
-      case 'dispute_opened':
-      case 'DISPUTE_OPENED':      return '🚨';
-      case 'dispute_resolved':    return '✅';
-      case 'RESCHEDULED':         return '🔄';
-      case 'refund_processed':    return '💰';
+      case 'session_completed':   return '⭐';
       case 'SUB_PENDING':         return '⏳';
       case 'SUB_ACTIVE':          return '🎓';
       case 'SUB_REJECTED':        return '❌';
-      case 'subscription_refunded': return '💰';
       case 'teacher_approved':    return '🎉';
       case 'teacher_rejected':    return '❌';
       case 'teacher_revoked':     return '🚫';
-      case 'auto_cancelled':
-      case 'AUTO_CANCELLED':      return '❌';
+      case 'session_cancelled':
+      case 'payment_rejected':    return '❌';
+      case 'NEW_COURSE':          return '📖';
+      case 'NEW_PACKAGE':         return '🎁';
+      case 'NEW_TEACHER':         return '🎓';
       default:                    return '🔔';
     }
   }
@@ -166,26 +143,3 @@ class AppNotification {
   }
 }
 
-// Mock notifications
-class MockNotifications {
-  static List<AppNotification> get list => [
-    AppNotification(
-      id: 'n1', title: 'وافق الأستاذ على طلبك',
-      body: 'د. محمد الأمين وافق على جلسة رياضيات — أكمل الدفع الآن',
-      type: 'TEACHER_APPROVED', sessionId: 'ses-001',
-      isRead: false, createdAt: DateTime.now().subtract(const Duration(minutes: 15)),
-    ),
-    AppNotification(
-      id: 'n2', title: 'تأكيد الدفع',
-      body: 'تم تأكيد دفعتك بنجاح. حجزك مؤكّد!',
-      type: 'PAYMENT_CONFIRMED', sessionId: 'ses-001',
-      isRead: false, createdAt: DateTime.now().subtract(const Duration(hours: 1)),
-    ),
-    AppNotification(
-      id: 'n3', title: 'جلستك اكتملت',
-      body: 'انتهت جلسة اللغة العربية. يمكنك الآن تقييم الأستاذ.',
-      type: 'SESSION_COMPLETED', sessionId: 'ses-003',
-      isRead: true, createdAt: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-  ];
-}

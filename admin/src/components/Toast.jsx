@@ -20,7 +20,7 @@ export function ToastProvider({ children }) {
   const styleMap = {
     success: { bg: '#059669', icon: '✓' },
     error:   { bg: '#DC2626', icon: '✕' },
-    info:    { bg: '#4F46E5', icon: 'ℹ' },
+    info:    { bg: '#0E7C66', icon: 'ℹ' },
   }
 
   return (
@@ -38,7 +38,7 @@ export function ToastProvider({ children }) {
               background: bg, color: '#fff', borderRadius: 14,
               padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 11,
               boxShadow: '0 6px 20px rgba(0,0,0,.22)', fontSize: 14,
-              fontFamily: 'Tajawal, sans-serif', direction: 'rtl',
+              fontFamily: "'IBM Plex Sans Arabic', sans-serif", direction: 'rtl',
               pointerEvents: 'all', animation: 'slideIn .22s ease',
             }}>
               <span style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(255,255,255,.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, flexShrink: 0 }}>

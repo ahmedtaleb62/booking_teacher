@@ -37,7 +37,7 @@ export default function Accounting() {
     const profMap = Object.fromEntries((profs || []).map(p => [p.id, p]))
     const teachers = (tps || []).map(t => ({ ...t, profiles: profMap[t.id] || {} }))
 
-    const [{ data: sessions }, { data: subs }, { data: pkgSubs }, { data: payouts }] = await Promise.all([
+    const [{ data: sessions }, { data: subs }, { data: pkgSubsRaw }, { data: payouts }] = await Promise.all([
       supabase
         .from('sessions')
         .select('teacher_id, amount, state')
@@ -49,7 +49,7 @@ export default function Accounting() {
         .eq('type', 'course'),
       supabase
         .from('subscriptions')
-        .select('package:package_id(teacher_id), amount')
+        .select('package_id, amount')
         .eq('status', 'active')
         .eq('type', 'package'),
       supabase
@@ -57,6 +57,14 @@ export default function Accounting() {
         .select('teacher_id, net_amount')
         .eq('type', 'payout_sent'),
     ])
+
+    // Resolve package teacher_ids without relying on a DB foreign key
+    const packageIds = [...new Set((pkgSubsRaw || []).map(s => s.package_id).filter(Boolean))]
+    const { data: packagesData } = packageIds.length
+      ? await supabase.from('packages').select('id, teacher_id').in('id', packageIds)
+      : { data: [] }
+    const pkgTeacherMap = Object.fromEntries((packagesData || []).map(p => [p.id, p.teacher_id]))
+    const pkgSubs = (pkgSubsRaw || []).map(s => ({ amount: s.amount, package: { teacher_id: pkgTeacherMap[s.package_id] } }))
 
     const byTeacher = {}
     ;(sessions || []).forEach(s => {
@@ -86,7 +94,7 @@ export default function Accounting() {
       const stats = byTeacher[t.id] || { sessions: 0, subs: 0 }
       const paidOut = payoutsByTeacher[t.id] || 0
       const total = Math.max(0, stats.sessions + stats.subs - paidOut)
-      const colors = [['#E0E7FF', '#4338CA'], ['#D1FAE5', '#065F46'], ['#EDE9FE', '#5B21B6'], ['#FEF3C7', '#92400E'], ['#DBEAFE', '#1D4ED8']]
+      const colors = [['#D7F2E6', '#0A6E4E'], ['#E3F4EF', '#0E7C66'], ['#ECE5F7', '#5A3B95'], ['#FBEFD6', '#92620F'], ['#DEEAF7', '#1F5C99']]
       const [bg, fg] = colors[i % colors.length]
       return {
         id: t.id,
@@ -123,7 +131,7 @@ export default function Accounting() {
   async function confirmSettle() {
     const { teacherId, amount, name } = confirmModal
     setActionId(teacherId)
-    const dateLabel = new Date().toLocaleDateString('ar-EG')
+    const dateLabel = new Date().toLocaleDateString('ar-EG-u-nu-latn')
     const { error } = await supabase.rpc('admin_settle_teacher', {
       p_teacher_id:  teacherId,
       p_amount:      amount,
@@ -141,7 +149,7 @@ export default function Accounting() {
 
   if (loading) return <div className="loading-center"><div className="spinner" /></div>
 
-  const fmt = n => n?.toLocaleString('ar')
+  const fmt = n => n?.toLocaleString('en-US')
 
   return (
     <div>
@@ -155,9 +163,9 @@ export default function Accounting() {
             <div className="text-muted" style={{ fontSize: 12 }}>مستحقات الجلسات</div>
             <div style={{ fontSize: 23, fontWeight: 700, color: '#1B9E77', marginTop: 3 }}>{fmt(totals.fromSessions)} <span style={{ fontSize: 11, color: 'var(--text3)' }}>أوقية</span></div>
           </div>
-          <div className="card-sm" style={{ background: '#1E1B4B', border: 'none' }}>
+          <div className="card-sm" style={{ background: '#0C2E28', border: 'none' }}>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)' }}>مستحقات الاشتراكات</div>
-            <div style={{ fontSize: 23, fontWeight: 700, color: '#A5B4FC', marginTop: 3 }}>{fmt(totals.fromSubs)} <span style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>أوقية</span></div>
+            <div style={{ fontSize: 23, fontWeight: 700, color: '#6FE3C4', marginTop: 3 }}>{fmt(totals.fromSubs)} <span style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>أوقية</span></div>
           </div>
           <div className="card-sm">
             <div className="text-muted" style={{ fontSize: 12 }}>تمت تسويتهم</div>
@@ -205,7 +213,7 @@ export default function Accounting() {
       <ConfirmModal
         open={!!confirmModal}
         title={`تسوية مستحقات ${confirmModal?.name}`}
-        message={`سيتم تسجيل دفع بقيمة ${confirmModal?.amount?.toLocaleString('ar')} أوقية للأستاذ ${confirmModal?.name}. هل تريد المتابعة؟`}
+        message={`سيتم تسجيل دفع بقيمة ${confirmModal?.amount?.toLocaleString('en-US')} أوقية للأستاذ ${confirmModal?.name}. هل تريد المتابعة؟`}
         confirm="تأكيد التسوية"
         cancel="إلغاء"
         danger={false}

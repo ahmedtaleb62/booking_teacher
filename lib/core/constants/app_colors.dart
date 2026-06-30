@@ -49,11 +49,6 @@ class AppColors {
   static const Color statusRejectedBg = Color(0xFFFDECEC);
   static const Color statusRejectedText = Color(0xFF9B2D2D);
 
-  static const Color statusDispute = Color(0xFFC0392B);
-  static const Color statusDisputeBg = Color(0xFFFDECEC);
-
-  static const Color statusNoShow = Color(0xFFC0392B);
-
   // Semantic
   static const Color success = Color(0xFF16A34A);
   static const Color warning = Color(0xFFF2994A);

@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/supabase_service.dart';
 
 class TeacherDashboardScreen extends ConsumerStatefulWidget {
@@ -49,6 +50,7 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    ref.watch(sessionsRealtimeProvider);
     final async = ref.watch(teacherDashboardProvider);
 
     return Scaffold(
@@ -133,7 +135,7 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
 }
 
 // ── Header ───────────────────────────────────────────────────
-class _Header extends StatelessWidget {
+class _Header extends ConsumerWidget {
   final String name;
   final String initial;
   final String? avatarUrl;
@@ -151,8 +153,9 @@ class _Header extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
+    final sessionPct = ref.watch(commissionSettingsProvider).asData?.value.sessionPctInt ?? 15;
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -168,20 +171,23 @@ class _Header extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
             child: Row(
               children: [
-                Container(
-                  width: 46, height: 46,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(13),
-                    image: avatarUrl != null
-                        ? DecorationImage(image: NetworkImage(avatarUrl!), fit: BoxFit.cover)
+                GestureDetector(
+                  onTap: () => context.go('/teacher/profile'),
+                  child: Container(
+                    width: 46, height: 46,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(13),
+                      image: avatarUrl != null
+                          ? DecorationImage(image: NetworkImage(avatarUrl!), fit: BoxFit.cover)
+                          : null,
+                    ),
+                    alignment: Alignment.center,
+                    child: avatarUrl == null
+                        ? Text(initial,
+                            style: const TextStyle(color: Color(0xFF1B6B7A), fontWeight: FontWeight.w700, fontSize: 19))
                         : null,
                   ),
-                  alignment: Alignment.center,
-                  child: avatarUrl == null
-                      ? Text(initial,
-                          style: const TextStyle(color: Color(0xFF1B6B7A), fontWeight: FontWeight.w700, fontSize: 19))
-                      : null,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -263,7 +269,7 @@ class _Header extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(l.dashCompletedNote(completedSessions),
+                Text('$completedSessions جلسة مكتملة · بعد عمولة $sessionPct%',
                   style: const TextStyle(fontSize: 11, color: Color(0xFF9DB2B8))),
               ],
             ),

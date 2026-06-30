@@ -231,26 +231,20 @@ class _AsyncTab extends StatelessWidget {
 // ── State badge helper ────────────────────────────────────────
 (String, Color, Color) _sessionBadge(String state, AppLocalizations l) {
   switch (state) {
-    case 'AWAITING_PAYMENT':  return (l.stateBadgeAwaitingPay,   const Color(0xFF5B43D6), const Color(0xFFF0EDFF));
-    case 'PAYMENT_SUBMITTED': return (l.stateBadgeSubmitted,     const Color(0xFFC77A1A), const Color(0xFFFEF3E2));
-    case 'PAYMENT_CONFIRMED': return (l.stateBadgeConfirmedPay,  const Color(0xFF15805F), const Color(0xFFE3F6EF));
-    case 'CONFIRMED_BOOKING': return (l.stateBadgeConfirmed,     const Color(0xFF15805F), const Color(0xFFE3F6EF));
-    case 'ACTIVE_SESSION':    return (l.stateBadgeActive,        const Color(0xFF1B6B7A), const Color(0xFFE0F4F7));
-    case 'TEACHER_NO_SHOW':   return (l.stateBadgeTeacherNoShow, const Color(0xFFE03E3E), const Color(0xFFFDECEC));
-    case 'STUDENT_NO_SHOW':   return (l.stateBadgeStudentNoShow, const Color(0xFFC77A1A), const Color(0xFFFEF3E2));
-    case 'DISPUTE':           return (l.stateBadgeDispute,       const Color(0xFFC77A1A), const Color(0xFFFEF3E2));
+    case 'AWAITING_PAYMENT':  return (l.stateBadgeAwaitingPay,  const Color(0xFF5B43D6), const Color(0xFFF0EDFF));
+    case 'PAYMENT_SUBMITTED': return (l.stateBadgeSubmitted,    const Color(0xFFC77A1A), const Color(0xFFFEF3E2));
+    case 'PAYMENT_CONFIRMED': return (l.stateBadgeConfirmedPay, const Color(0xFF15805F), const Color(0xFFE3F6EF));
+    case 'CONFIRMED_BOOKING': return (l.stateBadgeConfirmed,    const Color(0xFF15805F), const Color(0xFFE3F6EF));
+    case 'ACTIVE_SESSION':    return (l.stateBadgeActive,       const Color(0xFF1B6B7A), const Color(0xFFE0F4F7));
     default:                  return (state.replaceAll('_', ' '), AppColors.textHint, AppColors.surfaceAlt);
   }
 }
 
 (String, Color, Color) _completedBadge(String state, AppLocalizations l) {
   switch (state) {
-    case 'COMPLETED':        return (l.stateBadgeCompleted,      const Color(0xFF15805F), const Color(0xFFE3F6EF));
-    case 'CANCELLED':        return (l.stateBadgeCancelled,      const Color(0xFFE03E3E), const Color(0xFFFDECEC));
-    case 'TEACHER_REJECTED': return (l.stateBadgeRejected,       const Color(0xFFC77A1A), const Color(0xFFFEF3E2));
-    case 'STUDENT_NO_SHOW':  return (l.stateBadgeStudentAbsent,  const Color(0xFF5B43D6), const Color(0xFFF0EDFF));
-    case 'TEACHER_NO_SHOW':  return (l.stateBadgeMyAbsence,      const Color(0xFFE03E3E), const Color(0xFFFDECEC));
-    case 'DISPUTE':          return (l.stateBadgeDispute,        const Color(0xFFC77A1A), const Color(0xFFFEF3E2));
+    case 'COMPLETED':        return (l.stateBadgeCompleted,  const Color(0xFF15805F), const Color(0xFFE3F6EF));
+    case 'CANCELLED':        return (l.stateBadgeCancelled,  const Color(0xFFE03E3E), const Color(0xFFFDECEC));
+    case 'TEACHER_REJECTED': return (l.stateBadgeRejected,   const Color(0xFFC77A1A), const Color(0xFFFEF3E2));
     default:                 return (state.replaceAll('_', ' '), AppColors.textHint, AppColors.surfaceAlt);
   }
 }

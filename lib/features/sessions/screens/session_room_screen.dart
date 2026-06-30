@@ -19,6 +19,7 @@ import '../../../core/constants/session_states.dart';
 import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/session.dart';
+import '../../../core/utils/app_errors.dart';
 import '../../../core/models/session_message.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/services/messaging_service.dart';
@@ -92,6 +93,8 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
   bool _exited = false;
   bool _sessionOver = false;
   bool _initialCallUrlCaptured = false;
+  bool _activationAttempted = false;
+  Session? _cachedSession;
 
   // ── Presence ─────────────────────────────────────────────────────────────
   RealtimeChannel? _presenceChannel;
@@ -222,23 +225,44 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
   }
 
   // ── Timer ─────────────────────────────────────────────────────────────────
+  void _tryActivate() {
+    if (_activationAttempted || _cachedSession == null) return;
+    _activationAttempted = true;
+    SessionService.activateSession(widget.sessionId).then((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('بدأت الجلسة الآن'),
+          backgroundColor: AppColors.primary,
+          duration: Duration(seconds: 4),
+        ));
+      }
+    }).catchError((_) {});
+  }
+
   void _startTimer() {
     Future<void> seed() async {
       try {
         final s = await SessionService.getSession(widget.sessionId);
         if (!mounted) return;
+        _cachedSession = s;
         _scheduledAt = s.scheduledAt;
         _sessionDurationSeconds = s.durationMinutes * 60;
         final elapsed = DateTime.now().difference(s.scheduledAt).inSeconds;
         _elapsed.value = elapsed.clamp(0, 999999);
-        // Only the teacher triggers activation to avoid double notifications
-        if (widget.isTeacher &&
-            s.state == SessionState.confirmedBooking &&
-            elapsed >= 0) {
-          SessionService.activateSession(widget.sessionId).then((_) {
-            _notifySessionStarted(s);
-          }).catchError((_) {});
+
+        if (s.state == SessionState.confirmedBooking ||
+            s.state == SessionState.paymentConfirmed) {
+          if (elapsed >= 0) {
+            // Time already reached — activate immediately
+            _tryActivate();
+          } else {
+            // Entered early — schedule activation when time arrives
+            Future.delayed(Duration(seconds: -elapsed), () {
+              if (mounted) _tryActivate();
+            });
+          }
         }
+
         // If already past end time, handle immediately
         if (_sessionDurationSeconds > 0 && elapsed >= _sessionDurationSeconds) {
           _handleTimeUp();
@@ -297,30 +321,6 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
         context.go('/sessions');
       }
     });
-  }
-
-  void _notifySessionStarted(Session s) {
-    MessagingService.notifyRecipient(
-      recipientId: s.teacherId,
-      title: 'بدأت جلستك الآن',
-      body: s.studentName.isNotEmpty ? s.studentName : 'الطالب',
-      sessionId: widget.sessionId,
-      type: 'SESSION_STARTED',
-    );
-    MessagingService.notifyRecipient(
-      recipientId: s.studentId,
-      title: 'بدأت جلستك الآن',
-      body: s.teacherName.isNotEmpty ? s.teacherName : 'الأستاذ',
-      sessionId: widget.sessionId,
-      type: 'SESSION_STARTED',
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('بدأت جلستك الآن'),
-        backgroundColor: AppColors.primary,
-        duration: Duration(seconds: 4),
-      ));
-    }
   }
 
   String _fmt(int secs) =>
@@ -751,7 +751,7 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
     final sessionAsync = ref.watch(sessionProvider(widget.sessionId));
     return sessionAsync.when(
       loading: () => const _ChatLoader(),
-      error:   (e, _) => _ChatLoader(label: '$e'),
+      error:   (e, _) => _ChatLoader(label: AppErrors.friendly(e, context.l10n)),
       data:    (session) {
         if (session == null) return const _ChatLoader(label: 'الجلسة غير موجودة');
 
@@ -775,10 +775,9 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
           );
         }
 
-        const terminal = {
-          SessionState.completed, SessionState.teacherNoShow,
-          SessionState.studentNoShow, SessionState.cancelled,
-          SessionState.dispute, SessionState.teacherRejected,
+        final terminal = {
+          SessionState.completed, SessionState.cancelled,
+          SessionState.teacherRejected,
         };
         if (terminal.contains(session.state)) {
           WidgetsBinding.instance.addPostFrameCallback((_) {

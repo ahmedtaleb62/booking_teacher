@@ -60,6 +60,14 @@ export default function Courses({ onNavigate }) {
             data:  { type: 'NEW_COURSE', course_id: id },
           },
         }).catch(() => {})
+        // Insert into notifications so students see it in their list + get Realtime banner.
+        // The push trigger skips FCM for NEW_COURSE (notify-broadcast already sent it).
+        await supabase.rpc('send_admin_notification', {
+          p_target_type: 'students',
+          p_title: 'درس جديد متاح 📖',
+          p_body:  course.title || 'تحقق من الدروس الجديدة',
+          p_type:  'NEW_COURSE',
+        }).catch(() => {})
       }
       toast(current ? 'تم تحويل الدورة إلى مسودة' : 'تم نشر الدورة بنجاح', 'success')
       await loadData()
@@ -87,7 +95,7 @@ export default function Courses({ onNavigate }) {
     }
   }
 
-  const fmt = n => n != null ? n.toLocaleString('ar') : '—'
+  const fmt = n => n != null ? n.toLocaleString('en-US') : '—'
 
   if (loading) return <div className="loading-center"><div className="spinner" /></div>
 
@@ -169,7 +177,7 @@ export default function Courses({ onNavigate }) {
               ) : (
                 <span
                   className="badge"
-                  style={{ background: c.is_active ? '#D1FAE5' : '#FEF3C7', color: c.is_active ? '#065F46' : '#92400E', cursor: 'pointer' }}
+                  style={{ background: c.is_active ? '#D7F2E6' : '#FEF3C7', color: c.is_active ? '#0A6E4E' : '#92400E', cursor: 'pointer' }}
                   onClick={() => setToggleId(c.id)}
                 >
                   {c.is_active ? 'منشور' : 'مسودة'}
@@ -181,7 +189,7 @@ export default function Courses({ onNavigate }) {
             <span style={{ textAlign: 'left', display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
               <button
                 className="btn btn-sm btn-secondary"
-                style={{ padding: '5px 11px', fontSize: 12, background: '#EDE9FE', color: '#5B21B6', border: '1px solid #C4B5FD' }}
+                style={{ padding: '5px 11px', fontSize: 12, background: '#ECE5F7', color: '#5A3B95', border: '1px solid #C5B4F0' }}
                 onClick={() => onNavigate('editCourse', { courseId: c.id })}
                 title="تعديل الدرس كاملاً"
               >
@@ -192,7 +200,7 @@ export default function Courses({ onNavigate }) {
                 <div style={{ display: 'flex', gap: 4 }}>
                   <button
                     className="btn btn-sm"
-                    style={{ padding: '5px 9px', fontSize: 11.5, background: '#DC2626', color: '#fff', border: 'none' }}
+                    style={{ padding: '5px 9px', fontSize: 11.5, background: '#A12B1D', color: '#fff', border: 'none' }}
                     onClick={() => deleteCourse(c.id)}
                   >تأكيد</button>
                   <button
@@ -204,7 +212,7 @@ export default function Courses({ onNavigate }) {
               ) : (
                 <button
                   className="btn btn-sm"
-                  style={{ padding: '5px 10px', fontSize: 12, background: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5' }}
+                  style={{ padding: '5px 10px', fontSize: 12, background: '#FBE0DB', color: '#A12B1D', border: '1px solid #F3C5BD' }}
                   onClick={() => setDeleteId(c.id)}
                 >🗑</button>
               )}

@@ -1229,7 +1229,7 @@ abstract class AppLocalizations {
   /// No description provided for @teacherResponseTime.
   ///
   /// In ar, this message translates to:
-  /// **'يُفضَّل الرد خلال 24 ساعة'**
+  /// **'يجب الرد خلال ساعة واحدة'**
   String get teacherResponseTime;
 
   /// No description provided for @teacherTodaySessions.
@@ -1355,13 +1355,13 @@ abstract class AppLocalizations {
   /// No description provided for @teacherCommissionNote.
   ///
   /// In ar, this message translates to:
-  /// **'من {total} − عمولة 15%'**
-  String teacherCommissionNote(String total);
+  /// **'من {total} − عمولة {pct}%'**
+  String teacherCommissionNote(String total, String pct);
 
   /// No description provided for @teacherStillPending.
   ///
   /// In ar, this message translates to:
-  /// **'أنت — الرد على الطلب خلال 24 ساعة'**
+  /// **'أنت — الرد على الطلب خلال ساعة واحدة'**
   String get teacherStillPending;
 
   /// No description provided for @teacherNowResponsible.
@@ -2210,6 +2210,12 @@ abstract class AppLocalizations {
   /// **'التفاصيل'**
   String get homeDetails;
 
+  /// No description provided for @homeLearnFree.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعلم مجاناً 🎁'**
+  String get homeLearnFree;
+
   /// No description provided for @homeNoCoursesAvailable.
   ///
   /// In ar, this message translates to:
@@ -2609,8 +2615,8 @@ abstract class AppLocalizations {
   /// No description provided for @earningsCommissionText.
   ///
   /// In ar, this message translates to:
-  /// **'تخصم المنصة عمولة 15% من كل جلسة ودرس مؤكّد تلقائياً.'**
-  String get earningsCommissionText;
+  /// **'تخصم المنصة عمولة {sessionPct}% من الجلسات و{subPct}% من الدروس تلقائياً.'**
+  String earningsCommissionText(String sessionPct, String subPct);
 
   /// No description provided for @earningsCourseDesc.
   ///
@@ -3107,13 +3113,13 @@ abstract class AppLocalizations {
   /// No description provided for @privacyPolicyContent.
   ///
   /// In ar, this message translates to:
-  /// **'# سياسة الخصوصية\n\nآخر تحديث: يناير 2025\n\n## مقدمة\n\nنحن في حصتي نلتزم بحماية خصوصيتك. توضّح هذه السياسة كيفية جمع معلوماتك واستخدامها وحمايتها عند استخدامك لتطبيقنا.\n\n## المعلومات التي نجمعها\n\nنجمع المعلومات التي تقدّمها مباشرةً عند إنشاء حساب، مثل: الاسم، عنوان البريد الإلكتروني، رقم الهاتف، وصورة الملف الشخصي. كما نجمع بيانات استخدام التطبيق مثل الجلسات المحجوزة والمدفوعات.\n\n## كيف نستخدم معلوماتك\n\nنستخدم بياناتك لتشغيل الخدمة وتحسينها، وتيسير التواصل بين الطلاب والأساتذة، ومعالجة المدفوعات، وإرسال إشعارات تتعلق بالجلسات.\n\n## مشاركة المعلومات\n\nلا نبيع بياناتك لأطراف خارجية. قد نشارك معلوماتك مع مزودي الخدمة الضروريين لتشغيل المنصة (مثل خدمات الدفع) فقط وفق اتفاقيات سرية صارمة.\n\n## حماية البيانات\n\nنستخدم تشفيراً من الدرجة الأولى لحماية بياناتك. يُخزَّن كل شيء بشكل آمن على خوادم معتمدة.\n\n## حقوقك\n\nيحق لك في أي وقت: الاطلاع على بياناتك، تصحيحها، أو طلب حذفها. تواصل معنا عبر: ahmedelkentawi@gmail.com\n\n## التواصل معنا\n\nلأي استفسار حول سياسة الخصوصية يُرجى التواصل على: 42740370 أو عبر البريد الإلكتروني: ahmedelkentawi@gmail.com'**
+  /// **'# سياسة الخصوصية\n\nآخر تحديث: يناير 2025\n\n## مقدمة\n\nنحن في حصتي نلتزم بحماية خصوصيتك. توضّح هذه السياسة كيفية جمع معلوماتك واستخدامها وحمايتها عند استخدامك لتطبيقنا.\n\n## المعلومات التي نجمعها\n\nنجمع المعلومات التي تقدّمها مباشرةً عند إنشاء حساب، مثل: الاسم، عنوان البريد الإلكتروني، رقم الهاتف، وصورة الملف الشخصي. كما نجمع بيانات استخدام التطبيق مثل الجلسات المحجوزة والمدفوعات.\n\n## كيف نستخدم معلوماتك\n\nنستخدم بياناتك لتشغيل الخدمة وتحسينها، وتيسير التواصل بين الطلاب والأساتذة، ومعالجة المدفوعات، وإرسال إشعارات تتعلق بالجلسات.\n\n## مشاركة المعلومات\n\nلا نبيع بياناتك لأطراف خارجية. قد نشارك معلوماتك مع مزودي الخدمة الضروريين لتشغيل المنصة (مثل خدمات الدفع) فقط وفق اتفاقيات سرية صارمة.\n\n## حماية البيانات\n\nنستخدم تشفيراً من الدرجة الأولى لحماية بياناتك. يُخزَّن كل شيء بشكل آمن على خوادم معتمدة.\n\n## حقوقك\n\nيحق لك في أي وقت: الاطلاع على بياناتك، تصحيحها، أو طلب حذفها. تواصل معنا عبر: ahmedelkentawi@gmail.com\n\n## التواصل معنا\n\nلأي استفسار حول سياسة الخصوصية تواصل معنا عبر رقم الدعم أو البريد الإلكتروني الموضّحَين أدناه.'**
   String get privacyPolicyContent;
 
   /// No description provided for @termsContent.
   ///
   /// In ar, this message translates to:
-  /// **'# شروط الاستخدام\n\nآخر تحديث: يناير 2025\n\n## قبول الشروط\n\nباستخدامك لتطبيق حصتي فإنك توافق على هذه الشروط كاملةً. إن لم توافق، يُرجى التوقف عن استخدام التطبيق.\n\n## الخدمة\n\nحصتي منصة تربط الطلاب بالأساتذة لحجز جلسات تعليمية خاصة. نحن وسيط ولسنا طرفاً في العقد بين الطالب والأستاذ.\n\n## حساب المستخدم\n\nأنت مسؤول عن الحفاظ على سرية بيانات دخولك. يجب أن تكون المعلومات المقدمة صحيحة وحديثة. يحق لنا تعليق الحسابات المخالفة للشروط.\n\n## الجلسات والمدفوعات\n\nتُعقد الجلسات وفق المواعيد المتفق عليها. يجب إتمام الدفع قبل تأكيد الجلسة. في حال الإلغاء قبل 24 ساعة يمكن استرداد المبلغ وفق سياسة الاسترداد.\n\n## سلوك المستخدم\n\nيُحظر استخدام التطبيق لأي غرض غير قانوني أو مسيء. يُحظر مشاركة محتوى الجلسات دون إذن. يُحظر انتحال شخصية الآخرين.\n\n## إخلاء المسؤولية\n\nنسعى لتقديم أفضل خدمة ممكنة، لكننا لا نضمن عدم الانقطاع. جودة التعليم تعتمد على الأستاذ وحصتي ليست مسؤولة عن النتائج التعليمية.\n\n## التعديلات\n\nنحتفظ بحق تعديل هذه الشروط في أي وقت. سيُبلَّغ المستخدمون بالتغييرات الجوهرية عبر الإشعارات داخل التطبيق.\n\n## التواصل معنا\n\nلأي استفسار: هاتف 42740370 أو البريد الإلكتروني: ahmedelkentawi@gmail.com'**
+  /// **'# شروط الاستخدام\n\nآخر تحديث: يناير 2025\n\n## قبول الشروط\n\nباستخدامك لتطبيق حصتي فإنك توافق على هذه الشروط كاملةً. إن لم توافق، يُرجى التوقف عن استخدام التطبيق.\n\n## الخدمة\n\nحصتي منصة تربط الطلاب بالأساتذة لحجز جلسات تعليمية خاصة. نحن وسيط ولسنا طرفاً في العقد بين الطالب والأستاذ.\n\n## حساب المستخدم\n\nأنت مسؤول عن الحفاظ على سرية بيانات دخولك. يجب أن تكون المعلومات المقدمة صحيحة وحديثة. يحق لنا تعليق الحسابات المخالفة للشروط.\n\n## الجلسات والمدفوعات\n\nتُعقد الجلسات وفق المواعيد المتفق عليها. يجب إتمام الدفع قبل تأكيد الجلسة. في حال الإلغاء قبل 24 ساعة يمكن استرداد المبلغ وفق سياسة الاسترداد.\n\n## سلوك المستخدم\n\nيُحظر استخدام التطبيق لأي غرض غير قانوني أو مسيء. يُحظر مشاركة محتوى الجلسات دون إذن. يُحظر انتحال شخصية الآخرين.\n\n## إخلاء المسؤولية\n\nنسعى لتقديم أفضل خدمة ممكنة، لكننا لا نضمن عدم الانقطاع. جودة التعليم تعتمد على الأستاذ وحصتي ليست مسؤولة عن النتائج التعليمية.\n\n## التعديلات\n\nنحتفظ بحق تعديل هذه الشروط في أي وقت. سيُبلَّغ المستخدمون بالتغييرات الجوهرية عبر الإشعارات داخل التطبيق.\n\n## التواصل معنا\n\nلأي استفسار تواصل معنا عبر رقم الدعم أو البريد الإلكتروني الموضّحَين أدناه.'**
   String get termsContent;
 
   /// No description provided for @courseSubscribersCount.
@@ -5126,6 +5132,42 @@ abstract class AppLocalizations {
   /// **'سيُودَع المبلغ في حسابك تلقائياً'**
   String get cancelledAutoDeposit;
 
+  /// No description provided for @cancelledStudentCancelledTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'ألغيت الجلسة'**
+  String get cancelledStudentCancelledTitle;
+
+  /// No description provided for @cancelledStudentCancelledBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'لقد ألغيت هذه الجلسة بنجاح.'**
+  String get cancelledStudentCancelledBody;
+
+  /// No description provided for @cancelledTeacherTimeoutTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'ألغيت — لم يرد الأستاذ'**
+  String get cancelledTeacherTimeoutTitle;
+
+  /// No description provided for @cancelledTeacherTimeoutBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يرد الأستاذ في الوقت المحدد. يمكنك تجربة أستاذ آخر.'**
+  String get cancelledTeacherTimeoutBody;
+
+  /// No description provided for @cancelledPaymentTimeoutTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'ألغيت — انتهت مهلة الدفع'**
+  String get cancelledPaymentTimeoutTitle;
+
+  /// No description provided for @cancelledPaymentTimeoutBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يُرسل إثبات الدفع في الوقت المحدد فأُلغيت الجلسة تلقائياً.'**
+  String get cancelledPaymentTimeoutBody;
+
   /// No description provided for @evtRequested.
   ///
   /// In ar, this message translates to:
@@ -5539,6 +5581,48 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'تم إلغاء اعتماد حسابك. تواصل مع الإدارة للاستفسار'**
   String get notifBodyTeacherRevoked;
+
+  /// No description provided for @notifTypeNewCourse.
+  ///
+  /// In ar, this message translates to:
+  /// **'درس جديد متاح 📖'**
+  String get notifTypeNewCourse;
+
+  /// No description provided for @notifBodyNewCourse.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم نشر درس جديد — استكشفه الآن!'**
+  String get notifBodyNewCourse;
+
+  /// No description provided for @notifTypeNewPackage.
+  ///
+  /// In ar, this message translates to:
+  /// **'باقة جديدة متاحة 🎁'**
+  String get notifTypeNewPackage;
+
+  /// No description provided for @notifBodyNewPackage.
+  ///
+  /// In ar, this message translates to:
+  /// **'باقة جديدة أُضيفت — تحقق منها!'**
+  String get notifBodyNewPackage;
+
+  /// No description provided for @notifTypeNewTeacher.
+  ///
+  /// In ar, this message translates to:
+  /// **'أستاذ جديد انضم 🎓'**
+  String get notifTypeNewTeacher;
+
+  /// No description provided for @notifBodyNewTeacher.
+  ///
+  /// In ar, this message translates to:
+  /// **'أستاذ جديد انضم للمنصة — تعرّف عليه!'**
+  String get notifBodyNewTeacher;
+
+  /// No description provided for @notifTypeSessionCancelled.
+  ///
+  /// In ar, this message translates to:
+  /// **'الجلسة ملغاة'**
+  String get notifTypeSessionCancelled;
 
   /// No description provided for @notifTypeAutoCancelled.
   ///

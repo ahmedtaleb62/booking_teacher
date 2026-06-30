@@ -20,7 +20,6 @@ import '../features/booking/screens/payment_screen.dart';
 import '../features/booking/screens/payment_submitted_screen.dart';
 import '../features/booking/screens/session_status_screen.dart';
 import '../features/sessions/screens/session_room_screen.dart';
-import '../features/booking/screens/reschedule_session_screen.dart';
 import '../features/sessions/screens/sessions_list_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
@@ -206,11 +205,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           readOnly: true,
         ),
       ),
-      GoRoute(
-        path: '/reschedule/:sessionId',
-        builder: (_, state) => RescheduleSessionScreen(parentSessionId: state.pathParameters['sessionId']!),
-      ),
-
       // ── Courses & Packages ───────────────────────────────────────────────────
       GoRoute(
         path: '/notifications',
@@ -324,6 +318,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/teacher/live/:id',
         builder: (_, state) => SessionRoomScreen(sessionId: state.pathParameters['id']!, isTeacher: true),
+      ),
+      GoRoute(
+        path: '/teacher/session-history/:id',
+        builder: (_, state) => SessionRoomScreen(
+          sessionId: state.pathParameters['id']!,
+          isTeacher: true,
+          readOnly: true,
+        ),
       ),
       GoRoute(
         path: '/teacher/earnings',
