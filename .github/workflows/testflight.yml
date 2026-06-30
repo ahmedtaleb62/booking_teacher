@@ -107,7 +107,7 @@ jobs:
             archive \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="HajezUstad AppStore" \
+            PROVISIONING_PROFILE_SPECIFIER="Teacher_booking" \
             DEVELOPMENT_TEAM="${CLEAN_TEAM_ID}" \
             -allowProvisioningUpdates
         timeout-minutes: 20
