@@ -70,19 +70,10 @@ class FcmService {
     final uid = SupabaseService.userId;
     if (uid == null) return;
     try {
-      // Ensure permission is granted before requesting token
-      final settings = await _messaging.getNotificationSettings();
-      if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
-        await _messaging.requestPermission(alert: true, badge: true, sound: true);
-      }
+      await _messaging.requestPermission(alert: true, badge: true, sound: true);
       final token = await _messaging.getToken();
-      if (token == null) {
-        debugPrint('[FCM] getToken() returned null — permission denied?');
-        return;
-      }
+      if (token == null) return;
       await _upsertToken(uid, token);
-
-      // Refresh token when FCM rotates it — cancel previous sub to avoid leak
       _tokenRefreshSub?.cancel();
       _tokenRefreshSub = _messaging.onTokenRefresh.listen((t) => _upsertToken(uid, t));
     } catch (e) {
@@ -175,24 +166,27 @@ class FcmService {
   static Future<void> _upsertToken(String uid, String token) async {
     if (kIsWeb) return;
     final platform = Platform.isAndroid ? 'android' : 'ios';
-    // Remove this token from any OTHER user (same device, account switch).
-    await SupabaseService.client
-        .from('device_tokens')
-        .delete()
-        .eq('token', token)
-        .neq('user_id', uid);
-    // Remove old tokens for this user+platform.
-    await SupabaseService.client
-        .from('device_tokens')
-        .delete()
-        .eq('user_id', uid)
-        .eq('platform', platform);
-    await SupabaseService.client.from('device_tokens').insert({
-      'user_id':  uid,
-      'token':    token,
-      'platform': platform,
-    });
-    debugPrint('[FCM] Token saved: ...${token.length > 8 ? token.substring(token.length - 8) : token}');
+    // Single upsert on (user_id, platform) — replaces old token for this device type.
+    // Falls back to insert if no conflict key exists in DB.
+    try {
+      await SupabaseService.client.from('device_tokens').upsert(
+        {
+          'user_id':    uid,
+          'token':      token,
+          'platform':   platform,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        },
+        onConflict: 'user_id, token',
+      );
+    } catch (_) {
+      // upsert failed (e.g. unique constraint mismatch) — try plain insert
+      await SupabaseService.client.from('device_tokens').insert({
+        'user_id':  uid,
+        'token':    token,
+        'platform': platform,
+      });
+    }
+    debugPrint('[FCM] Token saved for $platform');
   }
 
 }
