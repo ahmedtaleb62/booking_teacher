@@ -69,7 +69,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           }
         },
       ))
-      ..loadRequest(Uri.parse(widget.url));
+      ..loadRequest(Uri.parse(_urlWithName()));
 
     // Android: auto-grant camera & microphone to the WebView
     if (Platform.isAndroid && _controller.platform is AndroidWebViewController) {
@@ -78,23 +78,23 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     }
   }
 
+  String _urlWithName() {
+    final encoded = Uri.encodeComponent(
+      widget.displayName.isNotEmpty ? widget.displayName : 'User',
+    );
+    final base = widget.url.contains('#') ? widget.url : '${widget.url}#';
+    return '$base&userInfo.displayName=$encoded';
+  }
+
   void _injectAutoJoin() {
-    final name = widget.displayName.isNotEmpty
-        ? widget.displayName.replaceAll("'", "\\'")
-        : 'مستخدم';
+    // Wait for Jitsi to finish "Configuring devices" then click Join
     _controller.runJavaScript('''
       (function tryJoin() {
-        var nameInput = document.querySelector('input[data-testid="prejoin.displayName"], input[id="prejoin-display-name-field"]');
-        if (nameInput) {
-          var nativeInput = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
-          nativeInput.set.call(nameInput, '$name');
-          nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-        var joinBtn = document.querySelector('[data-testid="prejoin.joinMeeting"], button.prejoin-preview-join-btn, .toolbox-button-wth-notify');
-        if (joinBtn) {
-          setTimeout(function(){ joinBtn.click(); }, 300);
+        var btn = document.querySelector('[data-testid="prejoin.joinMeeting"]');
+        if (btn && !btn.disabled) {
+          btn.click();
         } else {
-          setTimeout(tryJoin, 800);
+          setTimeout(tryJoin, 600);
         }
       })();
     ''');
