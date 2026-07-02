@@ -9,7 +9,8 @@ import '../../../core/constants/app_colors.dart';
 
 class VideoCallScreen extends StatefulWidget {
   final String url;
-  const VideoCallScreen({super.key, required this.url});
+  final String displayName;
+  const VideoCallScreen({super.key, required this.url, this.displayName = ''});
 
   @override
   State<VideoCallScreen> createState() => _VideoCallScreenState();
@@ -59,6 +60,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       ..setNavigationDelegate(NavigationDelegate(
         onPageFinished: (_) {
           if (mounted) setState(() => _loading = false);
+          _injectAutoJoin();
         },
         onWebResourceError: (e) {
           if (mounted && e.isForMainFrame == true &&
@@ -74,6 +76,28 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       (_controller.platform as AndroidWebViewController)
           .setOnPlatformPermissionRequest((req) => req.grant());
     }
+  }
+
+  void _injectAutoJoin() {
+    final name = widget.displayName.isNotEmpty
+        ? widget.displayName.replaceAll("'", "\\'")
+        : 'مستخدم';
+    _controller.runJavaScript('''
+      (function tryJoin() {
+        var nameInput = document.querySelector('input[data-testid="prejoin.displayName"], input[id="prejoin-display-name-field"]');
+        if (nameInput) {
+          var nativeInput = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+          nativeInput.set.call(nameInput, '$name');
+          nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        var joinBtn = document.querySelector('[data-testid="prejoin.joinMeeting"], button.prejoin-preview-join-btn, .toolbox-button-wth-notify');
+        if (joinBtn) {
+          setTimeout(function(){ joinBtn.click(); }, 300);
+        } else {
+          setTimeout(tryJoin, 800);
+        }
+      })();
+    ''');
   }
 
   Future<void> _openInBrowser() async {

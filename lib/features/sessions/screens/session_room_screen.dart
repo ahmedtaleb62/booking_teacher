@@ -381,7 +381,7 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
           '${_senderName()} يريد بدء مكالمة فيديو', type: 'VIDEO_CALL');
       if (!mounted) return;
       await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => VideoCallScreen(url: url)),
+        MaterialPageRoute(builder: (_) => VideoCallScreen(url: url, displayName: _senderName())),
       );
     } catch (_) {
       if (mounted) _showError(l.roomErrStartCall);
@@ -1533,7 +1533,7 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
                     if (!mounted) return;
                     await Navigator.of(context).push(
                       MaterialPageRoute(
-                          builder: (_) => VideoCallScreen(url: url)),
+                          builder: (_) => VideoCallScreen(url: url, displayName: _senderName())),
                     );
                   },
                   style: ElevatedButton.styleFrom(
