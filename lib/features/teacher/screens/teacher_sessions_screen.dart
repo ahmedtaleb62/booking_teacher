@@ -48,6 +48,7 @@ class _TeacherSessionsScreenState extends ConsumerState<TeacherSessionsScreen>
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    ref.watch(sessionsRealtimeProvider);
     final todayAsync     = ref.watch(teacherTodaySessionsProvider);
     final upcomingAsync  = ref.watch(teacherUpcomingSessionsProvider);
     final completedAsync = ref.watch(teacherCompletedSessionsProvider);

@@ -31,6 +31,7 @@ class TeacherShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(sessionsRealtimeProvider);
     final pendingAsync = ref.watch(teacherPendingRequestsProvider);
     final unreadAsync  = ref.watch(unreadCountProvider);
 

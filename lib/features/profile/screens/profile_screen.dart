@@ -206,6 +206,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final l             = context.l10n;
+    ref.watch(sessionsRealtimeProvider);
     final profileAsync  = ref.watch(currentProfileProvider);
     final sessionsAsync = ref.watch(studentSessionsProvider);
     final subsAsync     = ref.watch(mySubscriptionsProvider);

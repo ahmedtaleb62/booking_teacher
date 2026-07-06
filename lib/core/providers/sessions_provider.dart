@@ -49,6 +49,12 @@ final sessionsRealtimeProvider = Provider.autoDispose<void>((ref) {
     ref.invalidate(studentSessionsProvider);
     ref.invalidate(teacherSessionsProvider);
     ref.invalidate(teacherDashboardProvider);
+    ref.invalidate(teacherPendingRequestsProvider);
+    ref.invalidate(teacherInProgressSessionsProvider);
+    ref.invalidate(teacherRejectedSessionsProvider);
+    ref.invalidate(teacherTodaySessionsProvider);
+    ref.invalidate(teacherUpcomingSessionsProvider);
+    ref.invalidate(teacherCompletedSessionsProvider);
   }
 
   // Two filtered listeners on the same channel:

@@ -174,6 +174,12 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
       ref.invalidate(studentSessionsProvider);
       ref.invalidate(teacherSessionsProvider);
       ref.invalidate(teacherDashboardProvider);
+      ref.invalidate(teacherPendingRequestsProvider);
+      ref.invalidate(teacherInProgressSessionsProvider);
+      ref.invalidate(teacherRejectedSessionsProvider);
+      ref.invalidate(teacherTodaySessionsProvider);
+      ref.invalidate(teacherUpcomingSessionsProvider);
+      ref.invalidate(teacherCompletedSessionsProvider);
     }
 
     // Watch sessions where current user is the STUDENT (state changes, payment, etc.)
