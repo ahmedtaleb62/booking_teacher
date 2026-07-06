@@ -21,6 +21,7 @@ import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/session.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../../core/models/session_message.dart';
+import '../../../core/providers/locale_provider.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/services/messaging_service.dart';
 import '../../../core/services/session_service.dart';
@@ -68,6 +69,7 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
   // ── Video call ────────────────────────────────────────────────────────────
   String? _myCallUrl;
   String? _acknowledgedCallUrl;
+  Timer?  _callTimeoutTimer;
 
   // ── Input ─────────────────────────────────────────────────────────────────
   final _textCtrl  = TextEditingController();
@@ -92,7 +94,6 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
   // ── Nav guard ─────────────────────────────────────────────────────────────
   bool _exited = false;
   bool _sessionOver = false;
-  bool _initialCallUrlCaptured = false;
   bool _activationAttempted = false;
   Session? _cachedSession;
 
@@ -130,6 +131,7 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
   void dispose() {
     _liveCtrl.dispose();
     _elapsedTimer?.cancel();
+    _callTimeoutTimer?.cancel();
     _elapsed.dispose();
     _textCtrl.dispose();
     _scrollCtrl.dispose();
@@ -184,7 +186,13 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
     try {
       final msgs = await MessagingService.getMessages(widget.sessionId);
       if (mounted) {
-        setState(() => _messages = msgs);
+        setState(() {
+          // Merge with any realtime messages that arrived during the fetch
+          final ids = {for (final m in msgs) m.id};
+          final extra = _messages.where((m) => !ids.contains(m.id)).toList();
+          _messages = [...msgs, ...extra]
+            ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        });
         _scrollToBottom(animated: false);
       }
     } catch (_) {
@@ -197,7 +205,11 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
       widget.sessionId,
       onInsert: (msg) {
         if (!mounted) return;
-        setState(() => _messages = [..._messages, msg]);
+        if (_messages.any((m) => m.id == msg.id)) return; // deduplicate
+        setState(() {
+          _messages = [..._messages, msg]
+            ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        });
         _scrollToBottom();
       },
       onUpdate: (msg) {
@@ -375,20 +387,60 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
   Future<void> _callVideo(Session session) async {
     final l = context.l10n;
     try {
-      final url = await SessionService.initiateVideoCall(widget.sessionId);
-      setState(() => _myCallUrl = url);
+      final myUrl = await SessionService.initiateVideoCall(widget.sessionId);
+      setState(() => _myCallUrl = myUrl);
       _notifyOther('مكالمة فيديو واردة 📹',
           '${_senderName()} يريد بدء مكالمة فيديو', type: 'VIDEO_CALL');
-      if (!mounted) return;
-      await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => VideoCallScreen(url: url, displayName: _senderName())),
+
+      // Auto-hangup after 60 s if nobody joins
+      _callTimeoutTimer = Timer(const Duration(seconds: 60), () {
+        VideoCallService.hangUp();
+        MessagingService.sendText(
+          widget.sessionId, '📵 لم يرد — انتهت المكالمة').catchError((_) {});
+      });
+
+      await VideoCallService.join(
+        sessionId:    widget.sessionId,
+        displayName:  _senderName(),
+        languageCode: ref.read(localeProvider).languageCode,
+        onParticipantJoined: () {
+          _callTimeoutTimer?.cancel();
+          _callTimeoutTimer = null;
+        },
+        onTerminated: () {
+          _callTimeoutTimer?.cancel();
+          _callTimeoutTimer = null;
+          SessionService.clearVideoCall(widget.sessionId).catchError((_) {});
+        },
+        onError: (e) {
+          if (!mounted) return;
+          final msg = e.toLowerCase().contains('network') ||
+                      e.toLowerCase().contains('connect') ||
+                      e.toLowerCase().contains('ice')
+              ? 'الاتصال انقطع — تحقق من الإنترنت'
+              : 'انتهت المكالمة بسبب خطأ';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(msg),
+              backgroundColor: Colors.red.shade700,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        },
       );
     } catch (_) {
       if (mounted) _showError(l.roomErrStartCall);
+    } finally {
+      _callTimeoutTimer?.cancel();
+      _callTimeoutTimer = null;
+      if (mounted) setState(() => _myCallUrl = null);
     }
   }
 
-  void _declineCall(String url) => setState(() => _acknowledgedCallUrl = url);
+  void _declineCall(String url) {
+    setState(() => _acknowledgedCallUrl = url);
+    MessagingService.sendText(widget.sessionId, '📵 رفض المكالمة').catchError((_) {});
+  }
 
   // ── Message actions ───────────────────────────────────────────────────────
   void _showMessageOptions(SessionMessage msg) {
@@ -618,10 +670,12 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
     try {
       final res = await http.get(Uri.parse(url));
       await Gal.putImageBytes(res.bodyBytes);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.roomImageSaved),
-            backgroundColor: const Color(0xFF25D366)),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.roomImageSaved),
+              backgroundColor: const Color(0xFF25D366)),
+        );
+      }
     } catch (_) {
       if (mounted) _showError(context.l10n.roomErrSaveImage);
     }
@@ -755,11 +809,6 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
       data:    (session) {
         if (session == null) return const _ChatLoader(label: 'الجلسة غير موجودة');
 
-        if (!_initialCallUrlCaptured) {
-          _initialCallUrlCaptured = true;
-          _acknowledgedCallUrl = session.roomUrl;
-        }
-
         final incomingCall = session.roomUrl != null
             && session.roomUrl != _acknowledgedCallUrl
             && session.roomUrl != _myCallUrl;
@@ -770,7 +819,7 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
             body: Column(children: [
               _buildTopBar(context, session),
               Expanded(child: _buildMessagesList(session)),
-              _buildArchiveBar(context, session),
+              if (!widget.isTeacher) _buildArchiveBar(context, session),
             ]),
           );
         }
@@ -1011,34 +1060,37 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isMine) ...[
-            if (showAvatar)
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                backgroundImage: avatarUrl != null
-                    ? CachedNetworkImageProvider(avatarUrl)
-                    : null,
-                child: avatarUrl == null
-                    ? Text(_otherInitial(session),
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-                            color: AppColors.primary))
-                    : null,
-              )
-            else
-              const SizedBox(width: 28),
-            const SizedBox(width: 6),
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Row(
+          mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (!isMine) ...[
+              if (showAvatar)
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                  backgroundImage: avatarUrl != null
+                      ? CachedNetworkImageProvider(avatarUrl)
+                      : null,
+                  child: avatarUrl == null
+                      ? Text(_otherInitial(session),
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+                              color: AppColors.primary))
+                      : null,
+                )
+              else
+                const SizedBox(width: 28),
+              const SizedBox(width: 6),
+            ],
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+              child: bubble,
+            ),
+            if (isMine) const SizedBox(width: 4),
           ],
-          ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
-            child: bubble,
-          ),
-          if (isMine) const SizedBox(width: 4),
-        ],
+        ),
       ),
     );
   }
@@ -1323,8 +1375,7 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
                     _actionBtn(Icons.mic_rounded, context.l10n.roomAttachAudio, _startRecording),
                     _actionBtn(
                       Icons.videocam_rounded, context.l10n.roomAttachVideo,
-                      session.isLive ? () => _callVideo(session) : null,
-                      active: session.isLive,
+                      () => _callVideo(session),
                     ),
                     const Spacer(),
                   ]),
@@ -1531,9 +1582,27 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
                     final url = session.roomUrl!;
                     setState(() => _acknowledgedCallUrl = url);
                     if (!mounted) return;
-                    await Navigator.of(context).push(
-                      MaterialPageRoute(
-                          builder: (_) => VideoCallScreen(url: url, displayName: _senderName())),
+                    await VideoCallService.join(
+                      sessionId:    widget.sessionId,
+                      displayName:  _senderName(),
+                      languageCode: ref.read(localeProvider).languageCode,
+                      onTerminated: () =>
+                          SessionService.clearVideoCall(widget.sessionId).catchError((_) {}),
+                      onError: (e) {
+                        if (!mounted) return;
+                        final msg = e.toLowerCase().contains('network') ||
+                                    e.toLowerCase().contains('connect') ||
+                                    e.toLowerCase().contains('ice')
+                            ? 'الاتصال انقطع — تحقق من الإنترنت'
+                            : 'انتهت المكالمة بسبب خطأ';
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(msg),
+                            backgroundColor: Colors.red.shade700,
+                            duration: const Duration(seconds: 4),
+                          ),
+                        );
+                      },
                     );
                   },
                   style: ElevatedButton.styleFrom(

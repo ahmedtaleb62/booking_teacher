@@ -19,7 +19,7 @@ class FcmService {
     // Local notifications — foreground only (FCM handles background automatically)
     await _localNotifs.initialize(
       const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        android: AndroidInitializationSettings('@drawable/ic_notification'),
         iOS: DarwinInitializationSettings(),
       ),
     );

@@ -198,7 +198,7 @@ final teacherDashboardProvider = FutureProvider.autoDispose<TeacherDashboardStat
         .lt('scheduled_at', todayEnd),
     SupabaseService.client
         .from('ledger_entries')
-        .select('net_amount, type')
+        .select('net_amount, type, payment:payment_id(dispute_status)')
         .eq('teacher_id', uid)
         .gte('created_at', weekStart),
     SupabaseService.client
@@ -225,6 +225,9 @@ final teacherDashboardProvider = FutureProvider.autoDispose<TeacherDashboardStat
   final weekEarnings = weekLedger.fold<double>(0, (sum, e) {
     final type = (e as Map)['type'] as String? ?? '';
     if (type == 'payout_sent') return sum;
+    final payment = e['payment'] as Map?;
+    final ds = payment?['dispute_status'] as String?;
+    if (ds == 'frozen' || ds == 'refunded') return sum;
     return sum + ((e)['net_amount'] as num? ?? 0).toDouble();
   });
 
@@ -401,20 +404,30 @@ final teacherEarningsProvider = FutureProvider.autoDispose<TeacherEarningsData>(
   // Two queries in parallel:
   // 1. All entries (lightweight) for accurate financial totals — no limit
   // 2. Recent 100 entries with full details for the display list
+  // Frozen/refunded payments are excluded from both (dispute in progress or decided against teacher)
   final results = await Future.wait([
     SupabaseService.client
         .from('ledger_entries')
-        .select('net_amount, type, created_at')
+        .select('net_amount, type, created_at, payment:payment_id(dispute_status)')
         .eq('teacher_id', uid),
     SupabaseService.client
         .from('ledger_entries')
-        .select('id, net_amount, description, created_at, type, session:session_id(subject, student:student_id(full_name))')
+        .select('id, net_amount, description, created_at, type, payment:payment_id(dispute_status), session:session_id(subject, student:student_id(full_name))')
         .eq('teacher_id', uid)
         .order('created_at', ascending: false)
         .limit(100),
   ]);
 
-  final allEntries  = List<Map<String, dynamic>>.from(results[0] as List);
+  bool isFrozenOrRefunded(Map<String, dynamic> e) {
+    final payment = e['payment'] as Map<String, dynamic>?;
+    final status  = payment?['dispute_status'] as String?;
+    return status == 'frozen' || status == 'refunded';
+  }
+
+  // allEntries: totals only — exclude frozen/refunded so balance stays correct
+  final allEntries  = (List<Map<String, dynamic>>.from(results[0] as List))
+      .where((e) => !isFrozenOrRefunded(e)).toList();
+  // listEntries: all entries including frozen/refunded — UI shows their status badge
   final listEntries = List<Map<String, dynamic>>.from(results[1] as List);
 
   double earned = 0, week = 0, month = 0, courseTot = 0, sessionTot = 0, payouts = 0;

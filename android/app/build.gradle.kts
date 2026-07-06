@@ -43,7 +43,7 @@ android {
 
     defaultConfig {
         applicationId = "com.hessati.app"
-        minSdk = flutter.minSdkVersion
+        minSdk = 24  // jitsi_meet_flutter_sdk requires API 24+
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -55,6 +55,10 @@ android {
                 signingConfigs.getByName("release")
             else
                 signingConfigs.getByName("debug")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }

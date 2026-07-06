@@ -37,10 +37,10 @@ export default function Accounting() {
     const profMap = Object.fromEntries((profs || []).map(p => [p.id, p]))
     const teachers = (tps || []).map(t => ({ ...t, profiles: profMap[t.id] || {} }))
 
-    const [{ data: sessions }, { data: subs }, { data: pkgSubsRaw }, { data: payouts }] = await Promise.all([
+    const [{ data: sessionsRaw }, { data: subs }, { data: pkgSubsRaw }, { data: payouts }] = await Promise.all([
       supabase
         .from('sessions')
-        .select('teacher_id, amount, state')
+        .select('teacher_id, amount, state, payments(dispute_status, status)')
         .eq('state', 'COMPLETED'),
       supabase
         .from('subscriptions')
@@ -65,6 +65,14 @@ export default function Accounting() {
       : { data: [] }
     const pkgTeacherMap = Object.fromEntries((packagesData || []).map(p => [p.id, p.teacher_id]))
     const pkgSubs = (pkgSubsRaw || []).map(s => ({ amount: s.amount, package: { teacher_id: pkgTeacherMap[s.package_id] } }))
+
+    // Exclude sessions whose confirmed payment is frozen or refunded (dispute in progress or decided against teacher)
+    const sessions = (sessionsRaw || []).filter(s => {
+      const confirmedPayment = (s.payments || []).find(p => p.status === 'confirmed')
+      if (!confirmedPayment) return true
+      const ds = confirmedPayment.dispute_status
+      return ds !== 'frozen' && ds !== 'refunded'
+    })
 
     const byTeacher = {}
     ;(sessions || []).forEach(s => {

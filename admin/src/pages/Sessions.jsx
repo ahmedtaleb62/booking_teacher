@@ -88,7 +88,9 @@ function buildTimeline(dbEvents, s, payments = []) {
   }
 
   // ── Step 3: teacher approved → AWAITING_PAYMENT ────────────────
-  if (state !== 'REQUESTED') {
+  // Skip if teacher never responded (teacher_timeout cancellation)
+  const teacherTimedOut = state === 'CANCELLED' && s.cancellation_reason === 'teacher_timeout'
+  if (state !== 'REQUESTED' && !teacherTimedOut) {
     push('TEACHER_APPROVED',  approxApproval)
     push('AWAITING_PAYMENT',  approxApproval)
   }

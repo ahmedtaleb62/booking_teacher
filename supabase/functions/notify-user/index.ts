@@ -14,7 +14,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL        = Deno.env.get('SUPABASE_URL')!
-const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const SUPABASE_SERVICE_KEY = Deno.env.get('MY_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const SERVICE_ACCOUNT_JSON = Deno.env.get('FIREBASE_SERVICE_ACCOUNT')!
 
 // ── JWT helpers for FCM HTTP v1 API ────────────────────────────────────────
@@ -84,7 +84,11 @@ Deno.serve(async (req) => {
       .select('token')
       .eq('user_id', user_id)
 
-    if (error || !tokens?.length) {
+    if (error) {
+      console.error(`[notify-user] DB error for user ${user_id}: ${JSON.stringify(error)}`)
+      return new Response('DB error', { status: 200 })
+    }
+    if (!tokens?.length) {
       console.log(`[notify-user] No tokens for user ${user_id}`)
       return new Response('No tokens found', { status: 200 })
     }

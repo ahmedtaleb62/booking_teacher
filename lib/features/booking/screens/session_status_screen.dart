@@ -8,6 +8,7 @@ import '../../../core/constants/session_states.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/models/session.dart';
 import '../../../core/providers/sessions_provider.dart';
+import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/session_service.dart';
 import '../../../core/utils/app_errors.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -678,7 +679,10 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
   // ── WhatsApp support ────────────────────────────────────────────
 
   Future<void> _openWhatsApp() async {
-    final uri = Uri.parse('https://wa.me/22242740370');
+    final phone = ref.read(supportPhoneProvider).asData?.value ?? '';
+    final number = phone.replaceAll(RegExp(r'\D'), '');
+    if (number.isEmpty) return;
+    final uri = Uri.parse('https://wa.me/$number');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }

@@ -266,11 +266,26 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final teacherAsync     = ref.watch(teacherProvider(widget.teacherId));
+    final teacherAsync      = ref.watch(teacherProvider(widget.teacherId));
     final availabilityAsync = ref.watch(teacherAvailabilityProvider(widget.teacherId));
+
+    final teacher         = teacherAsync.valueOrNull;
+    final days            = _days;
+    final selectedDay     = days[_selectedDay];
+    final allAvailability = availabilityAsync.value ?? [];
+    final duration        = _durations[_selectedDuration];
+    final bookedTimes     = ref.watch(teacherBookedTimesProvider((
+      teacherId: widget.teacherId,
+      date: selectedDay,
+    ))).valueOrNull ?? [];
+    final slots = teacher != null
+        ? _slotsForDay(selectedDay, allAvailability, duration, bookedTimes)
+        : <Map<String, dynamic>>[];
+    final total = teacher != null ? teacher.pricePerHour * duration / 60 : 0.0;
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
@@ -288,6 +303,42 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
         ),
         title: Text(l.reqSessionTitle),
       ),
+      bottomNavigationBar: teacher == null
+          ? null
+          : Container(
+              color: AppColors.surface,
+              padding: EdgeInsets.only(
+                left: 22, right: 22, top: 14,
+                bottom: MediaQuery.of(context).padding.bottom + 14,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(l.reqSessionTotal,
+                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                      Text('${total.toInt()} ${l.dashOugiya}',
+                        style: const TextStyle(fontSize: 15,
+                          fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  InfoBanner(text: l.reqSessionPaymentNote),
+                  const SizedBox(height: 12),
+                  AppButton(
+                    label: l.reqSessionSubmit,
+                    isLoading: _loading,
+                    onTap: slots.isNotEmpty
+                        ? () => _send(teacher.pricePerHour, teacher.subject, slots)
+                        : () => setState(() => _error = allAvailability.isEmpty
+                            ? l.reqSessionTeacherUnavailable
+                            : l.reqSessionNoSlotsLeft),
+                  ),
+                ],
+              ),
+            ),
       body: teacherAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
@@ -305,36 +356,22 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
         data: (teacher) {
           if (teacher == null) return Center(child: Text(l.reqSessionTeacherNotFound));
 
-          final days = _days;
-          final selectedDay     = days[_selectedDay];
-          final allAvailability = availabilityAsync.value ?? [];
-          final duration        = _durations[_selectedDuration];
-          final bookedTimes     = ref.watch(teacherBookedTimesProvider((
-            teacherId: widget.teacherId,
-            date: selectedDay,
-          ))).valueOrNull ?? [];
-          final slots = _slotsForDay(selectedDay, allAvailability, duration, bookedTimes);
-          final total = teacher.pricePerHour * duration / 60;
-
-          return Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(22, 8, 22, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (_error != null)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFDECEC),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(_error!,
-                            style: const TextStyle(fontSize: 13, color: Color(0xFFC0392B))),
-                        ),
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(22, 8, 22, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_error != null)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFDECEC),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(_error!,
+                      style: const TextStyle(fontSize: 13, color: Color(0xFFC0392B))),
+                  ),
 
                       // Teacher card
                       Container(
@@ -628,46 +665,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                       const SizedBox(height: 24),
                     ],
                   ),
-                ),
-              ),
-
-              // ── Bottom bar ──────────────────────────────────────
-              Container(
-                color: AppColors.surface,
-                padding: EdgeInsets.only(
-                  left: 22, right: 22, top: 14,
-                  bottom: MediaQuery.of(context).padding.bottom + 14,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(l.reqSessionTotal,
-                          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                        Text('${total.toInt()} ${l.dashOugiya}',
-                          style: const TextStyle(fontSize: 15,
-                            fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    InfoBanner(text: l.reqSessionPaymentNote),
-                    const SizedBox(height: 12),
-                    AppButton(
-                      label: l.reqSessionSubmit,
-                      isLoading: _loading,
-                      onTap: slots.isNotEmpty
-                          ? () => _send(teacher.pricePerHour, teacher.subject, slots)
-                          : () => setState(() => _error = allAvailability.isEmpty
-                              ? l.reqSessionTeacherUnavailable
-                              : l.reqSessionNoSlotsLeft),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
+                );
         },
       ),
     );

@@ -362,6 +362,11 @@ class _LedgerRow extends StatelessWidget {
     final createdAt = (entry['created_at'] as String?) ?? '';
     final type      = (entry['type'] as String?) ?? '';
 
+    final paymentMap    = entry['payment'] as Map?;
+    final disputeStatus = (paymentMap?['dispute_status'] as String?) ?? 'confirmed';
+    final isFrozen      = type == 'session_payment' && disputeStatus == 'frozen';
+    final isRefunded    = type == 'session_payment' && disputeStatus == 'refunded';
+
     final isCourse  = type == 'course_subscription';
     final isSession = type == 'session_payment';
     final isPayout  = type == 'payout_sent';
@@ -382,27 +387,52 @@ class _LedgerRow extends StatelessWidget {
                 ? l.teacherLedgerPayout
                 : type.replaceAll('_', ' ');
 
-    final iconColor = isCourse
-        ? const Color(0xFF7B61FF)
-        : isSession
-            ? const Color(0xFF1B9E77)
-            : isPayout
-                ? const Color(0xFFC77A1A)
-                : AppColors.textSecondary;
-    final iconBg = isCourse
-        ? const Color(0xFFF0EDFF)
-        : isSession
-            ? const Color(0xFFE3F6EF)
-            : isPayout
-                ? const Color(0xFFFEF3E2)
-                : const Color(0xFFEEF0F2);
+    final Color iconColor;
+    final Color iconBg;
+    final IconData icon;
+
+    if (isFrozen) {
+      iconColor = const Color(0xFFC77A1A);
+      iconBg    = const Color(0xFFFEF3E2);
+      icon      = Icons.lock_clock_outlined;
+    } else if (isRefunded) {
+      iconColor = const Color(0xFF7B61FF);
+      iconBg    = const Color(0xFFF0EDFF);
+      icon      = Icons.reply_rounded;
+    } else if (isCourse) {
+      iconColor = const Color(0xFF7B61FF);
+      iconBg    = const Color(0xFFF0EDFF);
+      icon      = Icons.menu_book_outlined;
+    } else if (isSession) {
+      iconColor = const Color(0xFF1B9E77);
+      iconBg    = const Color(0xFFE3F6EF);
+      icon      = Icons.video_call_outlined;
+    } else if (isPayout) {
+      iconColor = const Color(0xFFC77A1A);
+      iconBg    = const Color(0xFFFEF3E2);
+      icon      = Icons.account_balance_wallet_outlined;
+    } else {
+      iconColor = AppColors.textSecondary;
+      iconBg    = const Color(0xFFEEF0F2);
+      icon      = Icons.swap_horiz_rounded;
+    }
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isFrozen
+            ? const Color(0xFFFFFBF0)
+            : isRefunded
+                ? const Color(0xFFF8F5FF)
+                : AppColors.surface,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: isFrozen
+              ? const Color(0xFFFCD34D)
+              : isRefunded
+                  ? const Color(0xFFC4B5FD)
+                  : AppColors.border,
+        ),
       ),
       child: Row(
         children: [
@@ -410,17 +440,7 @@ class _LedgerRow extends StatelessWidget {
             width: 36, height: 36,
             decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10)),
             alignment: Alignment.center,
-            child: Icon(
-              isCourse
-                  ? Icons.menu_book_outlined
-                  : isSession
-                      ? Icons.video_call_outlined
-                      : isPayout
-                          ? Icons.account_balance_wallet_outlined
-                          : Icons.swap_horiz_rounded,
-              size: 18,
-              color: iconColor,
-            ),
+            child: Icon(icon, size: 18, color: iconColor),
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -428,25 +448,56 @@ class _LedgerRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title,
-                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 12.5, fontWeight: FontWeight.w700,
+                    color: isFrozen || isRefunded
+                        ? AppColors.textSecondary
+                        : AppColors.textPrimary,
+                  ),
                   maxLines: 1, overflow: TextOverflow.ellipsis),
                 Text(fmtDate(createdAt),
                   style: const TextStyle(fontSize: 10.5, color: AppColors.textHint)),
               ],
             ),
           ),
-          Text(
-            isPayout
-                ? '-${fmtAmount(amt.abs())}'
-                : '+${fmtAmount(amt)}',
-            style: TextStyle(
-              fontSize: 13, fontWeight: FontWeight.w700,
-              color: isPayout ? const Color(0xFFE03E3E) : iconColor,
+          const SizedBox(width: 8),
+          if (isFrozen)
+            _StatusChip(label: '⚠ مجمَّد', color: const Color(0xFFC77A1A), bg: const Color(0xFFFEF3E2))
+          else if (isRefunded)
+            _StatusChip(label: '↩ مسترد', color: const Color(0xFF7B61FF), bg: const Color(0xFFF0EDFF))
+          else
+            Text(
+              isPayout
+                  ? '-${fmtAmount(amt.abs())}'
+                  : '+${fmtAmount(amt)}',
+              style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w700,
+                color: isPayout ? const Color(0xFFE03E3E) : iconColor,
+              ),
             ),
-          ),
         ],
       ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  final Color bg;
+  const _StatusChip({required this.label, required this.color, required this.bg});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Text(label,
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
     );
   }
 }

@@ -87,24 +87,38 @@ final _myTeacherRatingsProvider =
   final uid = SupabaseService.userId;
   if (uid == null) return [];
 
-  final data = await SupabaseService.client
+  final reviewsData = await SupabaseService.client
       .from('reviews')
-      .select('rating, comment, created_at, '
-          'teacher:teacher_id(full_name, avatar_url)')
+      .select('rating, comment, created_at, teacher_id')
       .eq('student_id', uid)
       .order('created_at', ascending: false);
 
-  return (data as List).map((r) {
-    final m = Map<String, dynamic>.from(r as Map);
-    final teacher = m['teacher'] as Map<String, dynamic>? ?? {};
+  final reviews = (reviewsData as List)
+      .map((r) => Map<String, dynamic>.from(r as Map))
+      .toList();
 
+  if (reviews.isEmpty) return [];
+
+  final teacherIds = reviews.map((r) => r['teacher_id'] as String).toSet().toList();
+  final profilesData = await SupabaseService.client
+      .from('profiles')
+      .select('id, full_name, avatar_url')
+      .inFilter('id', teacherIds);
+
+  final profilesMap = <String, Map<String, dynamic>>{
+    for (final p in (profilesData as List))
+      (p['id'] as String): Map<String, dynamic>.from(p as Map),
+  };
+
+  return reviews.map((r) {
+    final profile = profilesMap[r['teacher_id'] as String] ?? {};
     return _TeacherRatingItem(
-      teacherName: teacher['full_name'] as String? ?? '—',
-      teacherAvatar: teacher['avatar_url'] as String?,
+      teacherName: profile['full_name'] as String? ?? '—',
+      teacherAvatar: profile['avatar_url'] as String?,
       subject: null,
-      rating: (m['rating'] as num?)?.toInt() ?? 0,
-      comment: m['comment'] as String?,
-      createdAt: DateTime.parse(m['created_at'] as String),
+      rating: (r['rating'] as num?)?.toInt() ?? 0,
+      comment: r['comment'] as String?,
+      createdAt: DateTime.parse(r['created_at'] as String),
     );
   }).toList();
 });

@@ -7,9 +7,13 @@ const LEVELS = [
   { group: 'ثانوية',   items: ['سنة خامسة ثانوي','سنة سادسة ثانوي','BAC C','BAC D','BAC LO','BAC LA','BAC TGM'] },
 ]
 const SUBJECTS = ['العربية','الفرنسية','الإنجليزية','الرياضيات','الفيزياء والكيمياء','التاريخ والجغرافيا','الفلسفة','العلوم الطبيعية','التربية الإسلامية','التربية المدنية']
-const LTYPES   = [{ id:'video',icon:'🎬',label:'فيديو' }]
-const uid      = () => Math.random().toString(36).slice(2)
-const newLesson  = () => ({ id:uid(), title:'', type:'video', url:'', file:null, uploadUrl:'', isPreview:false, duration:'' })
+const uid        = () => Math.random().toString(36).slice(2)
+const newLesson  = () => ({
+  id: uid(), title: '', url: '', file: null, uploadUrl: '',
+  isPreview: false, duration: '', pages: '',
+  attachmentFile: null, attachmentUrl: '',
+  quizQuestions: [],
+})
 const newChapter = n  => ({ id:uid(), title:'الفصل '+n, expanded:true, lessons:[newLesson()] })
 const newQuestion= () => ({ id:uid(), text:'', answers:['',''], correct:0 })
 
@@ -86,21 +90,26 @@ function DropZone({ accept, icon, hint, file, existingUrl, onChange }) {
 }
 
 /* ── Lesson Item ──────────────────────────────────── */
-const LTYPE_COLORS = { video:'#0E7C66' }
-const LTYPE_BG    = { video:'#E3F4EF' }
+function SectionToggle({ icon, label, color, active, onToggle }) {
+  return (
+    <button onClick={onToggle} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 13px',borderRadius:20,border:'1.5px solid '+(active?color:'#D6DFE6'),background:active?color+'18':'#F8FAFB',color:active?color:'#8A96A3',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'inherit',transition:'all .15s'}}>
+      {icon} {label} {active ? '✓' : '+'}
+    </button>
+  )
+}
 
 function LessonItem({ lesson, ci, li, onUpdate, onDelete }) {
   const [collapsed, setCollapsed] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
   const set = f => onUpdate(ci, li, {...lesson,...f})
-  const col = LTYPE_COLORS[lesson.type] || '#555'
-  const bg  = LTYPE_BG[lesson.type]    || '#F5F5F5'
+
+  const hasAttachment = !!(lesson.attachmentFile || lesson.attachmentUrl)
+  const hasQuiz       = lesson.quizQuestions?.length > 0
 
   return (
     <div style={{borderRadius:12,overflow:'hidden',background:'#fff',border:'1.5px solid #E4EBF0',boxShadow:'0 1px 4px rgba(0,0,0,.04)'}}>
-      {/* ─ Header: always-visible editable row ─ */}
+      {/* ─ Header ─ */}
       <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 12px',background:'#F8FAFB',borderBottom:collapsed?'none':'1.5px solid #EDF1F4',flexWrap:'wrap'}}>
-        {/* Title — always an input */}
         <input
           className="field-input"
           value={lesson.title}
@@ -108,24 +117,27 @@ function LessonItem({ lesson, ci, li, onUpdate, onDelete }) {
           onChange={e=>set({title:e.target.value})}
           style={{flex:'1 1 200px',fontSize:13,fontWeight:600,padding:'6px 10px',minWidth:0}}
         />
-        {/* Duration */}
-        <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
-          <input
-            type="number" min="0" placeholder="0"
-            value={lesson.duration||''}
-            onChange={e=>set({duration:e.target.value})}
-            style={{width:50,padding:'6px 7px',borderRadius:8,border:'1.5px solid #D6DFE6',fontSize:12,fontWeight:700,textAlign:'center',fontFamily:'inherit'}}
-          />
-          <span style={{fontSize:11,color:'#8A96A3'}}>د</span>
-        </div>
-        {/* Preview toggle */}
+        {/* Duration (minutes) — shown when video present or no file */}
+        {(!hasAttachment || lesson.url || lesson.file || lesson.uploadUrl) && (
+          <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
+            <input type="number" min="0" placeholder="0" value={lesson.duration||''} onChange={e=>set({duration:e.target.value})}
+              style={{width:50,padding:'6px 7px',borderRadius:8,border:'1.5px solid #D6DFE6',fontSize:12,fontWeight:700,textAlign:'center',fontFamily:'inherit'}} />
+            <span style={{fontSize:11,color:'#8A96A3'}}>د</span>
+          </div>
+        )}
+        {/* Pages — shown when file attachment present */}
+        {hasAttachment && (
+          <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
+            <input type="number" min="0" placeholder="0" value={lesson.pages||''} onChange={e=>set({pages:e.target.value})}
+              style={{width:50,padding:'6px 7px',borderRadius:8,border:'1.5px solid #C3D4F5',fontSize:12,fontWeight:700,textAlign:'center',fontFamily:'inherit',color:'#2A5EBF'}} />
+            <span style={{fontSize:11,color:'#2A5EBF'}}>ص</span>
+          </div>
+        )}
         <label style={{display:'flex',alignItems:'center',gap:5,cursor:'pointer',userSelect:'none',padding:'5px 10px',borderRadius:20,border:'1.5px solid '+(lesson.isPreview?'#1B9E77':'#DDE3E8'),background:lesson.isPreview?'#E3F6EF':'#fff',color:lesson.isPreview?'#15805F':'#8A96A3',fontSize:11.5,fontWeight:700,flexShrink:0}}>
           <input type="checkbox" checked={lesson.isPreview} onChange={e=>set({isPreview:e.target.checked})} style={{display:'none'}} />
           {lesson.isPreview?'✓ مجاني':'مجاني'}
         </label>
-        {/* Collapse */}
-        <button onClick={()=>setCollapsed(c=>!c)} title={collapsed?'عرض خيارات الدرس':'طي'} style={{width:30,height:30,borderRadius:8,border:'1.5px solid #D6DFE6',background:'#fff',color:'#8A96A3',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'transform .15s',transform:collapsed?'rotate(180deg)':'none'}}>▲</button>
-        {/* Delete */}
+        <button onClick={()=>setCollapsed(c=>!c)} title={collapsed?'عرض':'طي'} style={{width:30,height:30,borderRadius:8,border:'1.5px solid #D6DFE6',background:'#fff',color:'#8A96A3',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'transform .15s',transform:collapsed?'rotate(180deg)':'none'}}>▲</button>
         {confirmDel
           ? <div style={{display:'flex',gap:5,flexShrink:0}}>
               <button onClick={()=>onDelete(ci,li)} style={{padding:'5px 11px',borderRadius:8,border:'none',background:'#A12B1D',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>تأكيد</button>
@@ -135,17 +147,59 @@ function LessonItem({ lesson, ci, li, onUpdate, onDelete }) {
         }
       </div>
 
-      {/* ─ Body: video content ─ */}
+      {/* ─ Body ─ */}
       {!collapsed && (
-        <div style={{padding:'14px 14px 16px'}}>
-          <div style={{display:'flex',flexDirection:'column',gap:10}}>
-            <div>
-              <div className="field-label" style={{marginBottom:6}}>🔗 رابط الفيديو (YouTube / Vimeo / مباشر)</div>
-              <input className="field-input" dir="ltr" placeholder="https://youtube.com/watch?v=..." value={lesson.url} onChange={e=>set({url:e.target.value,uploadUrl:''})} style={{fontSize:12.5}} />
+        <div style={{padding:'14px 14px 16px',display:'flex',flexDirection:'column',gap:14}}>
+
+          {/* ── 1. فيديو ── */}
+          <div style={{border:'1.5px solid #D0EAE4',borderRadius:10,overflow:'hidden'}}>
+            <div style={{background:'#E8F5F2',padding:'8px 12px',fontSize:12.5,fontWeight:700,color:'#0E7C66'}}>🎬 فيديو</div>
+            <div style={{padding:'12px',display:'flex',flexDirection:'column',gap:10}}>
+              <div>
+                <div className="field-label" style={{marginBottom:6}}>🔗 رابط الفيديو (YouTube / Vimeo / مباشر)</div>
+                <input className="field-input" dir="ltr" placeholder="https://youtube.com/watch?v=..." value={lesson.url} onChange={e=>set({url:e.target.value,uploadUrl:''})} style={{fontSize:12.5}} />
+              </div>
+              <div style={{textAlign:'center',fontSize:12,color:'#A0B4BE',fontWeight:700}}>— أو رفع ملف فيديو مباشرة —</div>
+              <DropZone accept="video/*" icon="🎬" hint="MP4، MOV — حتى 500 MB" file={lesson.file} existingUrl={lesson.uploadUrl&&!lesson.url?lesson.uploadUrl:null} onChange={f=>set({file:f,url:'',uploadUrl:''})} />
             </div>
-            <div style={{textAlign:'center',fontSize:12,color:'#A0B4BE',fontWeight:700}}>— أو رفع ملف فيديو مباشرة —</div>
-            <DropZone accept="video/*" icon="🎬" hint="MP4، MOV — حتى 500 MB" file={lesson.file} existingUrl={lesson.uploadUrl&&!lesson.url?lesson.uploadUrl:null} onChange={f=>set({file:f,url:'',uploadUrl:''})} />
           </div>
+
+          {/* ── 2. ملف مرفق ── */}
+          <div style={{border:'1.5px solid '+(hasAttachment?'#C3D4F5':'#E0E8F0'),borderRadius:10,overflow:'hidden'}}>
+            <div style={{background:hasAttachment?'#EBF1FD':'#F4F7FB',padding:'8px 12px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span style={{fontSize:12.5,fontWeight:700,color:hasAttachment?'#2A5EBF':'#6B7E8E'}}>📎 ملف مرفق (PDF / مستند)</span>
+              {hasAttachment && (
+                <button onClick={()=>set({attachmentFile:null,attachmentUrl:''})} style={{background:'none',border:'none',cursor:'pointer',color:'#C0C9D2',fontSize:14}}>✕ حذف</button>
+              )}
+            </div>
+            <div style={{padding:'12px'}}>
+              <DropZone
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+                icon="📄"
+                hint="PDF، Word، PowerPoint — حتى 100 MB"
+                file={lesson.attachmentFile}
+                existingUrl={lesson.attachmentUrl || null}
+                onChange={f=>set({attachmentFile:f, attachmentUrl: f ? '' : lesson.attachmentUrl})}
+              />
+            </div>
+          </div>
+
+          {/* ── 3. اختبار ── */}
+          <div style={{border:'1.5px solid '+(hasQuiz?'#D4BAF5':'#E0E8F0'),borderRadius:10,overflow:'hidden'}}>
+            <div style={{background:hasQuiz?'#F3EDFB':'#F4F7FB',padding:'8px 12px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span style={{fontSize:12.5,fontWeight:700,color:hasQuiz?'#6B32C0':'#6B7E8E'}}>📝 اختبار (كويز)</span>
+              {hasQuiz && (
+                <button onClick={()=>set({quizQuestions:[]})} style={{background:'none',border:'none',cursor:'pointer',color:'#C0C9D2',fontSize:14}}>✕ حذف الاختبار</button>
+              )}
+            </div>
+            <div style={{padding:'12px'}}>
+              <QuizBuilder
+                questions={lesson.quizQuestions || []}
+                onChange={qs=>set({quizQuestions:qs})}
+              />
+            </div>
+          </div>
+
         </div>
       )}
     </div>
@@ -235,7 +289,7 @@ export default function AddCourse({ onNavigate, courseId }) {
     setLoadingCourse(true)
     const [{data:course},{data:lessons}] = await Promise.all([
       supabase.from('courses').select('*').eq('id',id).single(),
-      supabase.from('course_lessons').select('*').eq('course_id',id).order('order_index'),
+      supabase.from('course_lessons').select('id,title,video_url,file_url,file_pages,order_index,duration_minutes,is_preview,lesson_type,chapter_title,quiz_data').eq('course_id',id).order('order_index'),
     ])
     if (!course) { setLoadingCourse(false); return }
 
@@ -261,15 +315,15 @@ export default function AddCourse({ onNavigate, courseId }) {
       chapterMap[ch].push({
         id:             uid(),
         title:          l.title || '',
-        type:           l.lesson_type || 'video',
         url:            l.video_url   || '',
         file:           null,
-        uploadUrl:      l.video_url   || '',  // already uploaded
+        uploadUrl:      l.video_url   || '',
         isPreview:      l.is_preview  || false,
-        exerciseKind:   l.quiz_data   ? 'quiz' : 'file',
-        quizQuestions:  l.quiz_data   || [],
         duration:       l.duration_minutes ? String(l.duration_minutes) : '',
-        pages:          l.file_pages        ? String(l.file_pages)        : '',
+        pages:          l.file_pages ? String(l.file_pages) : '',
+        attachmentFile: null,
+        attachmentUrl:  l.file_url    || '',
+        quizQuestions:  l.quiz_data   || [],
       })
     }
     const rebuilt = chapterOrder.map(title => ({
@@ -297,13 +351,15 @@ export default function AddCourse({ onNavigate, courseId }) {
     }
     setSaving(true); setMsg('')
     try {
-      // Upload only NEW files (file !== null)
+      // Upload only NEW files
       const uploaded = await Promise.all(chapters.map(async ch=>({
         ...ch,
         lessons: await Promise.all(ch.lessons.map(async l=>{
-          if(!l.file) return l
-          const bucket = l.type==='video' ? 'course-videos' : 'course-files'
-          return {...l, uploadUrl: await uploadFile(bucket, l.file)}
+          let uploadUrl       = l.uploadUrl
+          let attachmentUrl   = l.attachmentUrl
+          if (l.file)           uploadUrl     = await uploadFile('course-videos', l.file)
+          if (l.attachmentFile) attachmentUrl = await uploadFile('course-files',  l.attachmentFile)
+          return {...l, uploadUrl, attachmentUrl}
         }))
       })))
 
@@ -347,13 +403,14 @@ export default function AddCourse({ onNavigate, courseId }) {
             course_id:        finalCourseId,
             title:            l.title || ('درس '+order),
             video_url:        l.uploadUrl || l.url || null,
+            file_url:         l.attachmentUrl || null,
             order_index:      order,
             is_preview:       l.isPreview,
-            lesson_type:      l.type,
+            lesson_type:      'video',
             chapter_title:    ch.title,
             duration_minutes: parseInt(l.duration)||0,
             file_pages:       parseInt(l.pages)||0,
-            quiz_data:        (l.type==='exercise'&&l.exerciseKind==='quiz'&&l.quizQuestions?.length>0)?l.quizQuestions:null,
+            quiz_data:        l.quizQuestions?.length > 0 ? l.quizQuestions : null,
           })
         }
       if(lessonRows.length>0){

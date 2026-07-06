@@ -1,39 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Sawelni notification icon — white silhouette, alpha-only (Android 5+) -->
+<!-- Hessati notification icon — white silhouette on transparent (Android 5+) -->
+<!-- Shape: graduation cap (mortarboard + tassel) above open book with wing pages -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="120"
     android:viewportHeight="120">
 
-    <!-- Speech bubble with graduation cap diamond cut out (evenOdd) -->
+    <!-- Mortarboard board (diamond) -->
     <path
         android:fillColor="#FFFFFF"
-        android:fillType="evenOdd"
-        android:pathData="
-            M22,16 H98 a14,14 0 0,1 14,14 V76 a14,14 0 0,1 -14,14 H48 L30,106 V90 H22 a14,14 0 0,1 -14,-14 V30 a14,14 0 0,1 14,-14 Z
-            M60,38 L87,49 L60,60 L33,49 Z"/>
+        android:pathData="M60,5 L97,26 L60,47 L23,26 Z"/>
 
-    <!-- Graduation cap brim arc -->
+    <!-- Cap crown band -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M43,43 Q60,54 77,43 L77,51 Q60,62 43,51 Z"/>
+
+    <!-- Tassel string -->
     <path
         android:fillColor="#00000000"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="6"
+        android:strokeWidth="5"
         android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M45,57 V67 a15,6.5 0 0,0 30,0 V57"/>
+        android:pathData="M23,26 L23,60"/>
 
-    <!-- Tassel pole -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="4"
-        android:strokeLineCap="round"
-        android:pathData="M87,49 V70"/>
-
-    <!-- Tassel dot -->
+    <!-- Tassel bunch -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M87,73 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"/>
+        android:pathData="M17,59 Q23,72 29,59 L29,68 Q23,80 17,68 Z"/>
+
+    <!-- Open book — left wing, outer page -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M60,75 Q30,59 4,59 L4,65 Q30,65 60,80 Z"/>
+
+    <!-- Open book — left wing, middle page -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M60,82 Q36,68 13,67 L13,73 Q37,74 60,87 Z"/>
+
+    <!-- Open book — left wing, inner page -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M60,89 Q45,78 30,77 L30,82 Q45,83 60,93 Z"/>
+
+    <!-- Open book — right wing, outer page -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M60,75 Q90,59 116,59 L116,65 Q90,65 60,80 Z"/>
+
+    <!-- Open book — right wing, middle page -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M60,82 Q84,68 107,67 L107,73 Q83,74 60,87 Z"/>
+
+    <!-- Open book — right wing, inner page -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M60,89 Q75,78 90,77 L90,82 Q75,83 60,93 Z"/>
 
 </vector>

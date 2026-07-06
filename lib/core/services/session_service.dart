@@ -208,25 +208,27 @@ class SessionService {
   static Future<String> initiateVideoCall(String sessionId) async {
     final roomName = 'HajezUstad${sessionId.replaceAll('-', '').substring(0, 12)}';
     final ts       = DateTime.now().millisecondsSinceEpoch;
-    final roomUrl  = 'https://meet.jit.si/$roomName'
+    final roomUrl  = 'https://meet.ffmuc.net/$roomName'
         '#config.disableDeepLinking=true'
         '&config.prejoinPageEnabled=false'
         '&config.startWithAudioMuted=false'
         '&config.startWithVideoMuted=false'
         '&ts=$ts';
 
-    final updated = await _db.from('sessions').update({
+    await _db.from('sessions').update({
       'room_url':   roomUrl,
       'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', sessionId)
-      .eq('state', SessionState.activeSession.englishKey)
-      .select('id');
-
-    if ((updated as List).isEmpty) {
-      throw Exception('لا يمكن بدء المكالمة — الجلسة ليست نشطة');
-    }
+    }).eq('id', sessionId);
 
     return roomUrl;
+  }
+
+  // ── Either party: clear room_url after call ends ─────────────────────────────
+  static Future<void> clearVideoCall(String sessionId) async {
+    await _db.from('sessions').update({
+      'room_url':   null,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', sessionId);
   }
 
   // ── Student: record join timestamp ───────────────────────────────────────────

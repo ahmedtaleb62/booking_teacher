@@ -1134,7 +1134,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get homeDetails => 'Détails';
 
   @override
-  String get homeLearnFree => 'Apprendre gratuitement 🎁';
+  String get homeLearnFree => 'Gratuit 🎁';
 
   @override
   String get homeNoCoursesAvailable => 'Aucun cours disponible pour le moment';
