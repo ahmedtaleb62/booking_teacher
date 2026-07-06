@@ -54,11 +54,21 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>نحتاج إلى الوصول إلى مكتبة الصور لرفع صورة إثبات الدفع</string>
 	<key>NSCameraUsageDescription</key>
-	<string>نحتاج إلى الكاميرا لالتقاط صورة إثبات الدفع</string>
+	<string>نحتاج إلى الكاميرا لالتقاط صورة إثبات الدفع وإجراء مكالمات الفيديو</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>نحتاج إلى الميكروفون للجلسات الصوتية المباشرة</string>
+	<string>نحتاج إلى الميكروفون للجلسات الصوتية والمرئية المباشرة</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>نحتاج إلى حفظ صور إثبات الدفع في مكتبة الصور</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>يستخدم بعض مكونات الفيديو هذه الصلاحية داخلياً</string>
+	<key>NSContactsUsageDescription</key>
+	<string>يستخدم بعض مكونات الفيديو هذه الصلاحية داخلياً</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>يستخدم بعض مكونات الفيديو هذه الصلاحية داخلياً</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>يستخدم بعض مكونات الفيديو هذه الصلاحية لتوصيل سماعات البلوتوث</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>يستخدم بعض مكونات الفيديو هذه الصلاحية لتوصيل سماعات البلوتوث</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>UIBackgroundModes</key>
