@@ -51,18 +51,32 @@ final sessionsRealtimeProvider = Provider.autoDispose<void>((ref) {
     ref.invalidate(teacherDashboardProvider);
   }
 
+  // Two filtered listeners on the same channel:
+  // • student_id = uid → catches teacher-approval, admin-confirm, state changes
+  // • teacher_id = uid → catches new student requests, payment submissions
+  // Unfiltered subscriptions don't work reliably with RLS on Supabase.
   final channel = SupabaseService.client
-      .channel('global-sessions-$uid')
+      .channel('rt-sessions-$uid')
       .onPostgresChanges(
         event:  PostgresChangeEvent.all,
         schema: 'public',
         table:  'sessions',
+        filter: PostgresChangeFilter(
+          type:   PostgresChangeFilterType.eq,
+          column: 'student_id',
+          value:  uid,
+        ),
         callback: (_) => invalidateAll(),
       )
       .onPostgresChanges(
         event:  PostgresChangeEvent.all,
         schema: 'public',
-        table:  'payments',
+        table:  'sessions',
+        filter: PostgresChangeFilter(
+          type:   PostgresChangeFilterType.eq,
+          column: 'teacher_id',
+          value:  uid,
+        ),
         callback: (_) => invalidateAll(),
       )
       .subscribe();
