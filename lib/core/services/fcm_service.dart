@@ -11,7 +11,7 @@ class FcmService {
   static StreamSubscription<String>? _tokenRefreshSub;
 
   static const _channelId   = 'hajez_ustad_channel';
-  static const _channelName = 'إشعارات حجز استاذ';
+  static const _channelName = 'إشعارات حجز أستاذ';
 
   static Future<void> init() async {
     if (kIsWeb) return;

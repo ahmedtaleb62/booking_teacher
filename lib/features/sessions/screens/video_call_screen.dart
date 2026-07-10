@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:jitsi_meet_flutter_sdk/jitsi_meet_flutter_sdk.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 /// Thin wrapper around the native Jitsi Meet SDK.
 /// Opens Jitsi natively — no WebView, no pre-join screen, no JS hacks.
@@ -10,6 +13,16 @@ class VideoCallService {
   static String roomName(String sessionId) =>
       'HajezUstad${sessionId.replaceAll('-', '').substring(0, 12)}';
 
+  /// Returns true if camera + microphone are granted (Android only).
+  /// Requests them if not yet granted, then checks again.
+  static Future<bool> requestAVPermissions() async {
+    if (!Platform.isAndroid) return true;
+    await [Permission.camera, Permission.microphone].request();
+    final cam = await Permission.camera.status;
+    final mic = await Permission.microphone.status;
+    return cam.isGranted && mic.isGranted;
+  }
+
   static Future<void> join({
     required String sessionId,
     required String displayName,
@@ -19,6 +32,13 @@ class VideoCallService {
     VoidCallback? onParticipantJoined,
     void Function(String error)? onError,
   }) async {
+    if (Platform.isAndroid) {
+      final granted = await requestAVPermissions();
+      if (!granted) {
+        onError?.call('permission_denied');
+        return;
+      }
+    }
     final options = JitsiMeetConferenceOptions(
       serverURL: 'https://meet.ffmuc.net',
       room: roomName(sessionId),

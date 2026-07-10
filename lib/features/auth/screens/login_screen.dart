@@ -44,7 +44,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       final user = res.user;
       if (user == null) {
-        setState(() => _error = context.l10n.authErrCheckEmail);
+        setState(() => _error = context.l10n.authErrGeneral);
         return;
       }
 

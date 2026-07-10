@@ -16,7 +16,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.example.teacher_booking"
+    namespace = "com.hessati.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -69,4 +69,12 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+}
+
+// Disable ART baseline profile merging — Gradle 8.14 never writes metadata.bin
+// for the large React Native AAR that Jitsi SDK bundles (react-android-0.75.4)
+afterEvaluate {
+    tasks.matching { it.name.contains("ArtProfile") }.configureEach {
+        enabled = false
+    }
 }

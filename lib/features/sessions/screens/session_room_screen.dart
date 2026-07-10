@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:app_settings/app_settings.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_picker/file_picker.dart';
@@ -414,6 +415,10 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
         },
         onError: (e) {
           if (!mounted) return;
+          if (e == 'permission_denied') {
+            _showPermissionDenied();
+            return;
+          }
           final msg = e.toLowerCase().contains('network') ||
                       e.toLowerCase().contains('connect') ||
                       e.toLowerCase().contains('ice')
@@ -796,6 +801,22 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
 
   void _showError(String msg) => ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), backgroundColor: AppColors.error));
+
+  void _showPermissionDenied() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('يرجى منح إذن الكاميرا والميكروفون من إعدادات التطبيق'),
+        backgroundColor: Colors.red.shade700,
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'الإعدادات',
+          textColor: Colors.white,
+          onPressed: () => AppSettings.openAppSettings(),
+        ),
+      ),
+    );
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // BUILD
@@ -1590,6 +1611,10 @@ class _SessionRoomScreenState extends ConsumerState<SessionRoomScreen>
                           SessionService.clearVideoCall(widget.sessionId).catchError((_) {}),
                       onError: (e) {
                         if (!mounted) return;
+                        if (e == 'permission_denied') {
+                          _showPermissionDenied();
+                          return;
+                        }
                         final msg = e.toLowerCase().contains('network') ||
                                     e.toLowerCase().contains('connect') ||
                                     e.toLowerCase().contains('ice')

@@ -1,7 +1,7 @@
 name: teacher_booking
 description: "Hessati — منصة حجز دروس خصوصية"
 publish_to: 'none'
-version: 1.0.1+13
+version: 1.0.1+14
 
 environment:
   sdk: ^3.5.0
@@ -48,6 +48,9 @@ dependencies:
 
   # Open file/image URLs in external browser
   url_launcher: ^6.3.1
+
+  # Runtime permissions (camera, microphone) — required before Jitsi join on Android
+  permission_handler: ^11.3.1
 
   # Open system notification/app settings
   app_settings: ^5.1.1

@@ -44,11 +44,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       final msg = e.toString();
       if (msg.contains('غير مسجل') || msg.contains('not registered')) {
         setState(() => _error = l.resetPassErrNotFound);
-      } else if (msg.contains('Could not find the function') ||
-                 msg.contains('function') && msg.contains('does not exist')) {
-        setState(() => _error = 'خطأ في الإعداد — تواصل مع الدعم (RPC missing)');
       } else {
-        setState(() => _error = '${l.resetPassErrGeneral}\n$msg');
+        setState(() => _error = l.resetPassErrGeneral);
       }
     } finally {
       if (mounted) setState(() => _loading = false);

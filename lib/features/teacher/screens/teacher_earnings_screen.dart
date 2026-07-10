@@ -385,7 +385,7 @@ class _LedgerRow extends StatelessWidget {
                 : l.earningsSessionDesc(subject))
             : isPayout
                 ? l.teacherLedgerPayout
-                : type.replaceAll('_', ' ');
+                : 'معاملة أخرى';
 
     final Color iconColor;
     final Color iconBg;
