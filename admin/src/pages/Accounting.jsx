@@ -58,13 +58,26 @@ export default function Accounting() {
         .eq('type', 'payout_sent'),
     ])
 
-    // Resolve package teacher_ids without relying on a DB foreign key
+    // Resolve teacher_ids via package_courses → courses (packages table has no teacher_id column)
     const packageIds = [...new Set((pkgSubsRaw || []).map(s => s.package_id).filter(Boolean))]
-    const { data: packagesData } = packageIds.length
-      ? await supabase.from('packages').select('id, teacher_id').in('id', packageIds)
+    const { data: pkgCoursesData } = packageIds.length
+      ? await supabase.from('package_courses').select('package_id, course:course_id(teacher_id)').in('package_id', packageIds)
       : { data: [] }
-    const pkgTeacherMap = Object.fromEntries((packagesData || []).map(p => [p.id, p.teacher_id]))
-    const pkgSubs = (pkgSubsRaw || []).map(s => ({ amount: s.amount, package: { teacher_id: pkgTeacherMap[s.package_id] } }))
+    const pkgTeacherMap = {}
+    ;(pkgCoursesData || []).forEach(pc => {
+      const tid = pc.course?.teacher_id
+      if (!tid) return
+      if (!pkgTeacherMap[pc.package_id]) pkgTeacherMap[pc.package_id] = []
+      if (!pkgTeacherMap[pc.package_id].includes(tid)) pkgTeacherMap[pc.package_id].push(tid)
+    })
+    // Split package subscription revenue equally among all teachers in the package
+    const pkgSubs = []
+    ;(pkgSubsRaw || []).forEach(s => {
+      const teacherIds = pkgTeacherMap[s.package_id] || []
+      if (teacherIds.length === 0) return
+      const share = (s.amount || 0) / teacherIds.length
+      teacherIds.forEach(tid => pkgSubs.push({ amount: share, package: { teacher_id: tid } }))
+    })
 
     // Exclude sessions whose confirmed payment is frozen or refunded (dispute in progress or decided against teacher)
     const sessions = (sessionsRaw || []).filter(s => {

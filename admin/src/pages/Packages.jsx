@@ -64,6 +64,7 @@ export default function Packages() {
   const [editTarget, setEditTarget]     = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting]         = useState(false)
+  const [togglePkgId, setTogglePkgId]   = useState(null)
 
   useEffect(() => { loadData() }, [])
 
@@ -165,6 +166,17 @@ export default function Packages() {
     await loadData()
   }
 
+  async function togglePkgActive(id, current) {
+    const { error } = await supabase.from('packages').update({ is_active: !current }).eq('id', id)
+    setTogglePkgId(null)
+    if (error) {
+      toast('خطأ في تغيير حالة الباقة: ' + error.message, 'error')
+    } else {
+      toast(current ? 'تم تحويل الباقة إلى مسودة' : 'تم نشر الباقة بنجاح', 'success')
+      await loadData()
+    }
+  }
+
   async function deletePackage() {
     setDeleting(true)
     const { data: active } = await supabase
@@ -237,21 +249,48 @@ export default function Packages() {
                   <div style={{ fontSize: 11, color: 'var(--text3)' }}>مشترك</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  className="btn btn-sm btn-secondary"
-                  style={{ flex: 1, justifyContent: 'center', fontSize: 12.5 }}
-                  onClick={() => openEdit(p)}
-                >
-                  ✏️ تعديل
-                </button>
-                <button
-                  className="btn btn-sm"
-                  style={{ padding: '6px 12px', fontSize: 12, background: '#FBE0DB', color: '#A12B1D', border: '1px solid #F3C5BD' }}
-                  onClick={() => setDeleteTarget({ id: p.id, title: p.title })}
-                >
-                  🗑
-                </button>
+              <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  {togglePkgId === p.id ? (
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                      <span style={{ fontSize: 10.5, color: 'var(--text2)', whiteSpace: 'nowrap' }}>تغيير؟</span>
+                      <button
+                        className="btn btn-sm"
+                        style={{ padding: '2px 8px', fontSize: 11, background: 'var(--primary)', color: '#fff', border: 'none' }}
+                        onClick={() => togglePkgActive(p.id, p.is_active)}
+                      >نعم</button>
+                      <button
+                        className="btn btn-sm btn-secondary"
+                        style={{ padding: '2px 7px', fontSize: 11 }}
+                        onClick={() => setTogglePkgId(null)}
+                      >لا</button>
+                    </div>
+                  ) : (
+                    <span
+                      className="badge"
+                      style={{ background: p.is_active ? '#D7F2E6' : '#FEF3C7', color: p.is_active ? '#0A6E4E' : '#92400E', cursor: 'pointer', fontSize: 11 }}
+                      onClick={() => setTogglePkgId(p.id)}
+                    >
+                      {p.is_active ? 'منشورة' : 'مسودة'}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    className="btn btn-sm btn-secondary"
+                    style={{ flex: 1, justifyContent: 'center', fontSize: 12.5 }}
+                    onClick={() => openEdit(p)}
+                  >
+                    ✏️ تعديل
+                  </button>
+                  <button
+                    className="btn btn-sm"
+                    style={{ padding: '6px 12px', fontSize: 12, background: '#FBE0DB', color: '#A12B1D', border: '1px solid #F3C5BD' }}
+                    onClick={() => setDeleteTarget({ id: p.id, title: p.title })}
+                  >
+                    🗑
+                  </button>
+                </div>
               </div>
             </div>
           </div>

@@ -1677,13 +1677,13 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get lessonQuizFallback => 'تمرين';
+  String get lessonQuizFallback => 'QCM';
 
   @override
   String get lessonDone => 'تم الانتهاء ✓';
 
   @override
-  String get lessonQuizDoneLabel => 'تم الانتهاء من التمرين';
+  String get lessonQuizDoneLabel => 'تم الانتهاء من QCM';
 
   @override
   String lessonAnswerAll(int answered, int total) {
@@ -1694,7 +1694,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get lessonSubmitAnswers => 'تسليم الإجابات';
 
   @override
-  String get lessonQuizPassed => 'أحسنت! اجتزت التمرين';
+  String get lessonQuizPassed => 'أحسنت! اجتزت QCM';
 
   @override
   String get lessonQuizFailed => 'يمكنك المحاولة مجدداً';

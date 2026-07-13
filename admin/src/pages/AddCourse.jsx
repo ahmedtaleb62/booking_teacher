@@ -187,9 +187,9 @@ function LessonItem({ lesson, ci, li, onUpdate, onDelete }) {
           {/* ── 3. اختبار ── */}
           <div style={{border:'1.5px solid '+(hasQuiz?'#D4BAF5':'#E0E8F0'),borderRadius:10,overflow:'hidden'}}>
             <div style={{background:hasQuiz?'#F3EDFB':'#F4F7FB',padding:'8px 12px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <span style={{fontSize:12.5,fontWeight:700,color:hasQuiz?'#6B32C0':'#6B7E8E'}}>📝 اختبار (كويز)</span>
+              <span style={{fontSize:12.5,fontWeight:700,color:hasQuiz?'#6B32C0':'#6B7E8E'}}>📝 QCM</span>
               {hasQuiz && (
-                <button onClick={()=>set({quizQuestions:[]})} style={{background:'none',border:'none',cursor:'pointer',color:'#C0C9D2',fontSize:14}}>✕ حذف الاختبار</button>
+                <button onClick={()=>set({quizQuestions:[]})} style={{background:'none',border:'none',cursor:'pointer',color:'#C0C9D2',fontSize:14}}>✕ حذف QCM</button>
               )}
             </div>
             <div style={{padding:'12px'}}>
@@ -406,7 +406,9 @@ export default function AddCourse({ onNavigate, courseId }) {
             file_url:         l.attachmentUrl || null,
             order_index:      order,
             is_preview:       l.isPreview,
-            lesson_type:      'video',
+            lesson_type:      l.quizQuestions?.length > 0 ? 'exercise'
+                            : (l.attachmentUrl || l.attachmentFile) ? 'file'
+                            : 'video',
             chapter_title:    ch.title,
             duration_minutes: parseInt(l.duration)||0,
             file_pages:       parseInt(l.pages)||0,

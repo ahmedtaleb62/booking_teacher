@@ -43,7 +43,7 @@ class CourseService {
       // 2. Full lesson data (video_url etc.) — RLS returns rows only for subscribers
       final fullData = await _db
           .from('course_lessons')
-          .select('id, video_url, quiz_data, description, thumbnail_url')
+          .select('id, video_url, quiz_data, description, thumbnail_url, lesson_type')
           .eq('course_id', courseId);
       final fullMap = <String, Map<String, dynamic>>{
         for (final f in (fullData as List))
@@ -71,6 +71,7 @@ class CourseService {
           m['quiz_data']     = full['quiz_data'];
           m['description']   = full['description'];
           m['thumbnail_url'] = full['thumbnail_url'];
+          if (full['lesson_type'] != null) m['lesson_type'] = full['lesson_type'];
         }
         if (progressMap.containsKey(m['id'] as String)) {
           m['progress'] = {'completed': progressMap[m['id'] as String]};

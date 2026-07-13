@@ -1712,13 +1712,13 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get lessonQuizFallback => 'Exercice';
+  String get lessonQuizFallback => 'QCM';
 
   @override
   String get lessonDone => 'Terminé ✓';
 
   @override
-  String get lessonQuizDoneLabel => 'Exercice terminé';
+  String get lessonQuizDoneLabel => 'QCM terminé';
 
   @override
   String lessonAnswerAll(int answered, int total) {

@@ -609,9 +609,9 @@
   "courseLessonLockedBody": "Abonnez-vous à \"{title}\" pour accéder à toutes les leçons",
   "@courseLessonLockedBody": { "placeholders": { "title": { "type": "String" } } },
 
-  "lessonQuizFallback": "Exercice",
+  "lessonQuizFallback": "QCM",
   "lessonDone": "Terminé ✓",
-  "lessonQuizDoneLabel": "Exercice terminé",
+  "lessonQuizDoneLabel": "QCM terminé",
   "lessonAnswerAll": "Répondez à toutes les questions ({answered}/{total})",
   "@lessonAnswerAll": { "placeholders": { "answered": { "type": "int" }, "total": { "type": "int" } } },
   "lessonSubmitAnswers": "Soumettre les réponses",
