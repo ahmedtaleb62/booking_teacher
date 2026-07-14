@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/providers/courses_provider.dart';
+import '../../core/providers/notifications_provider.dart';
+import '../../core/providers/sessions_provider.dart';
 import '../../shared/widgets/bottom_nav.dart';
 
 class MainShell extends ConsumerWidget {
@@ -26,6 +29,10 @@ class MainShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Keep all realtime subscriptions alive regardless of which tab is active.
+    ref.watch(sessionsRealtimeProvider);
+    ref.watch(subscriptionsRealtimeProvider);
+    ref.watch(notificationsRealtimeProvider);
     return Scaffold(
       body: child,
       bottomNavigationBar: AppBottomNav(

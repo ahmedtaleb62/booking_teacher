@@ -13,7 +13,7 @@ final teacherOnlineOnlyProvider    = StateProvider<bool>((ref) => false);
 // ── Teachers list from Supabase ─────────────────────────────
 final teachersProvider = FutureProvider.autoDispose<List<Teacher>>((ref) async {
   final subject    = ref.watch(teacherSubjectFilterProvider);
-  final level      = ref.watch(teacherLevelFilterProvider);
+  ref.watch(teacherLevelFilterProvider); // watched so UI selection invalidates cache
   final query      = ref.watch(teacherSearchQueryProvider);
   final minPrice   = ref.watch(teacherMinPriceProvider);
   final maxPrice   = ref.watch(teacherMaxPriceProvider);
@@ -27,10 +27,6 @@ final teachersProvider = FutureProvider.autoDispose<List<Teacher>>((ref) async {
   if (subject != null && subject.isNotEmpty) {
     req = req.contains('subjects', [subject]);
   }
-  if (level != null && level.isNotEmpty) {
-    req = req.contains('teaching_levels', [level]);
-  }
-
   final data = await req.order('rating', ascending: false);
 
   var teachers = (data as List).map((t) => Teacher.fromJson(t as Map<String, dynamic>)).toList();

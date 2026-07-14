@@ -172,8 +172,9 @@ export default function Packages() {
     if (error) {
       toast('خطأ في تغيير حالة الباقة: ' + error.message, 'error')
     } else {
-      toast(current ? 'تم تحويل الباقة إلى مسودة' : 'تم نشر الباقة بنجاح', 'success')
-      await loadData()
+      // Update local state immediately — no full reload needed
+      setPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: !current } : p))
+      toast(current ? 'تم تحويل الباقة إلى مسودة' : 'تم نشر الباقة بنجاح ✓', 'success')
     }
   }
 

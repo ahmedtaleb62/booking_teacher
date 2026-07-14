@@ -51,8 +51,13 @@ export default function Courses({ onNavigate }) {
     if (error) {
       toast('خطأ في تغيير حالة الدورة: ' + error.message, 'error')
     } else {
+      // Update local state immediately — no full reload needed
+      setRows(prev => prev.map(r => r.id === id ? { ...r, is_active: !current } : r))
+      setStats(prev => ({ ...prev, drafts: current ? prev.drafts + 1 : Math.max(0, prev.drafts - 1) }))
+      toast(current ? 'تم تحويل الدورة إلى مسودة' : 'تم نشر الدورة بنجاح ✓', 'success')
+      // Send notifications in background — no await so UI is never blocked
       if (!current && course) {
-        await supabase.functions.invoke('notify-broadcast', {
+        supabase.functions.invoke('notify-broadcast', {
           body: {
             role:  'student',
             title: 'درس جديد متاح 📖',
@@ -60,17 +65,13 @@ export default function Courses({ onNavigate }) {
             data:  { type: 'NEW_COURSE', course_id: id },
           },
         }).catch(() => {})
-        // Insert into notifications so students see it in their list + get Realtime banner.
-        // The push trigger skips FCM for NEW_COURSE (notify-broadcast already sent it).
-        await supabase.rpc('send_admin_notification', {
+        supabase.rpc('send_admin_notification', {
           p_target_type: 'students',
           p_title: 'درس جديد متاح 📖',
           p_body:  course.title || 'تحقق من الدروس الجديدة',
           p_type:  'NEW_COURSE',
         }).catch(() => {})
       }
-      toast(current ? 'تم تحويل الدورة إلى مسودة' : 'تم نشر الدورة بنجاح', 'success')
-      await loadData()
     }
   }
 

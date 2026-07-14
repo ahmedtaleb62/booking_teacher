@@ -3215,7 +3215,7 @@ abstract class AppLocalizations {
   /// No description provided for @lessonQuizFallback.
   ///
   /// In ar, this message translates to:
-  /// **'تمرين'**
+  /// **'QCM'**
   String get lessonQuizFallback;
 
   /// No description provided for @lessonDone.
@@ -3227,7 +3227,7 @@ abstract class AppLocalizations {
   /// No description provided for @lessonQuizDoneLabel.
   ///
   /// In ar, this message translates to:
-  /// **'تم الانتهاء من التمرين'**
+  /// **'تم الانتهاء من QCM'**
   String get lessonQuizDoneLabel;
 
   /// No description provided for @lessonAnswerAll.
@@ -3245,7 +3245,7 @@ abstract class AppLocalizations {
   /// No description provided for @lessonQuizPassed.
   ///
   /// In ar, this message translates to:
-  /// **'أحسنت! اجتزت التمرين'**
+  /// **'أحسنت! اجتزت QCM'**
   String get lessonQuizPassed;
 
   /// No description provided for @lessonQuizFailed.

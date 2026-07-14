@@ -85,6 +85,19 @@ final sessionsRealtimeProvider = Provider.autoDispose<void>((ref) {
         ),
         callback: (_) => invalidateAll(),
       )
+      // Also watch payments so admin confirm/reject fires even if sessions.state
+      // hasn't changed yet (e.g. admin updates payment row before session row).
+      .onPostgresChanges(
+        event:  PostgresChangeEvent.all,
+        schema: 'public',
+        table:  'payments',
+        filter: PostgresChangeFilter(
+          type:   PostgresChangeFilterType.eq,
+          column: 'student_id',
+          value:  uid,
+        ),
+        callback: (_) => invalidateAll(),
+      )
       .subscribe();
 
   ref.onDispose(() => SupabaseService.client.removeChannel(channel));

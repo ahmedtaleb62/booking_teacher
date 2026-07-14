@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/course.dart';
 import '../services/course_service.dart';
+import '../services/supabase_service.dart';
 import 'auth_provider.dart';
 
 // ── Filter state ──────────────────────────────────────────────────
@@ -128,4 +130,30 @@ final packageSubStatusProvider =
       s.status == SubscriptionStatus.expired ||
       (s.status == SubscriptionStatus.active && s.isExpired))) return 'expired';
   return 'rejected';
+});
+
+// ── Subscriptions realtime ────────────────────────────────────────────────────
+// Watches the subscriptions table for the current student and invalidates all
+// subscription-derived providers whenever a row changes (admin approve/reject).
+// Anchor this in MainShell so it stays alive on all student tabs.
+final subscriptionsRealtimeProvider = Provider.autoDispose<void>((ref) {
+  final uid = SupabaseService.userId;
+  if (uid == null) return;
+
+  final channel = SupabaseService.client
+      .channel('rt-subscriptions-$uid')
+      .onPostgresChanges(
+        event:  PostgresChangeEvent.all,
+        schema: 'public',
+        table:  'subscriptions',
+        filter: PostgresChangeFilter(
+          type:   PostgresChangeFilterType.eq,
+          column: 'student_id',
+          value:  uid,
+        ),
+        callback: (_) => ref.invalidate(mySubscriptionsProvider),
+      )
+      .subscribe();
+
+  ref.onDispose(() => SupabaseService.client.removeChannel(channel));
 });

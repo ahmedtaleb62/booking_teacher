@@ -34,7 +34,6 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-
   if (!kIsWeb) {
     await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setSystemUIOverlayStyle(
@@ -66,12 +65,12 @@ class TeacherBookingApp extends ConsumerStatefulWidget {
 }
 
 class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
-  OverlayEntry?      _bannerEntry;
-  OverlayEntry?      _callEntry;
-  RealtimeChannel?   _notifChannel;
-  RealtimeChannel?   _sessionsStudentChannel;
-  RealtimeChannel?   _sessionsTeacherChannel;
-  RealtimeChannel?   _ledgerChannel;
+  OverlayEntry? _bannerEntry;
+  OverlayEntry? _callEntry;
+  RealtimeChannel? _notifChannel;
+  RealtimeChannel? _sessionsStudentChannel;
+  RealtimeChannel? _sessionsTeacherChannel;
+  RealtimeChannel? _ledgerChannel;
   StreamSubscription? _authSub;
 
   @override
@@ -80,7 +79,8 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
     _setupNotificationNavigation();
     _setupForegroundBanner();
     // Start Realtime listener after first frame so context/overlay are ready
-    WidgetsBinding.instance.addPostFrameCallback((_) => _setupRealtimeNotifications());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _setupRealtimeNotifications());
   }
 
   @override
@@ -111,10 +111,14 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
         _subscribeToUserSessions(session.user.id);
         FcmService.saveToken(); // Save token now that userId is available
       } else {
-        _notifChannel?.unsubscribe();          _notifChannel = null;
-        _sessionsStudentChannel?.unsubscribe(); _sessionsStudentChannel = null;
-        _sessionsTeacherChannel?.unsubscribe(); _sessionsTeacherChannel = null;
-        _ledgerChannel?.unsubscribe();          _ledgerChannel = null;
+        _notifChannel?.unsubscribe();
+        _notifChannel = null;
+        _sessionsStudentChannel?.unsubscribe();
+        _sessionsStudentChannel = null;
+        _sessionsTeacherChannel?.unsubscribe();
+        _sessionsTeacherChannel = null;
+        _ledgerChannel?.unsubscribe();
+        _ledgerChannel = null;
         FcmService.removeToken(); // Clean up on logout
       }
     });
@@ -135,9 +139,9 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
           ),
           callback: (payload) {
             if (!mounted) return;
-            final row   = payload.newRecord;
+            final row = payload.newRecord;
             final title = (row['title'] as String?) ?? '';
-            final body  = (row['body']  as String?) ?? '';
+            final body = (row['body'] as String?) ?? '';
             ref.invalidate(notificationsProvider);
             ref.invalidate(unreadCountProvider);
             _showBanner(title, body);
@@ -186,13 +190,13 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
     _sessionsStudentChannel = SupabaseService.client
         .channel('global-sessions-student-$uid')
         .onPostgresChanges(
-          event:  PostgresChangeEvent.all,
+          event: PostgresChangeEvent.all,
           schema: 'public',
-          table:  'sessions',
+          table: 'sessions',
           filter: PostgresChangeFilter(
-            type:   PostgresChangeFilterType.eq,
+            type: PostgresChangeFilterType.eq,
             column: 'student_id',
-            value:  uid,
+            value: uid,
           ),
           callback: (_) => invalidateSessions(),
         )
@@ -202,13 +206,13 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
     _sessionsTeacherChannel = SupabaseService.client
         .channel('global-sessions-teacher-$uid')
         .onPostgresChanges(
-          event:  PostgresChangeEvent.all,
+          event: PostgresChangeEvent.all,
           schema: 'public',
-          table:  'sessions',
+          table: 'sessions',
           filter: PostgresChangeFilter(
-            type:   PostgresChangeFilterType.eq,
+            type: PostgresChangeFilterType.eq,
             column: 'teacher_id',
-            value:  uid,
+            value: uid,
           ),
           callback: (_) => invalidateSessions(),
         )
@@ -218,13 +222,13 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
     _ledgerChannel = SupabaseService.client
         .channel('global-ledger-$uid')
         .onPostgresChanges(
-          event:  PostgresChangeEvent.all,
+          event: PostgresChangeEvent.all,
           schema: 'public',
-          table:  'ledger_entries',
+          table: 'ledger_entries',
           filter: PostgresChangeFilter(
-            type:   PostgresChangeFilterType.eq,
+            type: PostgresChangeFilterType.eq,
             column: 'teacher_id',
-            value:  uid,
+            value: uid,
           ),
           callback: (_) {
             ref.invalidate(teacherEarningsProvider);
@@ -240,9 +244,9 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
       ref.invalidate(notificationsProvider);
       ref.invalidate(unreadCountProvider);
 
-      final type      = message.data['type']       as String?;
+      final type = message.data['type'] as String?;
       final sessionId = message.data['session_id'] as String?;
-      final role      = message.data['role']        as String?;
+      final role = message.data['role'] as String?;
 
       if (type == 'VIDEO_CALL' && sessionId != null) {
         _showIncomingCallOverlay(sessionId, role);
@@ -255,36 +259,39 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
     final overlay = rootNavigatorKey.currentState?.overlay;
     if (overlay == null) return;
 
-    _callEntry = OverlayEntry(builder: (_) => _IncomingCallOverlay(
-      onAccept: () async {
-        _callEntry?.remove();
-        _callEntry = null;
-        final route = role == 'teacher'
-            ? '/teacher/live/$sessionId'
-            : '/live/$sessionId';
-        ref.read(routerProvider).go(route);
-        // Give the screen time to mount, then join Jitsi directly
-        await Future.delayed(const Duration(milliseconds: 600));
-        try {
-          final session = await SessionService.getSession(sessionId);
-          if (session.roomUrl == null) return;
-          final uid  = SupabaseService.userId ?? '';
-          final name = role == 'teacher' ? session.teacherName : session.studentName;
-          await VideoCallService.join(
-            sessionId:    sessionId,
-            displayName:  name.isNotEmpty ? name : uid,
-            languageCode: ref.read(localeProvider).languageCode,
-            onTerminated: () =>
-                SessionService.clearVideoCall(sessionId).catchError((_) {}),
-            onError: (_) {},
-          );
-        } catch (_) {}
-      },
-      onReject: () {
-        _callEntry?.remove();
-        _callEntry = null;
-      },
-    ));
+    _callEntry = OverlayEntry(
+        builder: (_) => _IncomingCallOverlay(
+              onAccept: () async {
+                _callEntry?.remove();
+                _callEntry = null;
+                final route = role == 'teacher'
+                    ? '/teacher/live/$sessionId'
+                    : '/live/$sessionId';
+                ref.read(routerProvider).go(route);
+                // Give the screen time to mount, then join Jitsi directly
+                await Future.delayed(const Duration(milliseconds: 600));
+                try {
+                  final session = await SessionService.getSession(sessionId);
+                  if (session.roomUrl == null) return;
+                  final uid = SupabaseService.userId ?? '';
+                  final name = role == 'teacher'
+                      ? session.teacherName
+                      : session.studentName;
+                  await VideoCallService.join(
+                    sessionId: sessionId,
+                    displayName: name.isNotEmpty ? name : uid,
+                    languageCode: ref.read(localeProvider).languageCode,
+                    onTerminated: () => SessionService.clearVideoCall(sessionId)
+                        .catchError((_) {}),
+                    onError: (_) {},
+                  );
+                } catch (_) {}
+              },
+              onReject: () {
+                _callEntry?.remove();
+                _callEntry = null;
+              },
+            ));
     overlay.insert(_callEntry!);
   }
 
@@ -295,12 +302,15 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
     final overlay = rootNavigatorKey.currentState?.overlay;
     if (overlay == null) return;
 
-    _bannerEntry = OverlayEntry(builder: (_) => _NotifBanner(
-      title: title,
-      
-      body: body,
-      onDismiss: () { _bannerEntry?.remove(); _bannerEntry = null; },
-    ));
+    _bannerEntry = OverlayEntry(
+        builder: (_) => _NotifBanner(
+              title: title,
+              body: body,
+              onDismiss: () {
+                _bannerEntry?.remove();
+                _bannerEntry = null;
+              },
+            ));
     overlay.insert(_bannerEntry!);
   }
 
@@ -338,7 +348,8 @@ class _IncomingCallOverlayState extends State<_IncomingCallOverlay>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 350));
     _slide = Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
     _ctrl.forward();
@@ -356,7 +367,9 @@ class _IncomingCallOverlayState extends State<_IncomingCallOverlay>
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top + 8;
     return Positioned(
-      top: top, left: 16, right: 16,
+      top: top,
+      left: 16,
+      right: 16,
       child: SlideTransition(
         position: _slide,
         child: Material(
@@ -367,22 +380,29 @@ class _IncomingCallOverlayState extends State<_IncomingCallOverlay>
             padding: const EdgeInsets.all(16),
             child: Row(children: [
               Container(
-                width: 48, height: 48,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.videocam_rounded, color: AppColors.primary, size: 26),
+                child: const Icon(Icons.videocam_rounded,
+                    color: AppColors.primary, size: 26),
               ),
               const SizedBox(width: 12),
               const Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('مكالمة فيديو واردة 📹',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
-                          color: Colors.black87)),
-                  Text('اضغط قبول للانضمام',
-                      style: TextStyle(fontSize: 12, color: Colors.black45)),
-                ]),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('مكالمة فيديو واردة 📹',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black87)),
+                      Text('اضغط قبول للانضمام',
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.black45)),
+                    ]),
               ),
               TextButton(
                 onPressed: widget.onReject,
@@ -395,8 +415,10 @@ class _IncomingCallOverlayState extends State<_IncomingCallOverlay>
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 child: const Text('قبول'),
               ),
@@ -412,7 +434,8 @@ class _NotifBanner extends StatefulWidget {
   final String title;
   final String body;
   final VoidCallback onDismiss;
-  const _NotifBanner({required this.title, required this.body, required this.onDismiss});
+  const _NotifBanner(
+      {required this.title, required this.body, required this.onDismiss});
   @override
   State<_NotifBanner> createState() => _NotifBannerState();
 }
@@ -425,7 +448,8 @@ class _NotifBannerState extends State<_NotifBanner>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 320));
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 320));
     _slide = Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
     _ctrl.forward();
@@ -439,13 +463,18 @@ class _NotifBannerState extends State<_NotifBanner>
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top + 8;
     return Positioned(
-      top: top, left: 16, right: 16,
+      top: top,
+      left: 16,
+      right: 16,
       child: SlideTransition(
         position: _slide,
         child: Material(
@@ -460,7 +489,8 @@ class _NotifBannerState extends State<_NotifBanner>
               child: Row(
                 children: [
                   Container(
-                    width: 38, height: 38,
+                    width: 38,
+                    height: 38,
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(11),
@@ -475,14 +505,19 @@ class _NotifBannerState extends State<_NotifBanner>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(widget.title,
-                          style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                            style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white)),
                         if (widget.body.isNotEmpty) ...[
                           const SizedBox(height: 2),
                           Text(widget.body,
-                            maxLines: 2, overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 12, color: Color(0xFFCFE6EA), height: 1.4)),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFFCFE6EA),
+                                  height: 1.4)),
                         ],
                       ],
                     ),
