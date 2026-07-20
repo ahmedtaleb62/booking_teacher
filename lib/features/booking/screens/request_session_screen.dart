@@ -22,12 +22,13 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
   final _noteCtrl = TextEditingController();
   int     _selectedDay      = 0;
   int?    _selectedSlotIdx;
-  int     _selectedDuration = 0; // 0=5(test), 1=30, 2=60, 3=90
+  int     _selectedDuration = 0; // 0=60min, 1=90min, 2=120min
   String? _selectedLevel;
   bool    _loading = false;
   String? _error;
 
-  static const _durations = [5, 30, 60, 90];
+  static const _durations      = [60, 90, 120];
+  static const _durationLabels = ['ساعة', 'ساعة ونصف', 'ساعتان'];
 
   List<DateTime> get _days {
     final today = DateTime.now();
@@ -518,7 +519,7 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
                                       color: sel ? AppColors.primary : AppColors.border,
                                       width: sel ? 1.5 : 1),
                                   ),
-                                  child: Text('${_durations[i]} ${l.unitMinAbbrev}',
+                                  child: Text(_durationLabels[i],
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 13, fontWeight: FontWeight.w700,
