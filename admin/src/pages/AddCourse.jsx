@@ -363,8 +363,23 @@ export default function AddCourse({ onNavigate, courseId }) {
         }))
       })))
 
-      const total      = uploaded.reduce((s,ch)=>s+ch.lessons.length,0)
-      const totalMins  = uploaded.reduce((s,ch)=>s+ch.lessons.reduce((ss,l)=>ss+(parseInt(l.duration)||0),0),0)
+      // Compute totals first (before saving course)
+      let totalMins = 0
+      for (const ch of uploaded)
+        for (const l of ch.lessons)
+          totalMins += parseInt(l.duration)||0
+
+      // Count actual DB rows that will be created (each content type = 1 row)
+      let totalRows = 0
+      for (const ch of uploaded)
+        for (const l of ch.lessons) {
+          const hasVideo = !!(l.uploadUrl || l.url)
+          const hasFile  = !!l.attachmentUrl
+          const hasQuiz  = !!(l.quizQuestions?.length > 0)
+          if (!hasVideo && !hasFile && !hasQuiz) totalRows++
+          else { if (hasVideo) totalRows++; if (hasFile) totalRows++; if (hasQuiz) totalRows++ }
+        }
+
       const totalHours = parseFloat((totalMins/60).toFixed(1))
 
       const courseData = {
@@ -377,7 +392,7 @@ export default function AddCourse({ onNavigate, courseId }) {
         original_price:isFree ? null : (form.originalPrice ? parseFloat(form.originalPrice) : null),
         teacher_id:    form.teacherId,
         is_active:     !isDraft,
-        total_lessons: total,
+        total_lessons: totalRows,
         total_hours:   totalHours,
       }
 
@@ -385,7 +400,6 @@ export default function AddCourse({ onNavigate, courseId }) {
       if (isEdit) {
         const {error} = await supabase.from('courses').update(courseData).eq('id', courseId)
         if (error) throw error
-        // Replace all lessons atomically
         const {error: delErr} = await supabase.from('course_lessons').delete().eq('course_id', courseId)
         if (delErr) throw delErr
       } else {
@@ -394,30 +408,69 @@ export default function AddCourse({ onNavigate, courseId }) {
         finalCourseId = course.id
       }
 
+      // Build lesson rows: each content type becomes a separate DB row
       const lessonRows = []
       let order = 0
-      for(const ch of uploaded)
-        for(const l of ch.lessons){
-          order++
-          lessonRows.push({
-            course_id:        finalCourseId,
-            title:            l.title || ('درس '+order),
-            video_url:        l.uploadUrl || l.url || null,
-            file_url:         l.attachmentUrl || null,
-            order_index:      order,
-            is_preview:       l.isPreview,
-            lesson_type:      l.quizQuestions?.length > 0 ? 'exercise'
-                            : (l.attachmentUrl || l.attachmentFile) ? 'file'
-                            : 'video',
-            chapter_title:    ch.title,
-            duration_minutes: parseInt(l.duration)||0,
-            file_pages:       parseInt(l.pages)||0,
-            quiz_data:        l.quizQuestions?.length > 0 ? l.quizQuestions : null,
-          })
+      for (const ch of uploaded) {
+        for (const l of ch.lessons) {
+          const hasVideo = !!(l.uploadUrl || l.url)
+          const hasFile  = !!l.attachmentUrl
+          const hasQuiz  = !!(l.quizQuestions?.length > 0)
+
+          if (!hasVideo && !hasFile && !hasQuiz) {
+            order++
+            lessonRows.push({
+              course_id: finalCourseId, title: l.title || ('درس '+order),
+              video_url: null, file_url: null, order_index: order,
+              is_preview: l.isPreview, lesson_type: 'video',
+              chapter_title: ch.title, duration_minutes: parseInt(l.duration)||0,
+              file_pages: 0, quiz_data: null,
+            })
+            continue
+          }
+
+          if (hasVideo) {
+            order++
+            lessonRows.push({
+              course_id: finalCourseId,
+              title: l.title || ('درس '+order),
+              video_url: l.uploadUrl || l.url, file_url: null, order_index: order,
+              is_preview: l.isPreview, lesson_type: 'video',
+              chapter_title: ch.title, duration_minutes: parseInt(l.duration)||0,
+              file_pages: 0, quiz_data: null,
+            })
+          }
+
+          if (hasFile) {
+            order++
+            // Store file URL in video_url so Flutter can display it via WebView
+            lessonRows.push({
+              course_id: finalCourseId,
+              title: 'ملف ' + order,
+              video_url: l.attachmentUrl, file_url: l.attachmentUrl, order_index: order,
+              is_preview: l.isPreview, lesson_type: 'file',
+              chapter_title: ch.title, duration_minutes: 0,
+              file_pages: parseInt(l.pages)||0, quiz_data: null,
+            })
+          }
+
+          if (hasQuiz) {
+            order++
+            lessonRows.push({
+              course_id: finalCourseId,
+              title: 'QCM ' + order,
+              video_url: null, file_url: null, order_index: order,
+              is_preview: l.isPreview, lesson_type: 'exercise',
+              chapter_title: ch.title, duration_minutes: 0,
+              file_pages: 0, quiz_data: l.quizQuestions,
+            })
+          }
         }
-      if(lessonRows.length>0){
-        const{error:le}=await supabase.from('course_lessons').insert(lessonRows)
-        if(le) throw le
+      }
+
+      if (lessonRows.length > 0) {
+        const {error:le} = await supabase.from('course_lessons').insert(lessonRows)
+        if (le) throw le
       }
       if (!isDraft && !isEdit) {
         try {
