@@ -17,7 +17,18 @@ const newLesson  = () => ({
 const newChapter = n  => ({ id:uid(), title:'الفصل '+n, expanded:true, lessons:[newLesson()] })
 const newQuestion= () => ({ id:uid(), text:'', answers:['',''], correct:0 })
 
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024 // Supabase project storage limit (Free plan)
+
 async function uploadFile(bucket, file) {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    const sizeMB = (file.size / (1024*1024)).toFixed(1)
+    throw new Error(
+      `حجم الملف ${sizeMB} ميجابايت يتجاوز الحد المسموح (50 ميجابايت). `
+      + (bucket === 'course-videos'
+          ? 'للفيديوهات الأكبر، ارفعه على يوتيوب (غير مُدرَج) وألصق رابطه في حقل "رابط الفيديو" بدلاً من الرفع المباشر.'
+          : 'يرجى ضغط الملف أو تصغير حجمه قبل الرفع.')
+    )
+  }
   const ext  = file.name.split('.').pop() || 'bin'
   const path = Date.now() + '_' + uid() + '.' + ext
   const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert:true })
@@ -160,7 +171,7 @@ function LessonItem({ lesson, ci, li, onUpdate, onDelete }) {
                 <input className="field-input" dir="ltr" placeholder="https://youtube.com/watch?v=..." value={lesson.url} onChange={e=>set({url:e.target.value,uploadUrl:''})} style={{fontSize:12.5}} />
               </div>
               <div style={{textAlign:'center',fontSize:12,color:'#A0B4BE',fontWeight:700}}>— أو رفع ملف فيديو مباشرة —</div>
-              <DropZone accept="video/*" icon="🎬" hint="MP4، MOV — حتى 500 MB" file={lesson.file} existingUrl={lesson.uploadUrl&&!lesson.url?lesson.uploadUrl:null} onChange={f=>set({file:f,url:'',uploadUrl:''})} />
+              <DropZone accept="video/*" icon="🎬" hint="MP4، MOV — حتى 50 MB (الأكبر: ارفعه على يوتيوب وألصق الرابط أعلاه)" file={lesson.file} existingUrl={lesson.uploadUrl&&!lesson.url?lesson.uploadUrl:null} onChange={f=>set({file:f,url:'',uploadUrl:''})} />
             </div>
           </div>
 
@@ -176,7 +187,7 @@ function LessonItem({ lesson, ci, li, onUpdate, onDelete }) {
               <DropZone
                 accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
                 icon="📄"
-                hint="PDF، Word، PowerPoint — حتى 100 MB"
+                hint="PDF، Word، PowerPoint — حتى 50 MB"
                 file={lesson.attachmentFile}
                 existingUrl={lesson.attachmentUrl || null}
                 onChange={f=>set({attachmentFile:f, attachmentUrl: f ? '' : lesson.attachmentUrl})}
