@@ -17,23 +17,37 @@ const newLesson  = () => ({
 const newChapter = n  => ({ id:uid(), title:'الفصل '+n, expanded:true, lessons:[newLesson()] })
 const newQuestion= () => ({ id:uid(), text:'', answers:['',''], correct:0 })
 
-const MAX_UPLOAD_BYTES = 50 * 1024 * 1024 // Supabase project storage limit (Free plan)
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024 // 2GB sanity cap — R2 itself has no meaningful limit here
 
+// Videos/files upload directly to Cloudflare R2 (no size cap like Supabase's
+// free-tier 50MB storage limit). The admin's Pages Function signs a short-
+// lived R2 PUT URL after verifying the caller is an admin; the actual bytes
+// go straight from the browser to R2, never through our own server.
 async function uploadFile(bucket, file) {
   if (file.size > MAX_UPLOAD_BYTES) {
     const sizeMB = (file.size / (1024*1024)).toFixed(1)
-    throw new Error(
-      `حجم الملف ${sizeMB} ميجابايت يتجاوز الحد المسموح (50 ميجابايت). `
-      + (bucket === 'course-videos'
-          ? 'للفيديوهات الأكبر، ارفعه على يوتيوب (غير مُدرَج) وألصق رابطه في حقل "رابط الفيديو" بدلاً من الرفع المباشر.'
-          : 'يرجى ضغط الملف أو تصغير حجمه قبل الرفع.')
-    )
+    throw new Error(`حجم الملف ${sizeMB} ميجابايت كبير جداً (الحد الأقصى 2 غيغابايت)`)
   }
-  const ext  = file.name.split('.').pop() || 'bin'
-  const path = Date.now() + '_' + uid() + '.' + ext
-  const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert:true })
-  if (error) throw error
-  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl
+  const kind = bucket === 'course-videos' ? 'video' : 'file'
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('انتهت الجلسة، سجّل الدخول من جديد')
+
+  const presignRes = await fetch('/api/presign-upload', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ filename: file.name, kind }),
+  })
+  if (!presignRes.ok) throw new Error('تعذّر تجهيز رابط الرفع، حاول مرة أخرى')
+  const { uploadUrl, publicUrl } = await presignRes.json()
+
+  const putRes = await fetch(uploadUrl, { method: 'PUT', body: file })
+  if (!putRes.ok) throw new Error('فشل رفع الملف، تحقق من اتصالك وحاول مرة أخرى')
+
+  return publicUrl
 }
 
 /* ── Quiz Builder ─────────────────────────────────── */
@@ -360,6 +374,15 @@ export default function AddCourse({ onNavigate, courseId }) {
       setMsg('يرجى تعبئة جميع الحقول المطلوبة (العنوان، المادة، المستوى، السعر أو مجاني، الأستاذ)')
       return
     }
+    // Catch a common mistake: pasting a document link into the "video URL"
+    // field instead of using the file-attachment uploader below it.
+    const DOC_EXT = /\.(pdf|docx?|pptx?|xlsx?)(\?|$)/i
+    for (const ch of chapters)
+      for (const l of ch.lessons)
+        if (l.url && DOC_EXT.test(l.url)) {
+          setMsg(`رابط الفيديو في الدرس "${l.title||'بدون عنوان'}" يبدو أنه رابط ملف (PDF/Word/…) وليس فيديو — انقله لخانة "ملف مرفق" بدلاً من "رابط الفيديو"`)
+          return
+        }
     setSaving(true); setMsg('')
     try {
       // Upload only NEW files
