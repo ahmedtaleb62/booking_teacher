@@ -104,8 +104,13 @@ export default function Layout({ page, onNavigate, meta, badges = {}, children }
             <div className="footer-name">المدير</div>
             <div className="footer-role">مدير النظام</div>
           </div>
-          <span style={{ color: 'rgba(255,255,255,.45)', cursor: 'pointer', display: 'flex' }} onClick={handleLogout} title="تسجيل خروج">
+          <span
+            style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,.65)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}
+            onClick={handleLogout}
+            title="تسجيل خروج"
+          >
             <IcoLogout />
+            تسجيل خروج
           </span>
         </div>
       </aside>
