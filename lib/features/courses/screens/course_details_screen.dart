@@ -10,6 +10,18 @@ import '../../../core/models/course.dart';
 import '../../../core/providers/courses_provider.dart';
 import '../../../core/utils/app_errors.dart';
 
+IconData _lessonTypeIcon(String lessonType) {
+  switch (lessonType) {
+    case 'file':
+    case 'summary':
+      return Icons.description_outlined;
+    case 'exercise':
+      return Icons.quiz_outlined;
+    default:
+      return Icons.play_arrow_rounded;
+  }
+}
+
 class CourseDetailsScreen extends ConsumerWidget {
   final String courseId;
   const CourseDetailsScreen({super.key, required this.courseId});
@@ -470,7 +482,7 @@ class CourseDetailsScreen extends ConsumerWidget {
                                 child: lesson.completed
                                     ? const Icon(Icons.check_rounded, color: AppColors.statusConfirmed, size: 17)
                                     : canAccess
-                                        ? const Icon(Icons.play_arrow_rounded, color: AppColors.primary, size: 17)
+                                        ? Icon(_lessonTypeIcon(lesson.lessonType), color: AppColors.primary, size: 17)
                                         : Text('$idx',
                                             style: const TextStyle(
                                                 fontSize: 12, fontWeight: FontWeight.w700,
