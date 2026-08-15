@@ -43,7 +43,7 @@ android {
 
     defaultConfig {
         applicationId = "com.hessati.app"
-        minSdk = 24  // jitsi_meet_flutter_sdk requires API 24+
+        minSdk = 26  // jitsi_meet_flutter_sdk 13.x requires API 26+
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -77,10 +77,22 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
+// Jitsi SDK 13.x bundles its own react-native-video, which pulls in a copy of
+// media3-exoplayer-rtsp that collides with the one video_player_android brings
+// in. RTSP streaming isn't used anywhere in this app (lesson videos are plain
+// HTTP files, calls go over WebRTC) — safe to drop from the classpath.
+configurations.all {
+    exclude(group = "androidx.media3", module = "media3-exoplayer-rtsp")
+}
+
 // Disable ART baseline profile merging — Gradle 8.14 never writes metadata.bin
 // for the large React Native AAR that Jitsi SDK bundles (react-android-0.75.4)
 afterEvaluate {
     tasks.matching { it.name.contains("ArtProfile") }.configureEach {
+        enabled = false
+    }
+    // Skip AAR metadata check — consistently hangs/corrupts on Jitsi's react-android AAR
+    tasks.matching { it.name.contains("checkRelease") && it.name.contains("AarMetadata") }.configureEach {
         enabled = false
     }
 }
