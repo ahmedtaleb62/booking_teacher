@@ -464,6 +464,30 @@ abstract class AppLocalizations {
   /// **'تحقق من بريدك الإلكتروني لتأكيد الحساب'**
   String get authErrCheckEmail;
 
+  /// No description provided for @authAccountDisabledTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'الحساب معطّل'**
+  String get authAccountDisabledTitle;
+
+  /// No description provided for @authAccountDisabled.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم تعطيل حسابك من قِبل الإدارة. للاستفسار تواصل مع:'**
+  String get authAccountDisabled;
+
+  /// No description provided for @authDeviceMismatchTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'الحساب مرتبط بجهاز آخر'**
+  String get authDeviceMismatchTitle;
+
+  /// No description provided for @authDeviceMismatch.
+  ///
+  /// In ar, this message translates to:
+  /// **'حسابك مرتبط بجهاز آخر. إذا فقدت هاتفك القديم أو بدّلته تواصل مع الإدارة لإعادة الربط:'**
+  String get authDeviceMismatch;
+
   /// No description provided for @homeTitle.
   ///
   /// In ar, this message translates to:
@@ -3265,6 +3289,12 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'لا يوجد فيديو متاح لهذا الدرس'**
   String get lessonNoVideo;
+
+  /// No description provided for @lessonVideoLoadError.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذّر تحميل الفيديو، تحقق من اتصالك بالإنترنت وحاول مرة أخرى'**
+  String get lessonVideoLoadError;
 
   /// No description provided for @lessonVideoHint.
   ///

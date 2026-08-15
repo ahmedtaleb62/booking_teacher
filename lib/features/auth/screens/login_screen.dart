@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/l10n_extension.dart';
+import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/device_service.dart';
 import '../../../core/services/otp_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -49,18 +51,55 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
 
       String? role;
+      bool isActive = true;
+      String? boundDeviceId;
       try {
         final profile = await SupabaseService.client
             .from('profiles')
-            .select('role')
+            .select('role, is_active, device_id')
             .eq('id', user.id)
             .maybeSingle();
         role = profile?['role'] as String?;
+        isActive = profile?['is_active'] as bool? ?? true;
+        boundDeviceId = profile?['device_id'] as String?;
       } catch (_) {
         role = user.userMetadata?['role'] as String?;
       }
 
       if (!mounted) return;
+
+      if (!isActive) {
+        await SupabaseService.client.auth.signOut();
+        if (!mounted) return;
+        final supportPhone = await ref.read(supportPhoneProvider.future);
+        if (!mounted) return;
+        setState(() => _error = supportPhone.isNotEmpty
+            ? '${context.l10n.authAccountDisabled} $supportPhone'
+            : context.l10n.authAccountDisabled);
+        return;
+      }
+
+      // Lock student accounts to a single device to discourage sharing.
+      // Teachers are exempt.
+      if (role == 'student') {
+        final deviceId = await DeviceService.getDeviceId();
+        if (boundDeviceId == null) {
+          await SupabaseService.client
+              .from('profiles')
+              .update({'device_id': deviceId})
+              .eq('id', user.id);
+        } else if (boundDeviceId != deviceId) {
+          await SupabaseService.client.auth.signOut();
+          if (!mounted) return;
+          final supportPhone = await ref.read(supportPhoneProvider.future);
+          if (!mounted) return;
+          setState(() => _error = supportPhone.isNotEmpty
+              ? '${context.l10n.authDeviceMismatch} $supportPhone'
+              : context.l10n.authDeviceMismatch);
+          return;
+        }
+      }
+
       if (role == 'teacher') {
         context.go('/teacher/home');
       } else {

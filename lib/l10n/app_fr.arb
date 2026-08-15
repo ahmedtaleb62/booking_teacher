@@ -66,6 +66,10 @@
   "authErrEmailFormat": "Format d'e-mail invalide",
   "authErrUnexpected": "Erreur inattendue, réessayez",
   "authErrCheckEmail": "Vérifiez votre e-mail pour confirmer le compte",
+  "authAccountDisabledTitle": "Compte désactivé",
+  "authAccountDisabled": "Votre compte a été désactivé par l'administration. Pour toute question, contactez :",
+  "authDeviceMismatchTitle": "Compte lié à un autre appareil",
+  "authDeviceMismatch": "Votre compte est lié à un autre appareil. Si vous avez perdu ou changé de téléphone, contactez l'administration pour le relier :",
 
   "homeTitle": "Découvrir les professeurs",
   "homeSearchHint": "Rechercher une matière ou un professeur...",
@@ -620,6 +624,7 @@
   "lessonQuizScore": "Résultat : {correct}/{total} correct ({pct}%)",
   "@lessonQuizScore": { "placeholders": { "correct": { "type": "int" }, "total": { "type": "int" }, "pct": { "type": "int" } } },
   "lessonNoVideo": "Aucune vidéo disponible pour cette leçon",
+  "lessonVideoLoadError": "Impossible de charger la vidéo, vérifiez votre connexion et réessayez",
   "lessonVideoHint": "Regardez toute la leçon puis appuyez sur \"Terminé\" pour enregistrer votre progression",
   "lessonFreePreview": "Ceci est une leçon d'aperçu gratuite",
   "lessonVideoDoneLabel": "Leçon terminée",

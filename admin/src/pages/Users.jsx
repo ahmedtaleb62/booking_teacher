@@ -88,6 +88,18 @@ export default function Users() {
     }
   }
 
+  async function resetDevice(id) {
+    setActionId(id)
+    const { error } = await supabase.from('profiles').update({ device_id: null }).eq('id', id)
+    setActionId(null)
+    if (error) {
+      toast('خطأ في إعادة تعيين الجهاز: ' + error.message, 'error')
+    } else {
+      toast('تم فك ربط الجهاز — يمكن للطالب الدخول من جهاز جديد الآن', 'success')
+      await loadData()
+    }
+  }
+
   async function deleteUser(id) {
     setActionId(id)
     const { error } = await supabase.rpc('admin_delete_user', { target_uid: id })
@@ -183,6 +195,17 @@ export default function Users() {
               >
                 {u.is_active === false ? '✓ تفعيل' : '⊘ تعليق'}
               </button>
+              {u.role !== 'teacher' && u.device_id && (
+                <button
+                  className="btn btn-sm"
+                  title="فك ربط الجهاز — يسمح للطالب بالدخول من جهاز جديد"
+                  style={{ padding: '4px 10px', fontSize: 11, background: '#DEEAF7', color: '#1F5C99', border: '1px solid #B9D2F0' }}
+                  disabled={!!actionId}
+                  onClick={() => resetDevice(u.id)}
+                >
+                  📱 فك الربط
+                </button>
+              )}
               <button
                 className="btn btn-sm"
                 style={{ padding: '4px 10px', fontSize: 11, background: '#FBE0DB', color: '#A12B1D', border: '1px solid #F3C5BD' }}

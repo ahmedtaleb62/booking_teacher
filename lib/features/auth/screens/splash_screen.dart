@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/l10n_extension.dart';
+import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/device_service.dart';
 import '../../../core/services/fcm_service.dart';
 import '../../../core/services/supabase_service.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _fade;
@@ -44,11 +47,75 @@ class _SplashScreenState extends State<SplashScreen>
 
       final profile = await SupabaseService.client
           .from('profiles')
-          .select('role')
+          .select('role, is_active, device_id')
           .eq('id', user.id)
           .maybeSingle();
       if (!mounted) return;
       final role = profile?['role'] as String?;
+      final isActive = profile?['is_active'] as bool? ?? true;
+      final boundDeviceId = profile?['device_id'] as String?;
+
+      if (!isActive) {
+        await SupabaseService.client.auth.signOut();
+        if (!mounted) return;
+        final supportPhone = await ref.read(supportPhoneProvider.future);
+        if (!mounted) return;
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            title: Text(context.l10n.authAccountDisabledTitle),
+            content: Text(supportPhone.isNotEmpty
+                ? '${context.l10n.authAccountDisabled} $supportPhone'
+                : context.l10n.authAccountDisabled),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(context.l10n.authBackToLogin),
+              ),
+            ],
+          ),
+        );
+        if (!mounted) return;
+        context.go('/login');
+        return;
+      }
+
+      // Lock student accounts to a single device to discourage sharing.
+      if (role == 'student') {
+        final deviceId = await DeviceService.getDeviceId();
+        if (boundDeviceId == null) {
+          await SupabaseService.client
+              .from('profiles')
+              .update({'device_id': deviceId})
+              .eq('id', user.id);
+        } else if (boundDeviceId != deviceId) {
+          await SupabaseService.client.auth.signOut();
+          if (!mounted) return;
+          final supportPhone = await ref.read(supportPhoneProvider.future);
+          if (!mounted) return;
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => AlertDialog(
+              title: Text(context.l10n.authDeviceMismatchTitle),
+              content: Text(supportPhone.isNotEmpty
+                  ? '${context.l10n.authDeviceMismatch} $supportPhone'
+                  : context.l10n.authDeviceMismatch),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(context.l10n.authBackToLogin),
+                ),
+              ],
+            ),
+          );
+          if (!mounted) return;
+          context.go('/login');
+          return;
+        }
+      }
+
       if (role == 'teacher') {
         // Check if teacher has completed onboarding
         final tp = await SupabaseService.client

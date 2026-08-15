@@ -200,6 +200,20 @@ class AppLocalizationsFr extends AppLocalizations {
       'Vérifiez votre e-mail pour confirmer le compte';
 
   @override
+  String get authAccountDisabledTitle => 'Compte désactivé';
+
+  @override
+  String get authAccountDisabled =>
+      'Votre compte a été désactivé par l\'administration. Pour toute question, contactez :';
+
+  @override
+  String get authDeviceMismatchTitle => 'Compte lié à un autre appareil';
+
+  @override
+  String get authDeviceMismatch =>
+      'Votre compte est lié à un autre appareil. Si vous avez perdu ou changé de téléphone, contactez l\'administration pour le relier :';
+
+  @override
   String get homeTitle => 'Découvrir les professeurs';
 
   @override
@@ -1741,6 +1755,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get lessonNoVideo => 'Aucune vidéo disponible pour cette leçon';
+
+  @override
+  String get lessonVideoLoadError =>
+      'Impossible de charger la vidéo, vérifiez votre connexion et réessayez';
 
   @override
   String get lessonVideoHint =>

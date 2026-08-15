@@ -195,6 +195,20 @@ class AppLocalizationsAr extends AppLocalizations {
   String get authErrCheckEmail => 'تحقق من بريدك الإلكتروني لتأكيد الحساب';
 
   @override
+  String get authAccountDisabledTitle => 'الحساب معطّل';
+
+  @override
+  String get authAccountDisabled =>
+      'تم تعطيل حسابك من قِبل الإدارة. للاستفسار تواصل مع:';
+
+  @override
+  String get authDeviceMismatchTitle => 'الحساب مرتبط بجهاز آخر';
+
+  @override
+  String get authDeviceMismatch =>
+      'حسابك مرتبط بجهاز آخر. إذا فقدت هاتفك القديم أو بدّلته تواصل مع الإدارة لإعادة الربط:';
+
+  @override
   String get homeTitle => 'اكتشف الأساتذة';
 
   @override
@@ -1706,6 +1720,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get lessonNoVideo => 'لا يوجد فيديو متاح لهذا الدرس';
+
+  @override
+  String get lessonVideoLoadError =>
+      'تعذّر تحميل الفيديو، تحقق من اتصالك بالإنترنت وحاول مرة أخرى';
 
   @override
   String get lessonVideoHint =>

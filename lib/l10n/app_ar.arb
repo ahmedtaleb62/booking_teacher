@@ -66,6 +66,10 @@
   "authErrEmailFormat": "صيغة البريد الإلكتروني غير صحيحة",
   "authErrUnexpected": "حدث خطأ غير متوقع، حاول مرة أخرى",
   "authErrCheckEmail": "تحقق من بريدك الإلكتروني لتأكيد الحساب",
+  "authAccountDisabledTitle": "الحساب معطّل",
+  "authAccountDisabled": "تم تعطيل حسابك من قِبل الإدارة. للاستفسار تواصل مع:",
+  "authDeviceMismatchTitle": "الحساب مرتبط بجهاز آخر",
+  "authDeviceMismatch": "حسابك مرتبط بجهاز آخر. إذا فقدت هاتفك القديم أو بدّلته تواصل مع الإدارة لإعادة الربط:",
 
   "homeTitle": "اكتشف الأساتذة",
   "homeSearchHint": "ابحث عن مادة أو أستاذ...",
@@ -636,6 +640,7 @@
   "lessonQuizScore": "نتيجتك: {correct}/{total} صحيح ({pct}%)",
   "@lessonQuizScore": { "placeholders": { "correct": { "type": "int" }, "total": { "type": "int" }, "pct": { "type": "int" } } },
   "lessonNoVideo": "لا يوجد فيديو متاح لهذا الدرس",
+  "lessonVideoLoadError": "تعذّر تحميل الفيديو، تحقق من اتصالك بالإنترنت وحاول مرة أخرى",
   "lessonVideoHint": "شاهد الدرس كاملاً ثم اضغط \"تم الانتهاء\" لتسجيل تقدّمك",
   "lessonFreePreview": "هذا درس مجاني للمعاينة",
   "lessonVideoDoneLabel": "تم الانتهاء من الدرس",
