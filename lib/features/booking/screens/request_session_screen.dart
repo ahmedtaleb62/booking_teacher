@@ -22,13 +22,13 @@ class _RequestSessionScreenState extends ConsumerState<RequestSessionScreen> {
   final _noteCtrl = TextEditingController();
   int     _selectedDay      = 0;
   int?    _selectedSlotIdx;
-  int     _selectedDuration = 0; // 0=60min, 1=90min, 2=120min
+  int     _selectedDuration = 0; // 0=30min, 1=60min, 2=120min
   String? _selectedLevel;
   bool    _loading = false;
   String? _error;
 
-  static const _durations      = [60, 90, 120];
-  static const _durationLabels = ['ساعة', 'ساعة ونصف', 'ساعتان'];
+  static const _durations      = [30, 60, 120];
+  static const _durationLabels = ['30 دقيقة', 'ساعة', 'ساعتان'];
 
   List<DateTime> get _days {
     final today = DateTime.now();
