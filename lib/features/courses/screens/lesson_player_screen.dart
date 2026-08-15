@@ -1,7 +1,9 @@
+import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:video_player/video_player.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/l10n_extension.dart';
@@ -36,6 +38,10 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
   // Video/file state
   WebViewController? _webCtrl;
   bool _webReady = false;
+  // Native video player state (direct video files — not YouTube/Vimeo embeds)
+  VideoPlayerController? _videoCtrl;
+  ChewieController? _chewieCtrl;
+  bool _videoError = false;
   // Quiz state
   final Map<int, int> _answers = {};
   bool _quizSubmitted = false;
@@ -57,26 +63,129 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
     ScreenSecureService.enable();
     if (!_isQuiz) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-      if (widget.videoUrl != null) _initWebView(_resolveUrl(widget.videoUrl!));
+      final url = widget.videoUrl;
+      if (url != null) {
+        if (widget.lessonType == 'video' && !_isEmbedUrl(url)) {
+          // Direct video file (e.g. uploaded to storage) — use a native
+          // player so playback streams properly instead of a WebView
+          // navigating straight to the file, which is slow/unreliable.
+          _initNativePlayer(url);
+        } else {
+          _initWebView(_resolveUrl(url));
+        }
+      }
     }
   }
 
   @override
   void dispose() {
     ScreenSecureService.disable();
+    _chewieCtrl?.dispose();
+    _videoCtrl?.dispose();
     if (!_isQuiz) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
     super.dispose();
   }
 
+  Widget _backButtonOverlay() {
+    return Positioned(
+      top: 0, left: 0, right: 0,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () => context.pop(),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.arrow_forward_rounded,
+                      color: Colors.white, size: 20),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool _isEmbedUrl(String url) =>
+      url.contains('youtube.com') || url.contains('youtu.be') || url.contains('vimeo.com');
+
   String _resolveUrl(String url) {
     final isFile = widget.lessonType == 'file' || widget.lessonType == 'summary';
-    final isVideo = url.contains('youtube.com') || url.contains('youtu.be');
-    if (isFile && !isVideo) {
+    if (isFile && !_isEmbedUrl(url)) {
       return 'https://docs.google.com/viewer?url=${Uri.encodeComponent(url)}&embedded=true';
     }
-    return url;
+    return _toEmbedUrl(url) ?? url;
+  }
+
+  // YouTube/Vimeo watch-page URLs load the full site (with its own download/
+  // share/home UI) inside the WebView. Converting to the minimal embed
+  // player removes that chrome entirely instead of trying to hide it.
+  String? _toEmbedUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return null;
+
+    if (uri.host.contains('youtube.com') || uri.host.contains('youtu.be')) {
+      if (uri.path.contains('/embed/')) return url;
+      final videoId = uri.host.contains('youtu.be')
+          ? (uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null)
+          : uri.queryParameters['v'];
+      if (videoId == null || videoId.isEmpty) return null;
+      return 'https://www.youtube.com/embed/$videoId?playsinline=1&modestbranding=1&rel=0';
+    }
+
+    if (uri.host.contains('vimeo.com')) {
+      if (uri.host.contains('player.vimeo.com')) return url;
+      final videoId = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : null;
+      if (videoId == null || videoId.isEmpty) return null;
+      return 'https://player.vimeo.com/video/$videoId';
+    }
+
+    return null;
+  }
+
+  Future<void> _initNativePlayer(String url) async {
+    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+    try {
+      await controller.initialize();
+      if (!mounted) {
+        controller.dispose();
+        return;
+      }
+      final chewie = ChewieController(
+        videoPlayerController: controller,
+        autoPlay: true,
+        looping: false,
+        allowFullScreen: true,
+        showControlsOnInitialize: true,
+        materialProgressColors: ChewieProgressColors(
+          playedColor: AppColors.accent,
+          handleColor: AppColors.accent,
+          bufferedColor: Colors.white24,
+          backgroundColor: Colors.white10,
+        ),
+        placeholder: const ColoredBox(color: Colors.black),
+        errorBuilder: (context, errorMessage) => Center(
+          child: Text(context.l10n.lessonVideoLoadError,
+              style: const TextStyle(color: Colors.white54, fontSize: 13)),
+        ),
+      );
+      setState(() {
+        _videoCtrl = controller;
+        _chewieCtrl = chewie;
+      });
+    } catch (_) {
+      controller.dispose();
+      if (mounted) setState(() => _videoError = true);
+    }
   }
 
   void _initWebView(String url) {
@@ -509,7 +618,17 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
         children: [
           Expanded(
             flex: widget.videoUrl != null ? 6 : 3,
-            child: widget.videoUrl != null && _webCtrl != null
+            child: _chewieCtrl != null
+                ? Stack(
+                    children: [
+                      ColoredBox(
+                        color: Colors.black,
+                        child: Center(child: Chewie(controller: _chewieCtrl!)),
+                      ),
+                      _backButtonOverlay(),
+                    ],
+                  )
+                : widget.videoUrl != null && _webCtrl != null
                 ? Stack(
                     children: [
                       WebViewWidget(controller: _webCtrl!),
@@ -520,30 +639,23 @@ class _LessonPlayerScreenState extends ConsumerState<LessonPlayerScreen> {
                             child: CircularProgressIndicator(color: AppColors.accent),
                           ),
                         ),
-                      Positioned(
-                        top: 0, left: 0, right: 0,
-                        child: SafeArea(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Row(
-                              children: [
-                                GestureDetector(
-                                  onTap: () => context.pop(),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(Icons.arrow_forward_rounded,
-                                        color: Colors.white, size: 20),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                      _backButtonOverlay(),
+                    ],
+                  )
+                : widget.videoUrl != null && widget.lessonType == 'video'
+                ? Stack(
+                    children: [
+                      ColoredBox(
+                        color: Colors.black,
+                        child: Center(
+                          child: _videoError
+                              ? Text(l.lessonVideoLoadError,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Colors.white54, fontSize: 13))
+                              : const CircularProgressIndicator(color: AppColors.accent),
                         ),
                       ),
+                      _backButtonOverlay(),
                     ],
                   )
                 : SafeArea(
