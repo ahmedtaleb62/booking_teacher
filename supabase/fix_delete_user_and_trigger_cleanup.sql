@@ -1,10 +1,22 @@
--- RPC: admin_delete_user
--- Deletes any user's data + auth account. Caller must have role = 'admin'.
---
--- Clears every table found via a live information_schema FK audit that
--- references profiles/auth.users, so the delete never aborts partway
--- through with a foreign-key violation.
+-- ══════════════════════════════════════════════════════════════════
+-- 1) Remove duplicate profile-creation trigger on auth.users.
+--    Two triggers ("on_auth_user_created" and "trg_on_auth_user_created")
+--    both called handle_new_user() — harmless (ON CONFLICT DO NOTHING)
+--    but redundant. Only trg_on_auth_user_created is tracked in the
+--    repo (bootstrap.sql / schema.sql), so that's the one kept.
+-- ══════════════════════════════════════════════════════════════════
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 
+-- ══════════════════════════════════════════════════════════════════
+-- 2) admin_delete_user — was failing with FK violations because it
+--    only cleared a subset of the tables that reference profiles/
+--    auth.users. Any user with rows in reviews, ledger_entries,
+--    teacher_earnings, disputes (opened_by/resolved_by), or
+--    payments.confirmed_by would abort the whole delete with
+--    "violates foreign key constraint ... is not present".
+--    This version clears every table found via a live FK audit
+--    (information_schema) so deletion always fully succeeds.
+-- ══════════════════════════════════════════════════════════════════
 CREATE OR REPLACE FUNCTION public.admin_delete_user(target_uid uuid)
 RETURNS void
 LANGUAGE plpgsql
@@ -66,3 +78,5 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.admin_delete_user(uuid) TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
