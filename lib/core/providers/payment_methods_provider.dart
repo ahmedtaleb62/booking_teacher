@@ -7,6 +7,7 @@ class PaymentMethod {
   final String number;
   final String holder;
   final bool active;
+  final String? logoUrl;
 
   const PaymentMethod({
     required this.method,
@@ -14,6 +15,7 @@ class PaymentMethod {
     required this.number,
     required this.holder,
     required this.active,
+    this.logoUrl,
   });
 
   factory PaymentMethod.fromJson(Map<String, dynamic> j) => PaymentMethod(
@@ -22,6 +24,7 @@ class PaymentMethod {
     number: j['number'] as String? ?? '',
     holder: j['holder'] as String? ?? '',
     active: j['is_active'] as bool? ?? j['active'] as bool? ?? true,
+    logoUrl: j['logo_url'] as String?,
   );
 }
 

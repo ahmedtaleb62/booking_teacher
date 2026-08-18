@@ -13,6 +13,7 @@ class SubscriptionScreen extends ConsumerStatefulWidget {
   final String type;   // 'course' or 'package'
   final String itemId;
   final double priceMonthly;
+  final double? priceQuarterly;
   final double? priceYearly;
   final String title;
 
@@ -21,6 +22,7 @@ class SubscriptionScreen extends ConsumerStatefulWidget {
     required this.type,
     required this.itemId,
     required this.priceMonthly,
+    this.priceQuarterly,
     this.priceYearly,
     required this.title,
   });
@@ -39,7 +41,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   bool get _isPackage => widget.type == 'package';
 
   double get _effectiveYearlyPrice => widget.priceYearly ?? (widget.priceMonthly * 10);
-  double get _quarterlyPrice => widget.priceMonthly * 3;
+  double get _quarterlyPrice => widget.priceQuarterly ?? (widget.priceMonthly * 3);
 
   double get _amount {
     if (_isPackage) return widget.priceYearly ?? widget.priceMonthly;
@@ -373,6 +375,21 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
+                  if (m.logoUrl != null && m.logoUrl!.isNotEmpty) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        width: 28, height: 28,
+                        color: Colors.white,
+                        child: Image.network(
+                          m.logoUrl!,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const SizedBox(width: 28, height: 28),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

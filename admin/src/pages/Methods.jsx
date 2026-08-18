@@ -3,14 +3,68 @@ import { supabase } from '../supabase'
 import { useToast } from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 
+const MAX_LOGO_BYTES = 3 * 1024 * 1024 // 3MB — logos are small icons, not photos
+
+// Logos upload directly to R2 via the same presigned-URL Pages Function used
+// for course media, just with kind:'image'.
+async function uploadLogo(file) {
+  if (file.size > MAX_LOGO_BYTES) {
+    throw new Error(`حجم الصورة كبير جداً (الحد الأقصى ${MAX_LOGO_BYTES / (1024*1024)} ميجابايت)`)
+  }
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('انتهت الجلسة، سجّل الدخول من جديد')
+
+  const presignRes = await fetch('/api/presign-upload', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ filename: file.name, kind: 'image' }),
+  })
+  if (!presignRes.ok) throw new Error('تعذّر تجهيز رابط الرفع، حاول مرة أخرى')
+  const { uploadUrl, publicUrl } = await presignRes.json()
+
+  const putRes = await fetch(uploadUrl, { method: 'PUT', body: file })
+  if (!putRes.ok) throw new Error('فشل رفع الصورة، تحقق من اتصالك وحاول مرة أخرى')
+
+  return publicUrl
+}
+
+function LogoPicker({ logoUrl, onChange, uploading }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{
+        width: 46, height: 46, borderRadius: 11, border: '1px dashed var(--border-table)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0,
+        background: '#F7F9FA',
+      }}>
+        {uploading ? (
+          <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+        ) : logoUrl ? (
+          <img src={logoUrl} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        ) : (
+          <span style={{ fontSize: 18 }}>🖼️</span>
+        )}
+      </div>
+      <label className="btn btn-sm btn-secondary" style={{ cursor: 'pointer' }}>
+        {logoUrl ? 'تغيير الشعار' : 'رفع شعار'}
+        <input
+          type="file" accept="image/*" style={{ display: 'none' }}
+          onChange={e => e.target.files?.[0] && onChange(e.target.files[0])}
+        />
+      </label>
+    </div>
+  )
+}
+
 export default function Methods() {
   const toast = useToast()
   const [methods, setMethods]       = useState([])
   const [loading, setLoading]       = useState(true)
-  const [form, setForm]             = useState({ method: '', number: '', holder: '' })
+  const [form, setForm]             = useState({ method: '', number: '', holder: '', logoUrl: '' })
+  const [logoUploading, setLogoUploading] = useState(false)
   const [saving, setSaving]         = useState(false)
   const [msg, setMsg]               = useState('')
   const [editTarget, setEditTarget] = useState(null)  // method row being edited
+  const [editLogoUploading, setEditLogoUploading] = useState(false)
   const [editSaving, setEditSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null) // { id, label }
   const [deleting, setDeleting]     = useState(false)
@@ -48,17 +102,32 @@ export default function Methods() {
       label:  form.method,
       number: form.number,
       holder: form.holder || 'منصة سولني',
+      logo_url: form.logoUrl || null,
       is_active: true,
     })
     setSaving(false)
     if (error) { setMsg('خطأ: ' + error.message); return }
-    setForm({ method: '', number: '', holder: '' })
+    setForm({ method: '', number: '', holder: '', logoUrl: '' })
     toast('تمت إضافة طريقة الدفع', 'success')
     await loadData()
   }
 
+  async function pickLogo(file, target) {
+    const setUploading = target === 'add' ? setLogoUploading : setEditLogoUploading
+    setUploading(true)
+    try {
+      const url = await uploadLogo(file)
+      if (target === 'add') setForm(f => ({ ...f, logoUrl: url }))
+      else setEditTarget(t => ({ ...t, logoUrl: url }))
+    } catch (e) {
+      toast(e.message, 'error')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   function startEdit(m) {
-    setEditTarget({ id: m.id, method: m.label || m.method, number: m.number, holder: m.holder })
+    setEditTarget({ id: m.id, method: m.label || m.method, number: m.number, holder: m.holder, logoUrl: m.logo_url || '' })
   }
 
   async function saveEdit() {
@@ -69,6 +138,7 @@ export default function Methods() {
       label:  editTarget.method,
       number: editTarget.number,
       holder: editTarget.holder || 'منصة سولني',
+      logo_url: editTarget.logoUrl || null,
     }).eq('id', editTarget.id)
     setEditSaving(false)
     if (error) { toast('خطأ في التعديل: ' + error.message, 'error'); return }
@@ -108,6 +178,11 @@ export default function Methods() {
                 <div style={{ border: '2px solid var(--primary)', borderRadius: 13, padding: 14 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', marginBottom: 10 }}>تعديل طريقة الدفع</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                    <LogoPicker
+                      logoUrl={editTarget.logoUrl}
+                      uploading={editLogoUploading}
+                      onChange={file => pickLogo(file, 'edit')}
+                    />
                     <input
                       className="field-input"
                       placeholder="اسم الطريقة"
@@ -149,9 +224,13 @@ export default function Methods() {
                 </div>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 13, border: '1px solid var(--border-table)', borderRadius: 13, padding: 14 }}>
-                  <span style={{ width: 46, height: 46, borderRadius: 11, background: m.bg, color: m.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-                    {(m.label || m.method || '؟').slice(0, 3)}
-                  </span>
+                  {m.logo_url ? (
+                    <img src={m.logo_url} alt={m.label} style={{ width: 46, height: 46, borderRadius: 11, objectFit: 'contain', background: '#F7F9FA', border: '1px solid var(--border-table)', flexShrink: 0 }} />
+                  ) : (
+                    <span style={{ width: 46, height: 46, borderRadius: 11, background: m.bg, color: m.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                      {(m.label || m.method || '؟').slice(0, 3)}
+                    </span>
+                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 700 }}>{m.label || m.method}</div>
                     <div style={{ fontSize: 12.5, color: 'var(--text2)', direction: 'ltr', textAlign: 'right' }}>{m.number}</div>
@@ -196,6 +275,16 @@ export default function Methods() {
         <div className="card-title" style={{ marginBottom: 16 }}>إضافة طريقة دفع</div>
         {msg && <div className="login-error" style={{ marginBottom: 14 }}>{msg}</div>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <div className="field-label">شعار الطريقة (اختياري)</div>
+            <div style={{ marginTop: 6 }}>
+              <LogoPicker
+                logoUrl={form.logoUrl}
+                uploading={logoUploading}
+                onChange={file => pickLogo(file, 'add')}
+              />
+            </div>
+          </div>
           <div>
             <div className="field-label">اسم الطريقة</div>
             <input className="field-input" placeholder="مثال: مصرفي" value={form.method} onChange={e => setForm(f => ({ ...f, method: e.target.value }))} />

@@ -247,6 +247,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             type: state.pathParameters['type']!,
             itemId: state.pathParameters['id']!,
             priceMonthly: (extra['priceMonthly'] as num?)?.toDouble() ?? (extra['amount'] as num?)?.toDouble() ?? 0,
+            priceQuarterly: (extra['priceQuarterly'] as num?)?.toDouble(),
             priceYearly: (extra['priceYearly'] as num?)?.toDouble(),
             title: extra['title'] as String? ?? '',
           );

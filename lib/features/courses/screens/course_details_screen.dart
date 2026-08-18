@@ -365,6 +365,7 @@ class CourseDetailsScreen extends ConsumerWidget {
                       onPressed: () => context.push('/subscribe/course/${course.id}',
                           extra: {
                             'priceMonthly': course.priceMonthly,
+                            'priceQuarterly': course.priceQuarterly,
                             'priceYearly': course.priceYearly,
                             'title': course.title,
                           }),
@@ -649,7 +650,7 @@ class CourseDetailsScreen extends ConsumerWidget {
       case 'expired':
         return GestureDetector(
           onTap: () => context.push('/subscribe/course/${course.id}',
-              extra: {'priceMonthly': course.priceMonthly, 'priceYearly': course.priceYearly, 'title': course.title}),
+              extra: {'priceMonthly': course.priceMonthly, 'priceQuarterly': course.priceQuarterly, 'priceYearly': course.priceYearly, 'title': course.title}),
           child: Container(
             decoration: BoxDecoration(
               color: const Color(0xFF8A96A3),
@@ -664,7 +665,7 @@ class CourseDetailsScreen extends ConsumerWidget {
       default: // null or 'rejected'
         return GestureDetector(
           onTap: () => context.push('/subscribe/course/${course.id}',
-              extra: {'priceMonthly': course.priceMonthly, 'priceYearly': course.priceYearly, 'title': course.title}),
+              extra: {'priceMonthly': course.priceMonthly, 'priceQuarterly': course.priceQuarterly, 'priceYearly': course.priceYearly, 'title': course.title}),
           child: Container(
             decoration: BoxDecoration(
               color: AppColors.primary,
@@ -732,7 +733,7 @@ class CourseDetailsScreen extends ConsumerWidget {
                   onPressed: () {
                     Navigator.pop(ctx);
                     context.push('/subscribe/course/${course.id}',
-                        extra: {'priceMonthly': course.priceMonthly, 'priceYearly': course.priceYearly, 'title': course.title});
+                        extra: {'priceMonthly': course.priceMonthly, 'priceQuarterly': course.priceQuarterly, 'priceYearly': course.priceYearly, 'title': course.title});
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,

@@ -288,7 +288,7 @@ function ChapterBlock({ chapter, idx, onUpdate, onDelete, onLessonUpdate, onLess
 export default function AddCourse({ onNavigate, courseId }) {
   const isEdit = !!courseId
 
-  const [form, setForm]         = useState({title:'',description:'',subject:'',level:'',priceMonthly:'',priceYearly:'',originalPrice:'',teacherId:''})
+  const [form, setForm]         = useState({title:'',description:'',subject:'',level:'',priceMonthly:'',priceQuarterly:'',priceYearly:'',originalPrice:'',teacherId:''})
   const [isFree, setIsFree]     = useState(false)
   const [chapters, setChapters] = useState([newChapter(1)])
   const [teachers, setTeachers] = useState([])
@@ -326,6 +326,7 @@ export default function AddCourse({ onNavigate, courseId }) {
       subject:       course.subject       || '',
       level:         course.level         || '',
       priceMonthly:  !free && course.price_monthly  != null ? String(course.price_monthly)  : '',
+      priceQuarterly:!free && course.price_quarterly!= null ? String(course.price_quarterly): '',
       priceYearly:   !free && course.price_yearly   != null ? String(course.price_yearly)   : '',
       originalPrice: !free && course.original_price != null ? String(course.original_price) : '',
       teacherId:     course.teacher_id    || '',
@@ -421,8 +422,9 @@ export default function AddCourse({ onNavigate, courseId }) {
         description:   form.description,
         subject:       form.subject,
         level:         form.level,
-        price_monthly: isFree ? 0 : parseFloat(form.priceMonthly),
-        price_yearly:  isFree ? null : (form.priceYearly   ? parseFloat(form.priceYearly)   : null),
+        price_monthly:  isFree ? 0 : parseFloat(form.priceMonthly),
+        price_quarterly:isFree ? null : (form.priceQuarterly ? parseFloat(form.priceQuarterly) : null),
+        price_yearly:   isFree ? null : (form.priceYearly   ? parseFloat(form.priceYearly)   : null),
         original_price:isFree ? null : (form.originalPrice ? parseFloat(form.originalPrice) : null),
         teacher_id:    form.teacherId,
         is_active:     !isDraft,
@@ -610,7 +612,7 @@ export default function AddCourse({ onNavigate, courseId }) {
 
             {/* Free toggle */}
             <div
-              onClick={() => { setIsFree(v => !v); set('priceMonthly',''); set('priceYearly',''); set('originalPrice','') }}
+              onClick={() => { setIsFree(v => !v); set('priceMonthly',''); set('priceQuarterly',''); set('priceYearly',''); set('originalPrice','') }}
               style={{display:'flex',alignItems:'center',gap:12,padding:'13px 15px',borderRadius:11,border:'2px solid '+(isFree?'#1B9E77':'#E1E5E9'),background:isFree?'#F0FBF7':'#FAFBFC',cursor:'pointer',marginBottom:14,transition:'all .15s'}}
             >
               <div style={{width:42,height:24,borderRadius:12,background:isFree?'#1B9E77':'#C9D3DC',position:'relative',transition:'background .2s',flexShrink:0}}>
@@ -628,7 +630,12 @@ export default function AddCourse({ onNavigate, courseId }) {
                 <input type="number" style={{border:'none',background:'transparent',fontSize:17,fontWeight:700,padding:'11px 13px',width:'100%',outline:'none',fontFamily:'inherit'}} placeholder="1200" value={form.priceMonthly} onChange={e=>set('priceMonthly',e.target.value)} />
                 <span style={{padding:'0 13px',fontSize:12,color:'var(--text3)',fontWeight:600,whiteSpace:'nowrap',borderRight:'1px solid #E1E5E9'}}>أوقية/شهر</span>
               </div>
-              <div className="field-label" style={{marginBottom:6}}>السعر السنوي <span style={{fontSize:10.5,color:'var(--text3)',fontWeight:400}}>(اختياري)</span></div>
+              <div className="field-label" style={{marginBottom:6}}>السعر الفصلي (3 أشهر) <span style={{fontSize:10.5,color:'var(--text3)',fontWeight:400}}>(اختياري، وإلا يُحسب تلقائياً = الشهري×3)</span></div>
+              <div style={{display:'flex',alignItems:'center',border:'1.5px solid #E1E5E9',borderRadius:10,overflow:'hidden',background:'#FCFCFD',marginBottom:12}}>
+                <input type="number" style={{border:'none',background:'transparent',fontSize:17,fontWeight:700,padding:'11px 13px',width:'100%',outline:'none',fontFamily:'inherit'}} placeholder={form.priceMonthly ? String(parseFloat(form.priceMonthly)*3) : '3300'} value={form.priceQuarterly} onChange={e=>set('priceQuarterly',e.target.value)} />
+                <span style={{padding:'0 13px',fontSize:12,color:'var(--text3)',fontWeight:600,whiteSpace:'nowrap',borderRight:'1px solid #E1E5E9'}}>أوقية/فصل</span>
+              </div>
+              <div className="field-label" style={{marginBottom:6}}>السعر السنوي <span style={{fontSize:10.5,color:'var(--text3)',fontWeight:400}}>(اختياري، وإلا يُحسب تلقائياً = الشهري×10)</span></div>
               <div style={{display:'flex',alignItems:'center',border:'1.5px solid #E1E5E9',borderRadius:10,overflow:'hidden',background:'#FCFCFD',marginBottom:12}}>
                 <input type="number" style={{border:'none',background:'transparent',fontSize:17,fontWeight:700,padding:'11px 13px',width:'100%',outline:'none',fontFamily:'inherit'}} placeholder="11000" value={form.priceYearly} onChange={e=>set('priceYearly',e.target.value)} />
                 <span style={{padding:'0 13px',fontSize:12,color:'var(--text3)',fontWeight:600,whiteSpace:'nowrap',borderRight:'1px solid #E1E5E9'}}>أوقية/سنة</span>
@@ -644,6 +651,7 @@ export default function AddCourse({ onNavigate, courseId }) {
                   <div style={{display:'flex',alignItems:'baseline',gap:8,flexWrap:'wrap'}}>
                     {form.originalPrice&&<span style={{fontSize:13,color:'#B0BEC5',textDecoration:'line-through'}}>{form.originalPrice} أوقية</span>}
                     {form.priceMonthly&&<span style={{fontSize:20,fontWeight:700,color:'var(--primary)'}}>{form.priceMonthly} أوقية<span style={{fontSize:11,fontWeight:400}}>/شهر</span></span>}
+                    {form.priceQuarterly&&<span style={{fontSize:13,color:'#5A3B95',fontWeight:700}}> · {form.priceQuarterly} أوقية/فصل</span>}
                     {form.priceYearly&&<span style={{fontSize:13,color:'#1B9E77',fontWeight:700}}> · {form.priceYearly} أوقية/سنة</span>}
                   </div>
                   {form.originalPrice&&form.priceMonthly&&(

@@ -23,6 +23,7 @@ class Course {
   final int totalLessons;
   final double totalHours;
   final double priceMonthly;
+  final double? priceQuarterly;
   final double? priceYearly;
   final double? originalPrice;
   final Color coverColor;
@@ -46,6 +47,7 @@ class Course {
     required this.totalLessons,
     required this.totalHours,
     required this.priceMonthly,
+    this.priceQuarterly,
     this.priceYearly,
     this.originalPrice,
     this.rating,
@@ -92,6 +94,7 @@ class Course {
       totalLessons:     json['total_lessons'] as int? ?? parsedLessons.length,
       totalHours:       totalHours,
       priceMonthly:     (json['price_monthly'] as num).toDouble(),
+      priceQuarterly:   (json['price_quarterly'] as num?)?.toDouble(),
       priceYearly:      (json['price_yearly'] as num?)?.toDouble(),
       originalPrice:    (json['original_price'] as num?)?.toDouble(),
       rating:           (json['rating'] as num?)?.toDouble(),

@@ -256,7 +256,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                             child: GestureDetector(
                               onTap: () => setState(() => _selectedIndex = i),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: sel ? AppColors.primary : AppColors.surface,
                                   borderRadius: BorderRadius.circular(11),
@@ -264,9 +264,29 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                                     color: sel ? AppColors.primary : AppColors.border,
                                     width: sel ? 1.5 : 1),
                                 ),
-                                child: Text(methods[i].label,
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                                    color: sel ? Colors.white : AppColors.textPrimary)),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (methods[i].logoUrl != null && methods[i].logoUrl!.isNotEmpty) ...[
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(5),
+                                        child: Container(
+                                          width: 20, height: 20,
+                                          color: Colors.white,
+                                          child: Image.network(
+                                            methods[i].logoUrl!,
+                                            fit: BoxFit.contain,
+                                            errorBuilder: (_, __, ___) => const SizedBox(width: 20, height: 20),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 7),
+                                    ],
+                                    Text(methods[i].label,
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                                        color: sel ? Colors.white : AppColors.textPrimary)),
+                                  ],
+                                ),
                               ),
                             ),
                           );

@@ -39,7 +39,7 @@ export async function onRequestPost({ request, env }) {
     return json({ error: 'invalid request' }, 400)
   }
   const filename = String(body?.filename || '')
-  const kind = body?.kind === 'file' ? 'file' : 'video'
+  const kind = body?.kind === 'file' ? 'file' : body?.kind === 'image' ? 'image' : 'video'
   const ext = (filename.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin'
   const key = `${kind}s/${Date.now()}_${crypto.randomUUID()}.${ext}`
 
