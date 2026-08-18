@@ -46,12 +46,21 @@ BEGIN
   END IF;
   DELETE FROM public.notifications WHERE user_id = target_uid;
 
+  -- actor_id on someone else's session (e.g. an admin acting on a session
+  -- that isn't theirs) isn't covered by the sessions delete below.
+  UPDATE public.session_events SET actor_id = NULL WHERE actor_id = target_uid;
+
   DELETE FROM public.device_tokens   WHERE user_id = target_uid;
   DELETE FROM public.lesson_progress WHERE student_id = target_uid;
   UPDATE public.system_settings SET updated_by = NULL WHERE updated_by = target_uid;
 
   -- Sessions (cascades: session_events, session_messages, remaining payments/disputes/reviews)
   DELETE FROM public.sessions WHERE student_id = target_uid OR teacher_id = target_uid;
+
+  -- teacher_earnings.subscription_id can reference a subscription owned by
+  -- a student while teacher_id belongs to someone else entirely.
+  DELETE FROM public.teacher_earnings
+  WHERE subscription_id IN (SELECT id FROM public.subscriptions WHERE student_id = target_uid);
 
   -- Subscriptions
   DELETE FROM public.subscriptions WHERE student_id = target_uid;

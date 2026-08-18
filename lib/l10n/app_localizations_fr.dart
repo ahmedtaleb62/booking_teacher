@@ -858,6 +858,36 @@ class AppLocalizationsFr extends AppLocalizations {
   String get profileMyRatings => 'Mes évaluations';
 
   @override
+  String get profileComplaint => 'Réclamation ou suggestion';
+
+  @override
+  String get complaintScreenTitle => 'Réclamation ou suggestion';
+
+  @override
+  String get complaintIntro =>
+      'Partagez votre problème ou suggestion, nous l\'examinerons rapidement.';
+
+  @override
+  String get complaintTypeComplaint => 'Réclamation';
+
+  @override
+  String get complaintTypeSuggestion => 'Suggestion';
+
+  @override
+  String get complaintMessageHint =>
+      'Écrivez les détails de votre réclamation ou suggestion ici...';
+
+  @override
+  String get complaintSubmitBtn => 'Envoyer';
+
+  @override
+  String get complaintEmptyError => 'Veuillez d\'abord écrire votre message';
+
+  @override
+  String get complaintSuccessMsg =>
+      'Votre message a été envoyé avec succès, il sera examiné par l\'administration';
+
+  @override
   String get profileHelpCenter => 'Centre d\'aide';
 
   @override
@@ -1886,6 +1916,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get subscriptionPerMonthLabel => 'Chaque mois';
 
   @override
+  String get subscriptionPlanQuarterly => 'Trimestriel';
+
+  @override
+  String get subscriptionPerQuarterLabel => 'Tous les 3 mois';
+
+  @override
   String get subscriptionPlanYearly => 'Annuel';
 
   @override
@@ -1927,6 +1963,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get subscriptionPerMonth => 'MRU/mois';
+
+  @override
+  String get subscriptionPerQuarter => 'MRU/3 mois';
 
   @override
   String get subscriptionConfirm => 'Confirmer l\'abonnement';
@@ -2679,6 +2718,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get teacherOnboardingMenuItem => 'Vérification du compte';
+
+  @override
+  String get teacherEditTeachingInfo =>
+      'Infos d\'enseignement (matières et tarif)';
 
   @override
   String get teacherMenuEarnings => 'Historique des revenus';

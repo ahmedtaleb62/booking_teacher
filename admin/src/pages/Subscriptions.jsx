@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { useToast } from '../components/Toast'
 
+const PLAN_LABELS = { monthly: 'شهري', quarterly: 'فصلي (3 أشهر)', yearly: 'سنوي (12 شهراً)' }
+
 /* ── Rejection reason codes ─────────────────────────────────────── */
 // 2 outcomes only — INCOMPLETE_AMOUNT always auto-refunds (sent as REFUND:INCOMPLETE_AMOUNT)
 const REJECT_OPTIONS = [
@@ -125,7 +127,7 @@ export default function Subscriptions({ adminId }) {
   async function confirmSub(id) {
     setActionId(id)
     try {
-      const months = modal?.row?.plan_type === 'yearly' ? 12 : 1
+      const months = { monthly: 1, quarterly: 3, yearly: 12 }[modal?.row?.plan_type] || 1
       const { error } = await supabase.rpc('admin_confirm_subscription', {
         p_subscription_id: id, p_admin_id: adminId, p_months: months,
       })
@@ -218,7 +220,7 @@ export default function Subscriptions({ adminId }) {
               <span className="fw-700 dir-ltr" style={{ fontSize: 11, color: 'var(--text3)' }}>{s.id.slice(0, 6)}</span>
               <span className="fw-700" style={{ fontSize: 13 }}>{s.student?.full_name || '—'}</span>
               <span className="text-2" style={{ fontSize: 12 }}>{content}</span>
-              <span className="text-2" style={{ fontSize: 12 }}>{s.plan_type === 'yearly' ? 'سنوي' : 'شهري'}</span>
+              <span className="text-2" style={{ fontSize: 12 }}>{PLAN_LABELS[s.plan_type] || 'شهري'}</span>
               <span className="fw-700" style={{ fontSize: 12 }}>{s.amount?.toLocaleString('en-US')} أوق</span>
               <span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -274,7 +276,7 @@ export default function Subscriptions({ adminId }) {
             <div style={{ background: '#F2F7F5', borderRadius: 12, padding: 14, marginBottom: 20, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 7 }}>
               <div><b>الطالب:</b> {modal.row.student?.full_name || '—'}</div>
               <div><b>المحتوى:</b> {modal.row.course?.title || modal.row.package?.title || '—'}</div>
-              <div><b>نوع الاشتراك:</b> {modal.row.plan_type === 'yearly' ? 'سنوي (12 شهراً)' : 'شهري'}</div>
+              <div><b>نوع الاشتراك:</b> {PLAN_LABELS[modal.row.plan_type] || 'شهري'}</div>
               <div><b>المبلغ:</b> {modal.row.amount?.toLocaleString('en-US')} أوقية</div>
               <div><b>تاريخ الطلب:</b> {modal.row.created_at?.slice(0, 10)}</div>
             </div>

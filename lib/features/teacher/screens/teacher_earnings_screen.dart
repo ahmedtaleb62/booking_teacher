@@ -6,6 +6,7 @@ import '../../../core/constants/subjects.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/sessions_provider.dart';
 import '../../../core/providers/settings_provider.dart';
+import '../../../core/utils/whatsapp.dart';
 import '../../../l10n/app_localizations.dart';
 
 class TeacherEarningsScreen extends ConsumerWidget {
@@ -155,15 +156,17 @@ class _BalanceCard extends StatelessWidget {
           const SizedBox(height: 14),
           GestureDetector(
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(supportPhone.isNotEmpty
-                      ? 'للسحب تواصل مع الإدارة عبر واتساب: $supportPhone'
-                      : l.teacherEarningsWithdrawContact),
-                  backgroundColor: const Color(0xFF1B6B7A),
-                  duration: const Duration(seconds: 4),
-                ),
-              );
+              if (supportPhone.isNotEmpty) {
+                openWhatsApp(supportPhone);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(l.teacherEarningsWithdrawContact),
+                    backgroundColor: const Color(0xFF1B6B7A),
+                    duration: const Duration(seconds: 4),
+                  ),
+                );
+              }
             },
             child: Container(
               width: double.infinity,

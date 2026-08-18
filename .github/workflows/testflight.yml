@@ -4,12 +4,20 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      run_android_build:
+        description: 'Also build the Android AAB via CI (normally built locally instead)'
+        type: boolean
+        default: false
 
 jobs:
   build-android:
     name: Build Android AAB for Play Store
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    # Android is built locally by default — this job only runs when explicitly
+    # requested via workflow_dispatch, never on a plain push to main.
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_android_build == 'true'
 
     steps:
       - name: Checkout repository

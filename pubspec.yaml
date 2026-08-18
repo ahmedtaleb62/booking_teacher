@@ -1,7 +1,7 @@
 name: teacher_booking
 description: "Hessati — منصة حجز دروس خصوصية"
 publish_to: 'none'
-version: 1.0.3+25
+version: 1.0.3+26
 
 environment:
   sdk: ^3.5.0

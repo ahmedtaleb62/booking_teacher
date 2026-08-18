@@ -39,10 +39,16 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   bool get _isPackage => widget.type == 'package';
 
   double get _effectiveYearlyPrice => widget.priceYearly ?? (widget.priceMonthly * 10);
+  double get _quarterlyPrice => widget.priceMonthly * 3;
 
-  double get _amount => _isPackage
-      ? (widget.priceYearly ?? widget.priceMonthly)
-      : (_selectedPlan == 'yearly' ? _effectiveYearlyPrice : widget.priceMonthly);
+  double get _amount {
+    if (_isPackage) return widget.priceYearly ?? widget.priceMonthly;
+    switch (_selectedPlan) {
+      case 'yearly': return _effectiveYearlyPrice;
+      case 'quarterly': return _quarterlyPrice;
+      default: return widget.priceMonthly;
+    }
+  }
 
   String get _planType => _isPackage ? 'yearly' : _selectedPlan;
 
@@ -163,9 +169,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   }
 
   Widget _buildPlanSelector(dynamic l) {
-    final monthly = widget.priceMonthly;
-    final yearly  = _effectiveYearlyPrice;
-    final saving  = ((monthly * 12 - yearly) / (monthly * 12) * 100).round();
+    final monthly   = widget.priceMonthly;
+    final quarterly = _quarterlyPrice;
+    final yearly    = _effectiveYearlyPrice;
+    final saving    = ((monthly * 12 - yearly) / (monthly * 12) * 100).round();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -179,7 +186,14 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             sub: l.subscriptionPerMonthLabel,
             plan: 'monthly',
           )),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
+          Expanded(child: _planOption(l,
+            label: l.subscriptionPlanQuarterly,
+            price: '${quarterly.toStringAsFixed(0)} ${l.dashOugiya}',
+            sub: l.subscriptionPerQuarterLabel,
+            plan: 'quarterly',
+          )),
+          const SizedBox(width: 8),
           Expanded(child: _planOption(l,
             label: l.subscriptionPlanYearly,
             price: '${yearly.toStringAsFixed(0)} ${l.dashOugiya}',
@@ -297,7 +311,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               Text(_amount.toStringAsFixed(0),
                   style: const TextStyle(
                       fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
-              Text(_planType == 'yearly' ? l.subscriptionPerYear : l.subscriptionPerMonth,
+              Text(_planType == 'yearly'
+                  ? l.subscriptionPerYear
+                  : _planType == 'quarterly'
+                      ? l.subscriptionPerQuarter
+                      : l.subscriptionPerMonth,
                   style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.75))),
             ],
           ),

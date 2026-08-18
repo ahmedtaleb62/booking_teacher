@@ -3,6 +3,117 @@ import { supabase } from '../supabase'
 import { useToast } from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 
+const PLAN_MONTHS = { monthly: 1, quarterly: 3, yearly: 12 }
+const PLAN_LABELS = { monthly: 'شهري', quarterly: 'فصلي (3 أشهر)', yearly: 'سنوي (12 شهراً)' }
+
+/* ── Manual subscription modal (WhatsApp payments) ────────────── */
+function ManualSubModal({ student, onClose, onDone }) {
+  const toast = useToast()
+  const [items, setItems]       = useState({ courses: [], packages: [] })
+  const [loadingItems, setLoadingItems] = useState(true)
+  const [itemType, setItemType] = useState('course') // 'course' | 'package'
+  const [itemId, setItemId]     = useState('')
+  const [amount, setAmount]     = useState('')
+  const [planType, setPlanType] = useState('monthly')
+  const [saving, setSaving]     = useState(false)
+
+  useEffect(() => {
+    (async () => {
+      const [{ data: courses }, { data: packages }] = await Promise.all([
+        supabase.from('courses').select('id, title, price_monthly, teacher:teacher_id(full_name)').eq('is_active', true).order('title'),
+        supabase.from('packages').select('id, title, price_monthly').eq('is_active', true).order('title'),
+      ])
+      setItems({ courses: courses || [], packages: packages || [] })
+      setLoadingItems(false)
+    })()
+  }, [])
+
+  const list = itemType === 'course' ? items.courses : items.packages
+  const selected = list.find(i => i.id === itemId)
+
+  useEffect(() => {
+    if (selected) setAmount(String((selected.price_monthly || 0) * PLAN_MONTHS[planType]))
+  }, [itemId, planType]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function submit() {
+    if (!itemId || !amount) { toast('اختر الدرس/الباقة وأدخل المبلغ', 'error'); return }
+    setSaving(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    const { error } = await supabase.rpc('admin_create_manual_subscription', {
+      p_student_id: student.id,
+      p_course_id:  itemType === 'course'  ? itemId : null,
+      p_package_id: itemType === 'package' ? itemId : null,
+      p_amount:     parseFloat(amount),
+      p_plan_type:  planType,
+      p_months:     PLAN_MONTHS[planType],
+      p_admin_id:   user.id,
+    })
+    setSaving(false)
+    if (error) {
+      toast('خطأ: ' + error.message, 'error')
+    } else {
+      toast('تم تفعيل الاشتراك بنجاح — أرباح الأستاذ أُضيفت تلقائياً', 'success')
+      onDone()
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
+        <div className="modal-title">تفعيل اشتراك يدوياً — {student.full_name}</div>
+        <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
+          للطلاب الذين دفعوا عبر واتساب خارج التطبيق. سيُضاف نصيب الأستاذ تلقائياً لأرباحه.
+        </div>
+
+        {loadingItems ? (
+          <div style={{ padding: 20, textAlign: 'center' }}>...جاري التحميل</div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <button className={`btn btn-sm ${itemType === 'course' ? 'btn-primary' : ''}`}
+                onClick={() => { setItemType('course'); setItemId('') }}>درس</button>
+              <button className={`btn btn-sm ${itemType === 'package' ? 'btn-primary' : ''}`}
+                onClick={() => { setItemType('package'); setItemId('') }}>باقة</button>
+            </div>
+
+            <div className="field-label" style={{ marginBottom: 6 }}>
+              {itemType === 'course' ? 'الدرس' : 'الباقة'}
+            </div>
+            <select className="field-input" value={itemId} onChange={e => setItemId(e.target.value)} style={{ marginBottom: 12 }}>
+              <option value="">اختر...</option>
+              {list.map(i => (
+                <option key={i.id} value={i.id}>
+                  {i.title}{i.teacher?.full_name ? ` — ${i.teacher.full_name}` : ''}
+                </option>
+              ))}
+            </select>
+
+            <div className="field-label" style={{ marginBottom: 6 }}>مدة الاشتراك</div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              {Object.keys(PLAN_MONTHS).map(p => (
+                <button key={p} className={`btn btn-sm ${planType === p ? 'btn-primary' : ''}`}
+                  onClick={() => setPlanType(p)} style={{ flex: 1, fontSize: 11 }}>
+                  {PLAN_LABELS[p]}
+                </button>
+              ))}
+            </div>
+
+            <div className="field-label" style={{ marginBottom: 6 }}>المبلغ المدفوع (أوقية)</div>
+            <input className="field-input" type="number" value={amount} onChange={e => setAmount(e.target.value)} style={{ marginBottom: 16 }} />
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn" style={{ flex: 1 }} onClick={onClose} disabled={saving}>إلغاء</button>
+              <button className="btn btn-primary" style={{ flex: 2 }} onClick={submit} disabled={saving || !itemId}>
+                {saving ? '...جارٍ التفعيل' : 'تفعيل الاشتراك'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const AVATAR_COLORS = [
   ['#D7F2E6', '#0A6E4E'], ['#E3F4EF', '#0E7C66'],
   ['#ECE5F7', '#5A3B95'], ['#FBEFD6', '#92620F'],
@@ -30,6 +141,11 @@ function Avatar({ name, size = 34, bg, fg, photoUrl }) {
   )
 }
 
+const ROLE_FILTERS   = [ ['all', 'الكل'], ['student', 'طالب'], ['teacher', 'أستاذ'] ]
+const STATUS_FILTERS = [ ['all', 'الكل'], ['active', 'نشط'], ['suspended', 'معلَّق'] ]
+const SUB_FILTERS    = [ ['all', 'الكل'], ['subscribed', 'مشترك'], ['unsubscribed', 'غير مشترك'] ]
+const DEVICE_FILTERS = [ ['all', 'الكل'], ['linked', 'مرتبط'], ['unlinked', 'غير مرتبط'] ]
+
 export default function Users() {
   const toast = useToast()
   const [rows, setRows]                   = useState([])
@@ -37,14 +153,22 @@ export default function Users() {
   const [actionId, setActionId]           = useState(null)
   const [suspendTarget, setSuspendTarget] = useState(null) // { id, name, is_active }
   const [deleteTarget, setDeleteTarget]   = useState(null) // { id, name }
+  const [subTarget, setSubTarget]         = useState(null) // { id, full_name }
+
+  const [search, setSearch]           = useState('')
+  const [roleFilter, setRoleFilter]     = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [subFilter, setSubFilter]       = useState('all')
+  const [deviceFilter, setDeviceFilter] = useState('all')
 
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
     setLoading(true)
-    const [{ data: profiles }, { data: sessions }] = await Promise.all([
+    const [{ data: profiles }, { data: sessions }, { data: subs }] = await Promise.all([
       supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(200),
       supabase.from('sessions').select('student_id, teacher_id, state, updated_at').limit(2000),
+      supabase.from('subscriptions').select('student_id, status').eq('status', 'active'),
     ])
 
     const activityMap = {}
@@ -63,6 +187,8 @@ export default function Users() {
       }
     })
 
+    const subscribedIds = new Set((subs || []).map(s => s.student_id))
+
     setRows((profiles || []).map((p, i) => {
       const [bg, fg] = AVATAR_COLORS[i % AVATAR_COLORS.length]
       const last = activityMap[p.id]
@@ -70,9 +196,32 @@ export default function Users() {
         ...p, bg, fg,
         lastActive: last ? new Date(last.date).toLocaleDateString('ar-EG-u-nu-latn') : '—',
         sessCount:  sessCountMap[p.id] || 0,
+        isSubscribed: subscribedIds.has(p.id),
       }
     }))
     setLoading(false)
+  }
+
+  const filteredRows = rows.filter(u => {
+    if (roleFilter !== 'all' && u.role !== roleFilter) return false
+    if (statusFilter === 'active' && u.is_active === false) return false
+    if (statusFilter === 'suspended' && u.is_active !== false) return false
+    if (subFilter === 'subscribed' && !u.isSubscribed) return false
+    if (subFilter === 'unsubscribed' && u.isSubscribed) return false
+    if (deviceFilter === 'linked' && !u.device_id) return false
+    if (deviceFilter === 'unlinked' && u.device_id) return false
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      const nameMatch  = (u.full_name || '').toLowerCase().includes(q)
+      const phoneMatch = (u.phone || '').replace(/\D/g, '').includes(q.replace(/\D/g, ''))
+      if (!nameMatch && !(q.replace(/\D/g, '') && phoneMatch)) return false
+    }
+    return true
+  })
+
+  const hasActiveFilters = search.trim() || roleFilter !== 'all' || statusFilter !== 'all' || subFilter !== 'all' || deviceFilter !== 'all'
+  function clearFilters() {
+    setSearch(''); setRoleFilter('all'); setStatusFilter('all'); setSubFilter('all'); setDeviceFilter('all')
   }
 
   async function toggleActive(id, currentActive) {
@@ -123,6 +272,39 @@ export default function Users() {
 
   return (
     <div>
+      {/* Advanced search / filter bar */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
+        marginBottom: 12, padding: 12, background: 'var(--surface)',
+        border: '1px solid var(--border)', borderRadius: 12,
+      }}>
+        <input
+          className="field-input"
+          placeholder="بحث بالاسم أو رقم الهاتف..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{ flex: '1 1 220px', minWidth: 180 }}
+        />
+        <select className="field-input" value={roleFilter} onChange={e => setRoleFilter(e.target.value)} style={{ width: 110 }}>
+          {ROLE_FILTERS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+        <select className="field-input" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: 110 }}>
+          {STATUS_FILTERS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+        <select className="field-input" value={subFilter} onChange={e => setSubFilter(e.target.value)} style={{ width: 130 }}>
+          {SUB_FILTERS.map(([v, l]) => <option key={v} value={v}>{l === 'الكل' ? 'الاشتراك: الكل' : l}</option>)}
+        </select>
+        <select className="field-input" value={deviceFilter} onChange={e => setDeviceFilter(e.target.value)} style={{ width: 130 }}>
+          {DEVICE_FILTERS.map(([v, l]) => <option key={v} value={v}>{l === 'الكل' ? 'الجهاز: الكل' : l}</option>)}
+        </select>
+        {hasActiveFilters && (
+          <button className="btn btn-sm" onClick={clearFilters}>إلغاء الفلاتر</button>
+        )}
+        <span style={{ fontSize: 12, color: 'var(--text3)', marginInlineStart: 'auto' }}>
+          {filteredRows.length} من {rows.length}
+        </span>
+      </div>
+
       <div className="table-wrap">
         <div className="table-head" style={{ gridTemplateColumns: COLS }}>
           <span></span>
@@ -134,11 +316,13 @@ export default function Users() {
           <span style={{ textAlign: 'left' }}>إجراء</span>
         </div>
 
-        {rows.length === 0 && (
-          <div style={{ padding: 24, textAlign: 'center', color: 'var(--text3)' }}>لا يوجد مستخدمون</div>
+        {filteredRows.length === 0 && (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--text3)' }}>
+            {hasActiveFilters ? 'لا توجد نتائج مطابقة للفلاتر' : 'لا يوجد مستخدمون'}
+          </div>
         )}
 
-        {rows.map(u => (
+        {filteredRows.map(u => (
           <div key={u.id} className="table-row" style={{ gridTemplateColumns: COLS, alignItems: 'center' }}>
 
             {/* Avatar */}
@@ -195,6 +379,17 @@ export default function Users() {
               >
                 {u.is_active === false ? '✓ تفعيل' : '⊘ تعليق'}
               </button>
+              {u.role !== 'teacher' && (
+                <button
+                  className="btn btn-sm"
+                  title="تفعيل اشتراك يدوياً (دفع عبر واتساب)"
+                  style={{ padding: '4px 10px', fontSize: 11, background: '#D7F2E6', color: '#0A6E4E', border: '1px solid #A9E0CB' }}
+                  disabled={!!actionId}
+                  onClick={() => setSubTarget({ id: u.id, full_name: u.full_name || '—' })}
+                >
+                  💳 تفعيل اشتراك
+                </button>
+              )}
               {u.role !== 'teacher' && u.device_id && (
                 <button
                   className="btn btn-sm"
@@ -248,6 +443,15 @@ export default function Users() {
         onConfirm={() => deleteUser(deleteTarget.id)}
         onCancel={() => !actionId && setDeleteTarget(null)}
       />
+
+      {/* Manual subscription modal */}
+      {subTarget && (
+        <ManualSubModal
+          student={subTarget}
+          onClose={() => setSubTarget(null)}
+          onDone={() => { setSubTarget(null); loadData() }}
+        />
+      )}
     </div>
   )
 }

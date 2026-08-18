@@ -12,6 +12,8 @@ const List<String> kSubjects = [
   'الرياضيات',
   'الفيزياء والكيمياء',
   'التاريخ والجغرافيا',
+  'الفكر الإسلامي',
+  'التشريع الإسلامي',
 ];
 
 const Map<String, String> _kSubjectsFr = {
@@ -25,6 +27,8 @@ const Map<String, String> _kSubjectsFr = {
   'الرياضيات':         'Mathématiques',
   'الفيزياء والكيمياء':'Physique-Chimie',
   'التاريخ والجغرافيا':'Histoire-Géo',
+  'الفكر الإسلامي':    'Pensée Islamique',
+  'التشريع الإسلامي':  'Législation Islamique',
 };
 
 /// Returns the display name for a subject based on locale.

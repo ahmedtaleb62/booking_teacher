@@ -439,8 +439,13 @@ class _TeacherSelfProfileScreenState extends ConsumerState<TeacherSelfProfileScr
         // ── Menus ─────────────────────────────────────────────
         _MenuSection(title: l.profileSectionAccount, items: [
           _MenuItem(
+            icon: Icons.person_outline_rounded,
+            label: l.profileEditProfile,
+            onTap: () => context.push('/edit-profile'),
+          ),
+          _MenuItem(
             icon: Icons.badge_outlined,
-            label: hasProfile ? l.profileEditProfile : l.teacherOnboardingMenuItem,
+            label: hasProfile ? l.teacherEditTeachingInfo : l.teacherOnboardingMenuItem,
             trailing: !hasProfile
                 ? _WarningBadge(label: l.teacherBadgeRequired)
                 : null,

@@ -9,6 +9,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/services/device_service.dart';
 import '../../../core/services/otp_service.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/utils/whatsapp.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/lang_toggle.dart';
 
@@ -25,6 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _obscure = true;
   bool _loading = false;
   String? _error;
+  String? _errorPhone;
 
   @override
   void dispose() {
@@ -35,7 +37,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() { _loading = true; _error = null; });
+    setState(() { _loading = true; _error = null; _errorPhone = null; });
     try {
       final email = OtpService.phoneToEmail(_phoneCtrl.text.trim());
       final res = await SupabaseService.client.auth.signInWithPassword(
@@ -73,9 +75,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (!mounted) return;
         final supportPhone = await ref.read(supportPhoneProvider.future);
         if (!mounted) return;
-        setState(() => _error = supportPhone.isNotEmpty
-            ? '${context.l10n.authAccountDisabled} $supportPhone'
-            : context.l10n.authAccountDisabled);
+        setState(() {
+          _error = context.l10n.authAccountDisabled;
+          _errorPhone = supportPhone.isNotEmpty ? supportPhone : null;
+        });
         return;
       }
 
@@ -93,9 +96,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           if (!mounted) return;
           final supportPhone = await ref.read(supportPhoneProvider.future);
           if (!mounted) return;
-          setState(() => _error = supportPhone.isNotEmpty
-              ? '${context.l10n.authDeviceMismatch} $supportPhone'
-              : context.l10n.authDeviceMismatch);
+          setState(() {
+            _error = context.l10n.authDeviceMismatch;
+            _errorPhone = supportPhone.isNotEmpty ? supportPhone : null;
+          });
           return;
         }
       }
@@ -106,9 +110,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         context.go('/home');
       }
     } on AuthException catch (e) {
-      setState(() => _error = _friendlyAuthError(e.message));
+      setState(() { _error = _friendlyAuthError(e.message); _errorPhone = null; });
     } catch (e) {
-      setState(() => _error = _friendlyAuthError(e.toString()));
+      setState(() { _error = _friendlyAuthError(e.toString()); _errorPhone = null; });
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -188,8 +192,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             color: const Color(0xFFFDECEC),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Text(_error!,
-                            style: const TextStyle(fontSize: 13, color: Color(0xFFC0392B))),
+                          child: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(_error!,
+                                style: const TextStyle(fontSize: 13, color: Color(0xFFC0392B))),
+                              if (_errorPhone != null)
+                                GestureDetector(
+                                  onTap: () => openWhatsApp(_errorPhone!),
+                                  child: Padding(
+                                    padding: const EdgeInsetsDirectional.only(start: 4),
+                                    child: Text(_errorPhone!,
+                                      style: const TextStyle(
+                                        fontSize: 13, color: Color(0xFFC0392B),
+                                        fontWeight: FontWeight.w700,
+                                        decoration: TextDecoration.underline)),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 16),
                       ],

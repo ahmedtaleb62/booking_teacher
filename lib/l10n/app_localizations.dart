@@ -1712,6 +1712,60 @@ abstract class AppLocalizations {
   /// **'تقييماتي'**
   String get profileMyRatings;
 
+  /// No description provided for @profileComplaint.
+  ///
+  /// In ar, this message translates to:
+  /// **'شكوى أو اقتراح'**
+  String get profileComplaint;
+
+  /// No description provided for @complaintScreenTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'شكوى أو اقتراح'**
+  String get complaintScreenTitle;
+
+  /// No description provided for @complaintIntro.
+  ///
+  /// In ar, this message translates to:
+  /// **'شاركنا مشكلتك أو اقتراحك وسنراجعه في أقرب وقت.'**
+  String get complaintIntro;
+
+  /// No description provided for @complaintTypeComplaint.
+  ///
+  /// In ar, this message translates to:
+  /// **'شكوى'**
+  String get complaintTypeComplaint;
+
+  /// No description provided for @complaintTypeSuggestion.
+  ///
+  /// In ar, this message translates to:
+  /// **'اقتراح'**
+  String get complaintTypeSuggestion;
+
+  /// No description provided for @complaintMessageHint.
+  ///
+  /// In ar, this message translates to:
+  /// **'اكتب تفاصيل شكواك أو اقتراحك هنا...'**
+  String get complaintMessageHint;
+
+  /// No description provided for @complaintSubmitBtn.
+  ///
+  /// In ar, this message translates to:
+  /// **'إرسال'**
+  String get complaintSubmitBtn;
+
+  /// No description provided for @complaintEmptyError.
+  ///
+  /// In ar, this message translates to:
+  /// **'الرجاء كتابة رسالتك أولاً'**
+  String get complaintEmptyError;
+
+  /// No description provided for @complaintSuccessMsg.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إرسال رسالتك بنجاح، سيتم مراجعتها من قبل الإدارة'**
+  String get complaintSuccessMsg;
+
   /// No description provided for @profileHelpCenter.
   ///
   /// In ar, this message translates to:
@@ -3524,6 +3578,18 @@ abstract class AppLocalizations {
   /// **'كل شهر'**
   String get subscriptionPerMonthLabel;
 
+  /// No description provided for @subscriptionPlanQuarterly.
+  ///
+  /// In ar, this message translates to:
+  /// **'فصلي'**
+  String get subscriptionPlanQuarterly;
+
+  /// No description provided for @subscriptionPerQuarterLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'كل 3 أشهر'**
+  String get subscriptionPerQuarterLabel;
+
   /// No description provided for @subscriptionPlanYearly.
   ///
   /// In ar, this message translates to:
@@ -3595,6 +3661,12 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'أوقية/شهر'**
   String get subscriptionPerMonth;
+
+  /// No description provided for @subscriptionPerQuarter.
+  ///
+  /// In ar, this message translates to:
+  /// **'أوقية/3 أشهر'**
+  String get subscriptionPerQuarter;
 
   /// No description provided for @subscriptionConfirm.
   ///
@@ -4957,6 +5029,12 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'توثيق الحساب'**
   String get teacherOnboardingMenuItem;
+
+  /// No description provided for @teacherEditTeachingInfo.
+  ///
+  /// In ar, this message translates to:
+  /// **'معلومات التدريس (المواد والسعر)'**
+  String get teacherEditTeachingInfo;
 
   /// No description provided for @teacherMenuEarnings.
   ///

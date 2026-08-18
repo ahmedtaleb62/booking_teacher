@@ -38,6 +38,7 @@ const NAV_SECTIONS = [
       { id: 'sessions',      label: 'الجلسات',    icon: <IcoVideo />,    badgeKey: 'sessions', badgeGreen: true },
       { id: 'subscriptions', label: 'الاشتراكات', icon: <IcoBadge /> },
       { id: 'notifications', label: 'الإشعارات',  icon: <IcoBell /> },
+      { id: 'complaints',    label: 'الشكاوى والاقتراحات', icon: <IcoBell />, badgeKey: 'complaints' },
     ],
   },
   {

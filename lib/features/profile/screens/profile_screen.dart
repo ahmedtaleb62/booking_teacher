@@ -389,6 +389,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   label: l.profileMyRatings,
                   onTap: () => context.push('/my-ratings'),
                 ),
+                _MenuItem(
+                  icon: Icons.feedback_outlined,
+                  label: l.profileComplaint,
+                  onTap: () => context.push('/complaint'),
+                ),
               ],
             ),
             const SizedBox(height: 14),

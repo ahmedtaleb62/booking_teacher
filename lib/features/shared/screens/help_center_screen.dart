@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/settings_provider.dart';
+import '../../../core/utils/whatsapp.dart';
 import '../../../l10n/app_localizations.dart';
 
 class HelpCenterScreen extends StatefulWidget {
@@ -140,7 +141,7 @@ class _ContactTab extends ConsumerWidget {
             color: const Color(0xFF16A34A),
             label: l.helpCallUs,
             value: supportPhone,
-            onTap: () => _copyToClipboard(context, l, supportPhone, l.helpCallUs),
+            onTap: () => openWhatsApp(supportPhone),
           ),
           const SizedBox(height: 12),
         ],
@@ -341,6 +342,8 @@ class _TextTab extends ConsumerWidget {
         if (showPhone && i == sections.length) {
           return Padding(
             padding: const EdgeInsets.only(top: 20),
+            child: GestureDetector(
+            onTap: () => openWhatsApp(supportPhone),
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -382,6 +385,7 @@ class _TextTab extends ConsumerWidget {
                   ),
                 ],
               ),
+            ),
             ),
           );
         }

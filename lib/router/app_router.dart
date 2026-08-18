@@ -33,6 +33,7 @@ import '../features/payments/screens/payment_history_screen.dart';
 import '../features/profile/screens/edit_profile_screen.dart';
 import '../features/profile/screens/change_password_screen.dart';
 import '../features/profile/screens/my_ratings_screen.dart';
+import '../features/profile/screens/complaint_screen.dart';
 
 // Teacher app
 import '../features/teacher/shell/teacher_shell.dart';
@@ -225,6 +226,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/my-ratings',
         builder: (_, __) => const MyRatingsScreen(),
+      ),
+      GoRoute(
+        path: '/complaint',
+        builder: (_, __) => const ComplaintScreen(),
       ),
       GoRoute(
         path: '/course/:id',

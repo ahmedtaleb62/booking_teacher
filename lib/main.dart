@@ -8,12 +8,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:teacher_booking/l10n/app_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/constants/app_colors.dart';
+import 'core/extensions/l10n_extension.dart';
 import 'core/providers/locale_provider.dart';
 import 'core/providers/notifications_provider.dart';
 import 'core/providers/sessions_provider.dart';
+import 'core/providers/settings_provider.dart';
 import 'core/services/fcm_service.dart';
 import 'core/services/session_service.dart';
 import 'core/services/supabase_service.dart';
+import 'core/utils/whatsapp.dart';
 import 'features/sessions/screens/video_call_screen.dart';
 import 'firebase_options.dart';
 import 'router/app_router.dart' show routerProvider, rootNavigatorKey;
@@ -28,7 +31,7 @@ import 'shared/theme/app_theme.dart';
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   // No UI work here — when the user taps the notification,
-  // onMessageOpenedApp fires in the main isolate and handles navigation.
+  // onMessageOpenedApp fires in the4 main isolate and handles navigation.
 }
 
 void main() async {
@@ -64,7 +67,8 @@ class TeacherBookingApp extends ConsumerStatefulWidget {
   ConsumerState<TeacherBookingApp> createState() => _TeacherBookingAppState();
 }
 
-class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
+class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp>
+    with WidgetsBindingObserver {
   OverlayEntry? _bannerEntry;
   OverlayEntry? _callEntry;
   RealtimeChannel? _notifChannel;
@@ -72,6 +76,7 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
   RealtimeChannel? _sessionsTeacherChannel;
   RealtimeChannel? _ledgerChannel;
   StreamSubscription? _authSub;
+  Timer? _activeCheckTimer;
 
   @override
   void initState() {
@@ -81,6 +86,14 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
     // Start Realtime listener after first frame so context/overlay are ready
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _setupRealtimeNotifications());
+
+    // A suspended account is only checked at splash/login — if the admin
+    // disables it while the app is already running, nothing else notices.
+    // Re-check on resume (catches "admin suspends, tester switches back")
+    // plus a periodic fallback for long foreground sessions.
+    WidgetsBinding.instance.addObserver(this);
+    _activeCheckTimer =
+        Timer.periodic(const Duration(minutes: 3), (_) => _checkStillActive());
   }
 
   @override
@@ -90,7 +103,69 @@ class _TeacherBookingAppState extends ConsumerState<TeacherBookingApp> {
     _sessionsStudentChannel?.unsubscribe();
     _sessionsTeacherChannel?.unsubscribe();
     _ledgerChannel?.unsubscribe();
+    WidgetsBinding.instance.removeObserver(this);
+    _activeCheckTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _checkStillActive();
+  }
+
+  Future<void> _checkStillActive() async {
+    final uid = SupabaseService.userId;
+    if (uid == null) return;
+    try {
+      final profile = await SupabaseService.client
+          .from('profiles')
+          .select('is_active')
+          .eq('id', uid)
+          .maybeSingle();
+      if (!mounted) return;
+      final isActive = profile?['is_active'] as bool? ?? true;
+      if (isActive) return;
+
+      await SupabaseService.client.auth.signOut();
+      if (!mounted) return;
+
+      final supportPhone = await ref.read(supportPhoneProvider.future);
+      if (!mounted) return;
+      final ctx = rootNavigatorKey.currentContext;
+      if (ctx != null && ctx.mounted) {
+        await showDialog(
+          context: ctx,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            title: Text(ctx.l10n.authAccountDisabledTitle),
+            content: Wrap(children: [
+              Text(ctx.l10n.authAccountDisabled),
+              if (supportPhone.isNotEmpty)
+                GestureDetector(
+                  onTap: () => openWhatsApp(supportPhone),
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(start: 4),
+                    child: Text(
+                      supportPhone,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          decoration: TextDecoration.underline),
+                    ),
+                  ),
+                ),
+            ]),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text(ctx.l10n.authBackToLogin),
+              ),
+            ],
+          ),
+        );
+      }
+      if (!mounted) return;
+      ref.read(routerProvider).go('/login');
+    } catch (_) {}
   }
 
   // ── Supabase Realtime fallback (works even when FCM is unconfigured) ──

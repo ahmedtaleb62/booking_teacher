@@ -837,6 +837,34 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileMyRatings => 'تقييماتي';
 
   @override
+  String get profileComplaint => 'شكوى أو اقتراح';
+
+  @override
+  String get complaintScreenTitle => 'شكوى أو اقتراح';
+
+  @override
+  String get complaintIntro => 'شاركنا مشكلتك أو اقتراحك وسنراجعه في أقرب وقت.';
+
+  @override
+  String get complaintTypeComplaint => 'شكوى';
+
+  @override
+  String get complaintTypeSuggestion => 'اقتراح';
+
+  @override
+  String get complaintMessageHint => 'اكتب تفاصيل شكواك أو اقتراحك هنا...';
+
+  @override
+  String get complaintSubmitBtn => 'إرسال';
+
+  @override
+  String get complaintEmptyError => 'الرجاء كتابة رسالتك أولاً';
+
+  @override
+  String get complaintSuccessMsg =>
+      'تم إرسال رسالتك بنجاح، سيتم مراجعتها من قبل الإدارة';
+
+  @override
   String get profileHelpCenter => 'مركز المساعدة';
 
   @override
@@ -1846,6 +1874,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get subscriptionPerMonthLabel => 'كل شهر';
 
   @override
+  String get subscriptionPlanQuarterly => 'فصلي';
+
+  @override
+  String get subscriptionPerQuarterLabel => 'كل 3 أشهر';
+
+  @override
   String get subscriptionPlanYearly => 'سنوي';
 
   @override
@@ -1886,6 +1920,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get subscriptionPerMonth => 'أوقية/شهر';
+
+  @override
+  String get subscriptionPerQuarter => 'أوقية/3 أشهر';
 
   @override
   String get subscriptionConfirm => 'تأكيد الاشتراك';
@@ -2618,6 +2655,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get teacherOnboardingMenuItem => 'توثيق الحساب';
+
+  @override
+  String get teacherEditTeachingInfo => 'معلومات التدريس (المواد والسعر)';
 
   @override
   String get teacherMenuEarnings => 'سجل الأرباح';

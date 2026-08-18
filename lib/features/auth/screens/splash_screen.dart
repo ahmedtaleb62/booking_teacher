@@ -4,9 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/l10n_extension.dart';
 import '../../../core/providers/settings_provider.dart';
-import '../../../core/services/device_service.dart';
 import '../../../core/services/fcm_service.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/utils/whatsapp.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -47,13 +47,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
       final profile = await SupabaseService.client
           .from('profiles')
-          .select('role, is_active, device_id')
+          .select('role, is_active')
           .eq('id', user.id)
           .maybeSingle();
       if (!mounted) return;
       final role = profile?['role'] as String?;
       final isActive = profile?['is_active'] as bool? ?? true;
-      final boundDeviceId = profile?['device_id'] as String?;
 
       if (!isActive) {
         await SupabaseService.client.auth.signOut();
@@ -65,9 +64,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
           barrierDismissible: false,
           builder: (_) => AlertDialog(
             title: Text(context.l10n.authAccountDisabledTitle),
-            content: Text(supportPhone.isNotEmpty
-                ? '${context.l10n.authAccountDisabled} $supportPhone'
-                : context.l10n.authAccountDisabled),
+            content: Wrap(
+              children: [
+                Text(context.l10n.authAccountDisabled),
+                if (supportPhone.isNotEmpty)
+                  GestureDetector(
+                    onTap: () => openWhatsApp(supportPhone),
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.only(start: 4),
+                      child: Text(supportPhone,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          decoration: TextDecoration.underline)),
+                    ),
+                  ),
+              ],
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -81,40 +93,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         return;
       }
 
-      // Lock student accounts to a single device to discourage sharing.
-      if (role == 'student') {
-        final deviceId = await DeviceService.getDeviceId();
-        if (boundDeviceId == null) {
-          await SupabaseService.client
-              .from('profiles')
-              .update({'device_id': deviceId})
-              .eq('id', user.id);
-        } else if (boundDeviceId != deviceId) {
-          await SupabaseService.client.auth.signOut();
-          if (!mounted) return;
-          final supportPhone = await ref.read(supportPhoneProvider.future);
-          if (!mounted) return;
-          await showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => AlertDialog(
-              title: Text(context.l10n.authDeviceMismatchTitle),
-              content: Text(supportPhone.isNotEmpty
-                  ? '${context.l10n.authDeviceMismatch} $supportPhone'
-                  : context.l10n.authDeviceMismatch),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(context.l10n.authBackToLogin),
-                ),
-              ],
-            ),
-          );
-          if (!mounted) return;
-          context.go('/login');
-          return;
-        }
-      }
+      // Device binding is only (re-)verified at explicit login (login_screen.dart),
+      // not here — re-checking on every app resume meant a stale/edge-case
+      // mismatch would silently sign the user out and look like a lost session.
 
       if (role == 'teacher') {
         // Check if teacher has completed onboarding

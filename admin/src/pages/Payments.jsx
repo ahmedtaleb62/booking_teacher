@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { useToast } from '../components/Toast'
 
 const DEFAULT_COMMISSION = 0.15
+const PLAN_LABELS = { monthly: 'شهري', quarterly: 'فصلي (3 أشهر)', yearly: 'سنوي (12 شهراً)' }
 
 /* ── Status badge + rejection sub-reason ────────────────────── */
 const BADGE_MAP = {
@@ -410,7 +411,7 @@ export default function Payments({ adminId }) {
   async function confirmSub(id) {
     setActionId(id)
     const sub    = subRows.find(r => r.id === id)
-    const months = sub?.plan_type === 'yearly' ? 12 : 1
+    const months = { monthly: 1, quarterly: 3, yearly: 12 }[sub?.plan_type] || 1
     try {
       const { error } = await supabase.rpc('admin_confirm_subscription', { p_subscription_id: id, p_admin_id: adminId, p_months: months })
       if (error) throw error
@@ -638,7 +639,7 @@ export default function Payments({ adminId }) {
                   {r.course?.title || r.package?.title || '—'}
                   <br /><span style={{ fontSize: 10, color: 'var(--text3)' }}>{r.course?.teacher_name || '—'}</span>
                 </span>
-                <span className="text-2">{r.plan_type === 'yearly' ? 'سنوي' : 'شهري'}</span>
+                <span className="text-2">{PLAN_LABELS[r.plan_type] || 'شهري'}</span>
                 <span className="fw-700">{fmt(r.amount)}</span>
                 <span style={{ color: isRejected ? '#9CA3AF' : '#D97706', fontWeight: 600 }}>{isRejected ? '0' : fmt(comm)}</span>
                 <span className={isRejected ? '' : 'fw-700 text-green'} style={isRejected ? { color: '#9CA3AF' } : {}}>{isRejected ? '0' : fmt(net)}</span>
@@ -711,7 +712,7 @@ export default function Payments({ adminId }) {
                   <div><b>الطالب:</b> {modal.row.student?.full_name || '—'}</div>
                   <div><b>الدورة:</b> {modal.row.course?.title || modal.row.package?.title || '—'}</div>
                   <div><b>الأستاذ:</b> {modal.row.course?.teacher_name || '—'}</div>
-                  <div><b>الخطة:</b> {modal.row.plan_type === 'yearly' ? 'سنوي (12 شهراً)' : 'شهري (شهر واحد)'}</div>
+                  <div><b>الخطة:</b> {PLAN_LABELS[modal.row.plan_type] || 'شهري'}</div>
                   <div><b>تاريخ الطلب:</b> {fmtDate(modal.row.created_at)}</div>
                 </>
               )}
@@ -1123,7 +1124,7 @@ export default function Payments({ adminId }) {
                             <span className="badge" style={{ background: '#ECE5F7', color: '#5A3B95' }}>{reasonLabel}</span>
                           </span>
                           <span className="fw-700" style={{ color: 'var(--purple)' }}>{fmt(r.amount)} أوقية</span>
-                          <span style={{ fontSize: 12 }}>{r.plan_type === 'yearly' ? 'سنوي' : 'شهري'}</span>
+                          <span style={{ fontSize: 12 }}>{PLAN_LABELS[r.plan_type] || 'شهري'}</span>
                           <span className="text-muted" style={{ fontSize: 11 }}>{r.updated_at?.slice(0, 10)}</span>
                         </div>
                       )
