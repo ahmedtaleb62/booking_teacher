@@ -15,12 +15,40 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
   final _messageCtrl = TextEditingController();
   String _type = 'complaint';
   bool _saving = false;
+  bool _loadingHistory = true;
   String? _errorMsg;
+  List<Map<String, dynamic>> _history = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
 
   @override
   void dispose() {
     _messageCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadHistory() async {
+    final uid = SupabaseService.userId;
+    if (uid == null) return;
+    try {
+      final rows = await SupabaseService.client
+          .from('complaints')
+          .select('id, type, message, status, admin_note, created_at')
+          .eq('user_id', uid)
+          .order('created_at', ascending: false);
+      if (mounted) {
+        setState(() {
+          _history = List<Map<String, dynamic>>.from(rows as List);
+          _loadingHistory = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingHistory = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -40,6 +68,8 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
         'message': message,
       });
       if (mounted) {
+        _messageCtrl.clear();
+        setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(l.complaintSuccessMsg),
@@ -48,7 +78,7 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
-        context.pop();
+        await _loadHistory();
       }
     } catch (e) {
       if (mounted) {
@@ -87,6 +117,83 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _historyCard(Map<String, dynamic> row) {
+    final l = context.l10n;
+    final isComplaint = row['type'] == 'complaint';
+    final isClosed = row['status'] == 'reviewed';
+    final adminNote = row['admin_note'] as String?;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isComplaint ? AppColors.statusRejectedBg : AppColors.statusApprovedBg,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  isComplaint ? l.complaintTypeComplaint : l.complaintTypeSuggestion,
+                  style: TextStyle(
+                      fontSize: 10.5, fontWeight: FontWeight.w700,
+                      color: isComplaint ? AppColors.error : AppColors.statusApproved),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isClosed ? const Color(0xFFF1F5F9) : const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  isClosed ? l.complaintStatusClosed : l.complaintStatusPending,
+                  style: TextStyle(
+                      fontSize: 10.5, fontWeight: FontWeight.w700,
+                      color: isClosed ? const Color(0xFF475569) : const Color(0xFF92400E)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(row['message'] as String? ?? '',
+              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.5)),
+          if (isClosed && adminNote != null && adminNote.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.statusApprovedBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l.complaintAdminReplyLabel,
+                      style: const TextStyle(
+                          fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.statusApproved)),
+                  const SizedBox(height: 3),
+                  Text(adminNote,
+                      style: const TextStyle(fontSize: 12.5, color: AppColors.textPrimary, height: 1.5)),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -178,7 +285,7 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
               ),
             ],
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -198,6 +305,18 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
                         style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
               ),
             ),
+
+            if (_loadingHistory) ...[
+              const SizedBox(height: 32),
+              const Center(child: CircularProgressIndicator()),
+            ] else if (_history.isNotEmpty) ...[
+              const SizedBox(height: 32),
+              Text(l.complaintHistoryTitle,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              const SizedBox(height: 12),
+              ..._history.map(_historyCard),
+            ],
           ],
         ),
       ),

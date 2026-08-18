@@ -4,10 +4,10 @@ import { useToast } from '../components/Toast'
 
 const TYPE_LABELS   = { complaint: 'شكوى', suggestion: 'اقتراح' }
 const TYPE_COLORS   = { complaint: ['#FBE0DB', '#A12B1D'], suggestion: ['#DEEAF7', '#1F5C99'] }
-const STATUS_LABELS = { pending: 'قيد المراجعة', reviewed: 'تمت المراجعة' }
+const STATUS_LABELS = { pending: 'قيد المراجعة', reviewed: 'مُغلقة' }
 
 const TYPE_FILTERS   = [ ['all', 'الكل'], ['complaint', 'شكوى'], ['suggestion', 'اقتراح'] ]
-const STATUS_FILTERS = [ ['all', 'الكل'], ['pending', 'قيد المراجعة'], ['reviewed', 'تمت المراجعة'] ]
+const STATUS_FILTERS = [ ['all', 'الكل'], ['pending', 'قيد المراجعة'], ['reviewed', 'مُغلقة'] ]
 
 export default function Complaints() {
   const toast = useToast()
@@ -17,6 +17,7 @@ export default function Complaints() {
   const [search, setSearch]         = useState('')
   const [typeFilter, setTypeFilter]     = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [replyDrafts, setReplyDrafts]   = useState({}) // { [id]: text }
 
   useEffect(() => { loadData() }, [])
 
@@ -30,17 +31,20 @@ export default function Complaints() {
     setLoading(false)
   }
 
-  async function markReviewed(id) {
+  async function sendReply(id) {
+    const note = (replyDrafts[id] || '').trim()
+    if (!note) { toast('اكتب الرد أولاً', 'error'); return }
     setActionId(id)
     const { error } = await supabase
       .from('complaints')
-      .update({ status: 'reviewed', reviewed_at: new Date().toISOString() })
+      .update({ status: 'reviewed', admin_note: note, reviewed_at: new Date().toISOString() })
       .eq('id', id)
     setActionId(null)
     if (error) {
       toast('خطأ: ' + error.message, 'error')
     } else {
-      toast('تم وضع علامة "تمت المراجعة"', 'success')
+      toast('تم إرسال الرد — سيراه المستخدم في التطبيق', 'success')
+      setReplyDrafts(d => { const n = { ...d }; delete n[id]; return n })
       await loadData()
     }
   }
@@ -114,37 +118,53 @@ export default function Complaints() {
             const [bg, fg] = TYPE_COLORS[r.type] || TYPE_COLORS.complaint
             return (
               <div key={r.id} className="card" style={{ padding: 16 }}>
-                <div className="flex justify-between items-start" style={{ gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <div className="flex items-center gap-8" style={{ marginBottom: 6 }}>
-                      <span className="badge" style={{ background: bg, color: fg }}>{TYPE_LABELS[r.type] || r.type}</span>
-                      <span className="badge" style={{
-                        background: r.status === 'pending' ? '#FEF3C7' : '#D7F2E6',
-                        color:      r.status === 'pending' ? '#92400E' : '#0A6E4E',
-                      }}>
-                        {STATUS_LABELS[r.status] || r.status}
-                      </span>
-                      <span style={{ fontSize: 11, color: 'var(--text3)' }}>
-                        {r.user?.role === 'teacher' ? 'أستاذ' : 'طالب'} · {r.user?.full_name || '—'}
-                        {r.user?.phone ? ` · ${r.user.phone}` : ''}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 14, color: 'var(--text1)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                      {r.message}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 8, direction: 'ltr', textAlign: 'right' }}>
-                      {fmtDate(r.created_at)}
-                    </div>
+                <div style={{ flex: 1 }}>
+                  <div className="flex items-center gap-8" style={{ marginBottom: 6 }}>
+                    <span className="badge" style={{ background: bg, color: fg }}>{TYPE_LABELS[r.type] || r.type}</span>
+                    <span className="badge" style={{
+                      background: r.status === 'pending' ? '#FEF3C7' : '#F1F5F9',
+                      color:      r.status === 'pending' ? '#92400E' : '#475569',
+                    }}>
+                      {STATUS_LABELS[r.status] || r.status}
+                    </span>
+                    <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+                      {r.user?.role === 'teacher' ? 'أستاذ' : 'طالب'} · {r.user?.full_name || '—'}
+                      {r.user?.phone ? ` · ${r.user.phone}` : ''}
+                    </span>
                   </div>
+                  <div style={{ fontSize: 14, color: 'var(--text1)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                    {r.message}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 8, direction: 'ltr', textAlign: 'right' }}>
+                    {fmtDate(r.created_at)}
+                  </div>
+
+                  {r.status === 'reviewed' && r.admin_note && (
+                    <div style={{ marginTop: 12, padding: 12, background: '#F0FBF7', borderRadius: 10, border: '1px solid #D7F2E6' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#0A6E4E', marginBottom: 4 }}>رد الإدارة</div>
+                      <div style={{ fontSize: 13, color: 'var(--text1)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{r.admin_note}</div>
+                    </div>
+                  )}
+
                   {r.status === 'pending' && (
-                    <button
-                      className="btn btn-sm btn-primary"
-                      disabled={!!actionId}
-                      onClick={() => markReviewed(r.id)}
-                      style={{ flexShrink: 0 }}
-                    >
-                      {actionId === r.id ? <span className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} /> : '✓ تمت المراجعة'}
-                    </button>
+                    <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                      <textarea
+                        className="field-input"
+                        placeholder="اكتب رداً على هذه الرسالة..."
+                        rows={2}
+                        style={{ flex: 1, resize: 'vertical', fontFamily: 'inherit' }}
+                        value={replyDrafts[r.id] || ''}
+                        onChange={e => setReplyDrafts(d => ({ ...d, [r.id]: e.target.value }))}
+                      />
+                      <button
+                        className="btn btn-sm btn-primary"
+                        disabled={!!actionId || !(replyDrafts[r.id] || '').trim()}
+                        onClick={() => sendReply(r.id)}
+                        style={{ flexShrink: 0 }}
+                      >
+                        {actionId === r.id ? <span className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} /> : 'إرسال الرد وإغلاق'}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
