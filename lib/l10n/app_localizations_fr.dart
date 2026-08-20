@@ -48,7 +48,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get commonError => 'Une erreur s\'est produite';
 
   @override
-  String get commonErrorNetwork => 'Connexion impossible, vérifiez votre réseau';
+  String get commonErrorNetwork =>
+      'Connexion impossible, vérifiez votre réseau';
 
   @override
   String get commonErrorLoading => 'Échec du chargement';
@@ -144,7 +145,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get authForgotTitle => 'Mot de passe oublié ?';
 
   @override
-  String get authForgotSubtitle => 'Entrez votre numéro, nous vous enverrons un code';
+  String get authForgotSubtitle =>
+      'Entrez votre numéro, nous vous enverrons un code';
 
   @override
   String get authValidEmail => 'Entrez votre adresse e-mail';
@@ -153,7 +155,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get authValidEmailFormat => 'Adresse e-mail invalide';
 
   @override
-  String get authValidPassword => 'Le mot de passe doit contenir au moins 6 caractères';
+  String get authValidPassword =>
+      'Le mot de passe doit contenir au moins 6 caractères';
 
   @override
   String get authValidName => 'Entrez votre nom complet';
@@ -162,16 +165,19 @@ class AppLocalizationsFr extends AppLocalizations {
   String get authErrInvalidCredentials => 'E-mail ou mot de passe incorrect';
 
   @override
-  String get authErrEmailNotConfirmed => 'E-mail non confirmé, vérifiez votre boîte de réception';
+  String get authErrEmailNotConfirmed =>
+      'E-mail non confirmé, vérifiez votre boîte de réception';
 
   @override
   String get authErrUserNotFound => 'Aucun compte associé à cet e-mail';
 
   @override
-  String get authErrRateLimit => 'Trop de tentatives, réessayez dans quelques instants';
+  String get authErrRateLimit =>
+      'Trop de tentatives, réessayez dans quelques instants';
 
   @override
-  String get authErrNetwork => 'Connexion au serveur impossible, vérifiez votre réseau';
+  String get authErrNetwork =>
+      'Connexion au serveur impossible, vérifiez votre réseau';
 
   @override
   String get authErrServer => 'Erreur serveur, réessayez plus tard';
@@ -180,7 +186,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get authErrGeneral => 'Une erreur s\'est produite, réessayez';
 
   @override
-  String get authErrEmailExists => 'Cet e-mail est déjà utilisé, connectez-vous';
+  String get authErrEmailExists =>
+      'Cet e-mail est déjà utilisé, connectez-vous';
 
   @override
   String get authErrEmailFormat => 'Format d\'e-mail invalide';
@@ -189,19 +196,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get authErrUnexpected => 'Erreur inattendue, réessayez';
 
   @override
-  String get authErrCheckEmail => 'Vérifiez votre e-mail pour confirmer le compte';
+  String get authErrCheckEmail =>
+      'Vérifiez votre e-mail pour confirmer le compte';
 
   @override
   String get authAccountDisabledTitle => 'Compte désactivé';
 
   @override
-  String get authAccountDisabled => 'Votre compte a été désactivé par l\'administration. Pour toute question, contactez :';
+  String get authAccountDisabled =>
+      'Votre compte a été désactivé par l\'administration. Pour toute question, contactez :';
 
   @override
   String get authDeviceMismatchTitle => 'Compte lié à un autre appareil';
 
   @override
-  String get authDeviceMismatch => 'Votre compte est lié à un autre appareil. Si vous avez perdu ou changé de téléphone, contactez l\'administration pour le relier :';
+  String get authDeviceMismatch =>
+      'Votre compte est lié à un autre appareil. Si vous avez perdu ou changé de téléphone, contactez l\'administration pour le relier :';
 
   @override
   String get homeTitle => 'Découvrir les professeurs';
@@ -234,7 +244,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get sessionsEmpty => 'Aucune session ici';
 
   @override
-  String get sessionsEmptyHint => 'Trouvez un professeur et commencez votre parcours';
+  String get sessionsEmptyHint =>
+      'Trouvez un professeur et commencez votre parcours';
 
   @override
   String get sessionsEnterNow => 'Rejoindre la session';
@@ -328,13 +339,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get subRequested => 'En attente de la réponse du professeur';
 
   @override
-  String get subTeacherApproved => 'Vous pouvez maintenant effectuer le paiement';
+  String get subTeacherApproved =>
+      'Vous pouvez maintenant effectuer le paiement';
 
   @override
-  String get subTeacherRejected => 'Désolé, le professeur a refusé votre demande';
+  String get subTeacherRejected =>
+      'Désolé, le professeur a refusé votre demande';
 
   @override
-  String get subAwaitingPayment => 'Envoyez une preuve de paiement pour continuer';
+  String get subAwaitingPayment =>
+      'Envoyez une preuve de paiement pour continuer';
 
   @override
   String get subPaymentSubmitted => 'L\'administration vérifie votre preuve';
@@ -343,10 +357,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get subPaymentRejected => 'Renvoyez une photo claire du virement';
 
   @override
-  String get subPaymentConfirmed => 'L\'administration confirme votre réservation';
+  String get subPaymentConfirmed =>
+      'L\'administration confirme votre réservation';
 
   @override
-  String get subConfirmedBooking => 'Votre rendez-vous est réservé — préparez-vous !';
+  String get subConfirmedBooking =>
+      'Votre rendez-vous est réservé — préparez-vous !';
 
   @override
   String get subActiveSession => 'La session est en cours';
@@ -451,7 +467,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get dialogCancelTitle => 'Annuler la demande';
 
   @override
-  String get dialogCancelContent => 'Voulez-vous annuler cette demande ? Cette action est irréversible.';
+  String get dialogCancelContent =>
+      'Voulez-vous annuler cette demande ? Cette action est irréversible.';
 
   @override
   String get dialogCancelConfirm => 'Oui, annuler';
@@ -463,7 +480,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get dialogRatingTitle => 'Évaluer le professeur';
 
   @override
-  String get dialogRatingCommentHint => 'Partagez votre expérience avec le professeur...';
+  String get dialogRatingCommentHint =>
+      'Partagez votre expérience avec le professeur...';
 
   @override
   String get dialogRatingSend => 'Envoyer l\'évaluation';
@@ -475,10 +493,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get paymentProofSentTitle => 'Preuve de paiement envoyée';
 
   @override
-  String get paymentProofSentBody => 'L\'administration vérifiera votre preuve dans l\'heure et confirmera la réservation.';
+  String get paymentProofSentBody =>
+      'L\'administration vérifiera votre preuve dans l\'heure et confirmera la réservation.';
 
   @override
-  String get paymentAwaitingInstruction => 'Envoyez le montant via l\'un des moyens de paiement ci-dessous, puis téléchargez une preuve de paiement.';
+  String get paymentAwaitingInstruction =>
+      'Envoyez le montant via l\'un des moyens de paiement ci-dessous, puis téléchargez une preuve de paiement.';
 
   @override
   String get paymentAmountLabel => 'Montant requis';
@@ -502,7 +522,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get paymentProofHintSub => 'PNG · JPG jusqu\'à 5 Mo';
 
   @override
-  String get paymentWarning => 'Ne payez qu\'aux numéros affichés ci-dessus. N\'envoyez pas d\'argent à un autre numéro.';
+  String get paymentWarning =>
+      'Ne payez qu\'aux numéros affichés ci-dessus. N\'envoyez pas d\'argent à un autre numéro.';
 
   @override
   String get paymentSubmitBtn => 'J\'ai payé — Confirmer';
@@ -511,19 +532,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get paymentErrNoProof => 'Téléchargez d\'abord une preuve de paiement';
 
   @override
-  String get paymentRejectedBanner => 'Preuve rejetée — renvoyez une photo claire du virement';
+  String get paymentRejectedBanner =>
+      'Preuve rejetée — renvoyez une photo claire du virement';
 
   @override
   String get paymentDeadlineExpired => 'Délai de paiement expiré';
 
   @override
-  String get paymentDeadlineExpiredAction => 'Le délai de paiement est expiré — impossible de continuer. Contactez le support si vous avez des questions.';
+  String get paymentDeadlineExpiredAction =>
+      'Le délai de paiement est expiré — impossible de continuer. Contactez le support si vous avez des questions.';
 
   @override
   String get liveConnectError => 'Connexion impossible';
 
   @override
-  String get liveWaitingTeacher => 'En attente du professeur pour démarrer la session…';
+  String get liveWaitingTeacher =>
+      'En attente du professeur pour démarrer la session…';
 
   @override
   String get liveOver15min => 'Plus de 15 min — le professeur n\'a pas démarré';
@@ -532,7 +556,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get liveReportNoShow => 'Signaler l\'absence du professeur';
 
   @override
-  String get liveRescheduleHint => 'Vous pouvez reprogrammer avec le même montant payé';
+  String get liveRescheduleHint =>
+      'Vous pouvez reprogrammer avec le même montant payé';
 
   @override
   String get liveLeave => 'Quitter';
@@ -541,7 +566,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get liveLeaveTitle => 'Quitter la session';
 
   @override
-  String get liveLeaveContent => 'Voulez-vous quitter la session ? Vous pouvez revenir plus tard.';
+  String get liveLeaveContent =>
+      'Voulez-vous quitter la session ? Vous pouvez revenir plus tard.';
 
   @override
   String get liveLeaveConfirm => 'Quitter';
@@ -550,7 +576,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get liveNoShowTitle => 'Signaler l\'absence du professeur';
 
   @override
-  String get liveNoShowContent => 'L\'absence du professeur sera enregistrée et vous pourrez reprogrammer. Continuer ?';
+  String get liveNoShowContent =>
+      'L\'absence du professeur sera enregistrée et vous pourrez reprogrammer. Continuer ?';
 
   @override
   String get liveConfirmNoShow => 'Confirmer l\'absence';
@@ -646,7 +673,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get teacherRejectReasonHint => 'Saisissez la raison du refus';
 
   @override
-  String get teacherRejectReasonRequired => 'Obligatoire — sera envoyé à l\'étudiant pour l\'aider à comprendre';
+  String get teacherRejectReasonRequired =>
+      'Obligatoire — sera envoyé à l\'étudiant pour l\'aider à comprendre';
 
   @override
   String get teacherNetEarning => 'Votre gain net';
@@ -669,7 +697,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get teacherRequestRejected => 'Cette demande a été refusée';
 
   @override
-  String get teacherRequestCancelledByStudent => 'La session a été annulée par l\'étudiant';
+  String get teacherRequestCancelledByStudent =>
+      'La session a été annulée par l\'étudiant';
 
   @override
   String get teacherSubjectLabel => 'Matière';
@@ -696,7 +725,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get teacherEarningsWithdraw => 'Retirer les gains';
 
   @override
-  String get teacherEarningsWithdrawContact => 'Pour retirer, contactez l\'administration : 42740370';
+  String get teacherEarningsWithdrawContact =>
+      'Pour retirer, contactez l\'administration : 42740370';
 
   @override
   String get teacherEarningsWeek => 'Cette semaine';
@@ -729,10 +759,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get teacherStatusRejected => 'Demande refusée';
 
   @override
-  String get teacherStatusPaymentSubmitted => 'Preuve de paiement en cours de vérification';
+  String get teacherStatusPaymentSubmitted =>
+      'Preuve de paiement en cours de vérification';
 
   @override
-  String get teacherStatusPaymentConfirmed => 'Paiement confirmé — réservation établie';
+  String get teacherStatusPaymentConfirmed =>
+      'Paiement confirmé — réservation établie';
 
   @override
   String get teacherStatusConfirmedBooking => 'Session confirmée';
@@ -747,10 +779,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get teacherStatusNoShow => 'Votre absence a été enregistrée';
 
   @override
-  String get teacherStatusStudentNoShow => 'L\'étudiant était absent. Vos gains seront versés selon la politique.';
+  String get teacherStatusStudentNoShow =>
+      'L\'étudiant était absent. Vos gains seront versés selon la politique.';
 
   @override
-  String get teacherStatusDispute => 'Cette session est en litige administratif';
+  String get teacherStatusDispute =>
+      'Cette session est en litige administratif';
 
   @override
   String get teacherStatusCancelled => 'L\'étudiant a annulé la session';
@@ -762,7 +796,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get teacherEnterSessionBtn => 'Rejoindre la session';
 
   @override
-  String get teacherSessionEntryNote => 'Accès disponible 10 min avant le rendez-vous';
+  String get teacherSessionEntryNote =>
+      'Accès disponible 10 min avant le rendez-vous';
 
   @override
   String get coursesMyCourses => 'Mes abonnements';
@@ -780,7 +815,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get coursesEmpty => 'Aucun abonnement';
 
   @override
-  String get coursesEmptyHint => 'Parcourez les cours et commencez votre apprentissage';
+  String get coursesEmptyHint =>
+      'Parcourez les cours et commencez votre apprentissage';
 
   @override
   String get coursesBrowse => 'Parcourir les cours';
@@ -828,7 +864,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get complaintScreenTitle => 'Réclamation ou suggestion';
 
   @override
-  String get complaintIntro => 'Partagez votre problème ou suggestion, nous l\'examinerons rapidement.';
+  String get complaintIntro =>
+      'Partagez votre problème ou suggestion, nous l\'examinerons rapidement.';
 
   @override
   String get complaintTypeComplaint => 'Réclamation';
@@ -837,7 +874,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get complaintTypeSuggestion => 'Suggestion';
 
   @override
-  String get complaintMessageHint => 'Écrivez les détails de votre réclamation ou suggestion ici...';
+  String get complaintMessageHint =>
+      'Écrivez les détails de votre réclamation ou suggestion ici...';
 
   @override
   String get complaintSubmitBtn => 'Envoyer';
@@ -846,7 +884,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get complaintEmptyError => 'Veuillez d\'abord écrire votre message';
 
   @override
-  String get complaintSuccessMsg => 'Votre message a été envoyé avec succès, il sera examiné par l\'administration';
+  String get complaintSuccessMsg =>
+      'Votre message a été envoyé avec succès, il sera examiné par l\'administration';
 
   @override
   String get complaintHistoryTitle => 'Mes messages précédents';
@@ -891,7 +930,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get notifTypeSessionRequested => 'Nouvelle demande de réservation';
 
   @override
-  String get notifTypeTeacherApproved => 'Le professeur a accepté votre demande';
+  String get notifTypeTeacherApproved =>
+      'Le professeur a accepté votre demande';
 
   @override
   String get notifTypeTeacherRejected => 'Votre demande a été refusée';
@@ -957,19 +997,24 @@ class AppLocalizationsFr extends AppLocalizations {
   String get paymentRejectedTitle => 'Preuve de paiement rejetée';
 
   @override
-  String get paymentFakeProofLabel => 'Preuve falsifiée — veuillez soumettre une vraie preuve';
+  String get paymentFakeProofLabel =>
+      'Preuve falsifiée — veuillez soumettre une vraie preuve';
 
   @override
-  String get paymentFakeInstruction => 'Veuillez soumettre une vraie capture de virement avant l\'expiration du délai.';
+  String get paymentFakeInstruction =>
+      'Veuillez soumettre une vraie capture de virement avant l\'expiration du délai.';
 
   @override
-  String get paymentAmountInstruction => 'Veuillez régler le montant complet et renvoyer la preuve avant le délai.';
+  String get paymentAmountInstruction =>
+      'Veuillez régler le montant complet et renvoyer la preuve avant le délai.';
 
   @override
-  String get paymentDeadlineExpiredMsg => 'Délai expiré — la demande sera annulée automatiquement';
+  String get paymentDeadlineExpiredMsg =>
+      'Délai expiré — la demande sera annulée automatiquement';
 
   @override
-  String get paymentDeadlineContactSupport => 'La demande sera annulée — contactez le support si besoin';
+  String get paymentDeadlineContactSupport =>
+      'La demande sera annulée — contactez le support si besoin';
 
   @override
   String paymentRemainingTime(String time) {
@@ -988,13 +1033,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get paymentConfirmedTitle => 'Préparation de la réservation…';
 
   @override
-  String get paymentConfirmedInfo => 'Paiement confirmé. Votre session sera automatiquement programmée dans quelques instants et vous recevrez une notification.';
+  String get paymentConfirmedInfo =>
+      'Paiement confirmé. Votre session sera automatiquement programmée dans quelques instants et vous recevrez une notification.';
 
   @override
   String get actionCancelFinal => 'Annuler définitivement la session';
 
   @override
-  String get dialogCancelConfirmText2 => 'Êtes-vous sûr ? La demande sera annulée définitivement.';
+  String get dialogCancelConfirmText2 =>
+      'Êtes-vous sûr ? La demande sera annulée définitivement.';
 
   @override
   String get dialogBack2 => 'Retour';
@@ -1006,10 +1053,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get ratingThanksSnackbar => 'Merci pour votre évaluation !';
 
   @override
-  String get sessionRatingThanks => 'Merci pour votre évaluation du professeur.';
+  String get sessionRatingThanks =>
+      'Merci pour votre évaluation du professeur.';
 
   @override
-  String get sessionTeacherRejectedInfo => 'Le professeur a refusé la demande. Vous pouvez chercher un autre professeur.';
+  String get sessionTeacherRejectedInfo =>
+      'Le professeur a refusé la demande. Vous pouvez chercher un autre professeur.';
 
   @override
   String get sessionReturnSearch => 'Retour à la recherche';
@@ -1021,22 +1070,27 @@ class AppLocalizationsFr extends AppLocalizations {
   String get sessionNewSession => 'Réserver une nouvelle session';
 
   @override
-  String get sessionStudentAbsentInfo => 'Votre absence à cette session a été enregistrée.';
+  String get sessionStudentAbsentInfo =>
+      'Votre absence à cette session a été enregistrée.';
 
   @override
   String get sessionDisputeTitle => 'Litige ouvert';
 
   @override
-  String get sessionDisputeInfo => 'L\'enseignant a ouvert un litige sur cette session. L\'administration examine la situation et vous contactera dans les plus brefs délais.';
+  String get sessionDisputeInfo =>
+      'L\'enseignant a ouvert un litige sur cette session. L\'administration examine la situation et vous contactera dans les plus brefs délais.';
 
   @override
-  String get sessionDisputeNextStep => 'Prochaine étape : attendez la décision de l\'administration — aucune action requise de votre part.';
+  String get sessionDisputeNextStep =>
+      'Prochaine étape : attendez la décision de l\'administration — aucune action requise de votre part.';
 
   @override
-  String get sessionTeacherNoShowInfo => 'L\'absence du professeur a été constatée. Vous pouvez reprogrammer avec le même paiement.';
+  String get sessionTeacherNoShowInfo =>
+      'L\'absence du professeur a été constatée. Vous pouvez reprogrammer avec le même paiement.';
 
   @override
-  String get sessionRescheduledSuccess => 'Reprogrammation effectuée avec succès';
+  String get sessionRescheduledSuccess =>
+      'Reprogrammation effectuée avec succès';
 
   @override
   String sessionStartDate(String date) {
@@ -1142,7 +1196,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get homeNoCoursesAvailable => 'Aucun cours disponible pour le moment';
 
   @override
-  String get homeNoPackagesAvailable => 'Aucun forfait disponible pour le moment';
+  String get homeNoPackagesAvailable =>
+      'Aucun forfait disponible pour le moment';
 
   @override
   String get homeLoadError => 'Échec du chargement';
@@ -1382,28 +1437,35 @@ class AppLocalizationsFr extends AppLocalizations {
   String get teacherSessionStatusTitle => 'Statut de la demande';
 
   @override
-  String get teacherSubAwaitingPayment => 'En attente du paiement de l\'étudiant.';
+  String get teacherSubAwaitingPayment =>
+      'En attente du paiement de l\'étudiant.';
 
   @override
-  String get teacherSubPaymentSubmitted => 'L\'administration vérifie la preuve. Aucune action requise.';
+  String get teacherSubPaymentSubmitted =>
+      'L\'administration vérifie la preuve. Aucune action requise.';
 
   @override
-  String get teacherSubPaymentConfirmed => 'Paiement confirmé. La session s\'ouvrira à l\'heure prévue.';
+  String get teacherSubPaymentConfirmed =>
+      'Paiement confirmé. La session s\'ouvrira à l\'heure prévue.';
 
   @override
-  String get teacherPaymentConfirmedWaiting => 'Paiement confirmé — le système prépare la réservation automatiquement. Vous recevrez une notification dès que la session est confirmée.';
+  String get teacherPaymentConfirmedWaiting =>
+      'Paiement confirmé — le système prépare la réservation automatiquement. Vous recevrez une notification dès que la session est confirmée.';
 
   @override
-  String get teacherSubConfirmedBooking => 'Réservation confirmée — votre session est prête.';
+  String get teacherSubConfirmedBooking =>
+      'Réservation confirmée — votre session est prête.';
 
   @override
-  String get teacherSubActiveSession => 'La session est en cours — rejoignez maintenant.';
+  String get teacherSubActiveSession =>
+      'La session est en cours — rejoignez maintenant.';
 
   @override
   String get teacherSubCompleted => 'Session terminée. Consultez vos revenus.';
 
   @override
-  String get teacherSubDispute => 'Litige ouvert. L\'administration examine la situation.';
+  String get teacherSubDispute =>
+      'Litige ouvert. L\'administration examine la situation.';
 
   @override
   String get teacherSubRejected => 'Vous avez refusé cette demande.';
@@ -1433,7 +1495,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get teacherMarkNoShow => 'Enregistrer l\'absence de l\'étudiant';
 
   @override
-  String get teacherStudentAlreadyJoined => 'Attention : l\'étudiant a déjà rejoint la session. Vérifiez qu\'il ne s\'agit pas d\'un problème technique avant d\'enregistrer l\'absence.';
+  String get teacherStudentAlreadyJoined =>
+      'Attention : l\'étudiant a déjà rejoint la session. Vérifiez qu\'il ne s\'agit pas d\'un problème technique avant d\'enregistrer l\'absence.';
 
   @override
   String get teacherStartSession => 'Démarrer la session';
@@ -1445,10 +1508,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get teacherOpenDispute => 'Ouvrir un litige';
 
   @override
-  String get teacherDisputeDialogContent => 'Le paiement est confirmé — annulation directe impossible.\nUn litige sera ouvert et examiné par l\'administration.';
+  String get teacherDisputeDialogContent =>
+      'Le paiement est confirmé — annulation directe impossible.\nUn litige sera ouvert et examiné par l\'administration.';
 
   @override
-  String get teacherCancelSessionContent => 'Êtes-vous sûr d\'annuler cette session ?';
+  String get teacherCancelSessionContent =>
+      'Êtes-vous sûr d\'annuler cette session ?';
 
   @override
   String get teacherProcessingMsg => 'Traitement en cours…';
@@ -1508,7 +1573,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get profileDeleteTitle => 'Supprimer le compte';
 
   @override
-  String get profileDeleteContent => 'Cette action est irréversible.\nToutes vos données seront supprimées définitivement.';
+  String get profileDeleteContent =>
+      'Cette action est irréversible.\nToutes vos données seront supprimées définitivement.';
 
   @override
   String get profileDeleteFinalTitle => 'Confirmation de suppression';
@@ -1538,7 +1604,8 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get coursesPendingInfo => 'Preuve de paiement en cours de vérification — sous 24h';
+  String get coursesPendingInfo =>
+      'Preuve de paiement en cours de vérification — sous 24h';
 
   @override
   String get coursesRejectedLabel => 'Abonnement refusé';
@@ -1555,7 +1622,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get rescheduleTitle => 'Reprogrammer';
 
   @override
-  String get rescheduleNoShowBanner => 'Le professeur était absent — une nouvelle session confirmée sera créée directement sans paiement supplémentaire.';
+  String get rescheduleNoShowBanner =>
+      'Le professeur était absent — une nouvelle session confirmée sera créée directement sans paiement supplémentaire.';
 
   @override
   String rescheduleSamePriceBanner(String amount) {
@@ -1572,7 +1640,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get rescheduleErrSelectTime => 'Sélectionnez le jour et l\'heure';
 
   @override
-  String get rescheduleErrDoubleBooked => 'Ce créneau est déjà réservé, choisissez un autre';
+  String get rescheduleErrDoubleBooked =>
+      'Ce créneau est déjà réservé, choisissez un autre';
 
   @override
   String get rescheduleSubmitBtn => 'Envoyer la demande de reprogrammation';
@@ -1587,7 +1656,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get helpHeroTitle => 'Nous sommes là pour vous aider';
 
   @override
-  String get helpHeroSub => 'Contactez-nous à tout moment, nous vous répondrons dès que possible';
+  String get helpHeroSub =>
+      'Contactez-nous à tout moment, nous vous répondrons dès que possible';
 
   @override
   String get helpCallUs => 'Appelez-nous';
@@ -1607,31 +1677,37 @@ class AppLocalizationsFr extends AppLocalizations {
   String get faqQ1 => 'Comment réserver une session avec un professeur ?';
 
   @override
-  String get faqA1 => 'Recherchez le professeur souhaité sur la page d\'accueil, appuyez sur son nom pour voir son profil, puis appuyez sur \"Réserver une session\" et choisissez la date et l\'heure.';
+  String get faqA1 =>
+      'Recherchez le professeur souhaité sur la page d\'accueil, appuyez sur son nom pour voir son profil, puis appuyez sur \"Réserver une session\" et choisissez la date et l\'heure.';
 
   @override
   String get faqQ2 => 'Quels sont les moyens de paiement disponibles ?';
 
   @override
-  String get faqA2 => 'Vous pouvez payer par virement bancaire. Après l\'envoi de la demande, un numéro de compte vous est communiqué et il vous est demandé de télécharger le reçu de paiement.';
+  String get faqA2 =>
+      'Vous pouvez payer par virement bancaire. Après l\'envoi de la demande, un numéro de compte vous est communiqué et il vous est demandé de télécharger le reçu de paiement.';
 
   @override
   String get faqQ3 => 'Que se passe-t-il si le professeur est absent ?';
 
   @override
-  String get faqA3 => 'En cas de problème avec le professeur, veuillez nous contacter immédiatement par téléphone ou e-mail et nous le résoudrons dans les plus brefs délais.';
+  String get faqA3 =>
+      'En cas de problème avec le professeur, veuillez nous contacter immédiatement par téléphone ou e-mail et nous le résoudrons dans les plus brefs délais.';
 
   @override
   String get faqQ4 => 'Comment évaluer le professeur ?';
 
   @override
-  String get faqA4 => 'À la fin de la session, une fenêtre apparaîtra pour évaluer votre expérience avec le professeur de 1 à 5 étoiles avec la possibilité d\'écrire un commentaire.';
+  String get faqA4 =>
+      'À la fin de la session, une fenêtre apparaîtra pour évaluer votre expérience avec le professeur de 1 à 5 étoiles avec la possibilité d\'écrire un commentaire.';
 
   @override
-  String get privacyPolicyContent => '# Politique de confidentialité\n\nDernière mise à jour : janvier 2025\n\n## Introduction\n\nChez Hessati, nous nous engageons à protéger votre vie privée. Cette politique explique comment nous collectons, utilisons et protégeons vos informations lorsque vous utilisez notre application.\n\n## Informations que nous collectons\n\nNous collectons les informations que vous fournissez directement lors de la création d\'un compte, telles que : nom, adresse e-mail, numéro de téléphone et photo de profil. Nous collectons également des données d\'utilisation de l\'application telles que les sessions réservées et les paiements.\n\n## Comment nous utilisons vos informations\n\nNous utilisons vos données pour exploiter et améliorer le service, faciliter la communication entre étudiants et professeurs, traiter les paiements et envoyer des notifications liées aux sessions.\n\n## Partage des informations\n\nNous ne vendons pas vos données à des tiers. Nous pouvons partager vos informations avec des prestataires de services nécessaires au fonctionnement de la plateforme (comme les services de paiement) uniquement dans le cadre d\'accords de confidentialité stricts.\n\n## Protection des données\n\nNous utilisons un chiffrement de premier ordre pour protéger vos données. Tout est stocké en toute sécurité sur des serveurs certifiés.\n\n## Vos droits\n\nVous pouvez à tout moment : consulter vos données, les corriger ou en demander la suppression. Contactez-nous via : ahmedelkentawi@gmail.com\n\n## Nous contacter\n\nPour toute question concernant cette politique, contactez-nous via le numéro d\'assistance ou l\'e-mail indiqués ci-dessous.';
+  String get privacyPolicyContent =>
+      '# Politique de confidentialité\n\nDernière mise à jour : janvier 2025\n\n## Introduction\n\nChez Hessati, nous nous engageons à protéger votre vie privée. Cette politique explique comment nous collectons, utilisons et protégeons vos informations lorsque vous utilisez notre application.\n\n## Informations que nous collectons\n\nNous collectons les informations que vous fournissez directement lors de la création d\'un compte, telles que : nom, adresse e-mail, numéro de téléphone et photo de profil. Nous collectons également des données d\'utilisation de l\'application telles que les sessions réservées et les paiements.\n\n## Comment nous utilisons vos informations\n\nNous utilisons vos données pour exploiter et améliorer le service, faciliter la communication entre étudiants et professeurs, traiter les paiements et envoyer des notifications liées aux sessions.\n\n## Partage des informations\n\nNous ne vendons pas vos données à des tiers. Nous pouvons partager vos informations avec des prestataires de services nécessaires au fonctionnement de la plateforme (comme les services de paiement) uniquement dans le cadre d\'accords de confidentialité stricts.\n\n## Protection des données\n\nNous utilisons un chiffrement de premier ordre pour protéger vos données. Tout est stocké en toute sécurité sur des serveurs certifiés.\n\n## Vos droits\n\nVous pouvez à tout moment : consulter vos données, les corriger ou en demander la suppression. Contactez-nous via : ahmedelkentawi@gmail.com\n\n## Nous contacter\n\nPour toute question concernant cette politique, contactez-nous via le numéro d\'assistance ou l\'e-mail indiqués ci-dessous.';
 
   @override
-  String get termsContent => '# Conditions d\'utilisation\n\nDernière mise à jour : janvier 2025\n\n## Acceptation des conditions\n\nEn utilisant l\'application Hessati, vous acceptez ces conditions dans leur intégralité. Si vous n\'acceptez pas, veuillez cesser d\'utiliser l\'application.\n\n## Le service\n\nHessati est une plateforme qui met en relation des étudiants et des professeurs pour des sessions d\'enseignement privées. Nous sommes un intermédiaire et ne sommes pas partie au contrat entre l\'étudiant et le professeur.\n\n## Compte utilisateur\n\nVous êtes responsable de la confidentialité de vos identifiants. Les informations fournies doivent être exactes et à jour. Nous nous réservons le droit de suspendre les comptes qui enfreignent les conditions.\n\n## Sessions et paiements\n\nLes sessions se déroulent selon les horaires convenus. Le paiement doit être effectué avant la confirmation de la session. En cas d\'annulation plus de 24 heures à l\'avance, un remboursement est possible selon la politique de remboursement.\n\n## Comportement des utilisateurs\n\nIl est interdit d\'utiliser l\'application à des fins illégales ou abusives. Il est interdit de partager le contenu des sessions sans autorisation. Il est interdit d\'usurper l\'identité d\'autrui.\n\n## Limitation de responsabilité\n\nNous nous efforçons de fournir le meilleur service possible, mais nous ne garantissons pas l\'absence d\'interruptions. La qualité de l\'enseignement dépend du professeur et Hessati n\'est pas responsable des résultats académiques.\n\n## Modifications\n\nNous nous réservons le droit de modifier ces conditions à tout moment. Les utilisateurs seront informés des changements importants via les notifications dans l\'application.\n\n## Nous contacter\n\nPour toute question, contactez-nous via le numéro d\'assistance ou l\'e-mail indiqués ci-dessous.';
+  String get termsContent =>
+      '# Conditions d\'utilisation\n\nDernière mise à jour : janvier 2025\n\n## Acceptation des conditions\n\nEn utilisant l\'application Hessati, vous acceptez ces conditions dans leur intégralité. Si vous n\'acceptez pas, veuillez cesser d\'utiliser l\'application.\n\n## Le service\n\nHessati est une plateforme qui met en relation des étudiants et des professeurs pour des sessions d\'enseignement privées. Nous sommes un intermédiaire et ne sommes pas partie au contrat entre l\'étudiant et le professeur.\n\n## Compte utilisateur\n\nVous êtes responsable de la confidentialité de vos identifiants. Les informations fournies doivent être exactes et à jour. Nous nous réservons le droit de suspendre les comptes qui enfreignent les conditions.\n\n## Sessions et paiements\n\nLes sessions se déroulent selon les horaires convenus. Le paiement doit être effectué avant la confirmation de la session. En cas d\'annulation plus de 24 heures à l\'avance, un remboursement est possible selon la politique de remboursement.\n\n## Comportement des utilisateurs\n\nIl est interdit d\'utiliser l\'application à des fins illégales ou abusives. Il est interdit de partager le contenu des sessions sans autorisation. Il est interdit d\'usurper l\'identité d\'autrui.\n\n## Limitation de responsabilité\n\nNous nous efforçons de fournir le meilleur service possible, mais nous ne garantissons pas l\'absence d\'interruptions. La qualité de l\'enseignement dépend du professeur et Hessati n\'est pas responsable des résultats académiques.\n\n## Modifications\n\nNous nous réservons le droit de modifier ces conditions à tout moment. Les utilisateurs seront informés des changements importants via les notifications dans l\'application.\n\n## Nous contacter\n\nPour toute question, contactez-nous via le numéro d\'assistance ou l\'e-mail indiqués ci-dessous.';
 
   @override
   String courseSubscribersCount(String n) {
@@ -1655,7 +1731,8 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get courseLockedBody => 'Abonnez-vous maintenant pour accéder à tout le contenu';
+  String get courseLockedBody =>
+      'Abonnez-vous maintenant pour accéder à tout le contenu';
 
   @override
   String get courseSubscribeNow => 'S\'abonner maintenant';
@@ -1675,10 +1752,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get coursePendingLabel => 'En vérification';
 
   @override
-  String get courseSubPendingTitle => 'Votre abonnement est en cours de vérification';
+  String get courseSubPendingTitle =>
+      'Votre abonnement est en cours de vérification';
 
   @override
-  String get courseSubPendingBody => 'Votre abonnement sera activé sous 24h après confirmation du paiement.';
+  String get courseSubPendingBody =>
+      'Votre abonnement sera activé sous 24h après confirmation du paiement.';
 
   @override
   String get courseLessonLockedTitle => 'Cette leçon est réservée aux abonnés';
@@ -1720,10 +1799,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get lessonNoVideo => 'Aucune vidéo disponible pour cette leçon';
 
   @override
-  String get lessonVideoLoadError => 'Impossible de charger la vidéo, vérifiez votre connexion et réessayez';
+  String get lessonVideoLoadError =>
+      'Impossible de charger la vidéo, vérifiez votre connexion et réessayez';
 
   @override
-  String get lessonVideoHint => 'Regardez toute la leçon puis appuyez sur \"Terminé\" pour enregistrer votre progression';
+  String get lessonVideoHint =>
+      'Regardez toute la leçon puis appuyez sur \"Terminé\" pour enregistrer votre progression';
 
   @override
   String get lessonFreePreview => 'Ceci est une leçon d\'aperçu gratuite';
@@ -1732,7 +1813,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get lessonVideoDoneLabel => 'Leçon terminée';
 
   @override
-  String get lessonSubscribeToAccess => 'Abonnez-vous pour accéder à toutes les leçons';
+  String get lessonSubscribeToAccess =>
+      'Abonnez-vous pour accéder à toutes les leçons';
 
   @override
   String get lessonBackToList => 'Retour à la liste';
@@ -1741,7 +1823,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get lessonRatingTitle => 'Comment était la leçon ?';
 
   @override
-  String get lessonRatingSubtitle => 'Évaluez ce cours pour aider les autres étudiants';
+  String get lessonRatingSubtitle =>
+      'Évaluez ce cours pour aider les autres étudiants';
 
   @override
   String get lessonRatingLater => 'Plus tard';
@@ -1759,7 +1842,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get requestSentHeadline => 'Demande envoyée';
 
   @override
-  String get requestSentBody => 'Le professeur examinera votre demande et répondra généralement dans les 2 heures. Nous vous notifierons dès l\'approbation pour procéder au paiement.';
+  String get requestSentBody =>
+      'Le professeur examinera votre demande et répondra généralement dans les 2 heures. Nous vous notifierons dès l\'approbation pour procéder au paiement.';
 
   @override
   String get requestSentCancelBtn => 'Annuler la demande';
@@ -1768,7 +1852,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get requestSentTrackBtn => 'Suivre l\'état';
 
   @override
-  String get requestSentCancelConfirm => 'Êtes-vous sûr de vouloir annuler cette demande ?';
+  String get requestSentCancelConfirm =>
+      'Êtes-vous sûr de vouloir annuler cette demande ?';
 
   @override
   String get requestSentCancelYes => 'Oui, annuler';
@@ -1780,10 +1865,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get paymentSubmittedBadge => 'En cours de vérification';
 
   @override
-  String get paymentSubmittedHeadline => 'L\'administration vérifie votre paiement';
+  String get paymentSubmittedHeadline =>
+      'L\'administration vérifie votre paiement';
 
   @override
-  String get paymentSubmittedBody => 'Nous avons reçu la preuve de virement. Notre équipe la vérifie habituellement en 30 minutes. La réservation passera automatiquement à « Confirmée ».';
+  String get paymentSubmittedBody =>
+      'Nous avons reçu la preuve de virement. Notre équipe la vérifie habituellement en 30 minutes. La réservation passera automatiquement à « Confirmée ».';
 
   @override
   String get paymentMethodLabel => 'Méthode';
@@ -1792,7 +1879,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get paymentReferenceLabel => 'Référence';
 
   @override
-  String get paymentSubmittedResponsibleAdmin => 'Administration — Confirmation du paiement';
+  String get paymentSubmittedResponsibleAdmin =>
+      'Administration — Confirmation du paiement';
 
   @override
   String get paymentSubmittedViewDetails => 'Voir les détails de la session';
@@ -1822,7 +1910,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get subscriptionTitle => 'Abonnement';
 
   @override
-  String get subscriptionErrNoProof => 'Veuillez d\'abord télécharger la preuve de paiement';
+  String get subscriptionErrNoProof =>
+      'Veuillez d\'abord télécharger la preuve de paiement';
 
   @override
   String subscriptionErrGeneral(String error) {
@@ -1878,7 +1967,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get subscriptionProofTitle => 'Preuve de paiement';
 
   @override
-  String get subscriptionProofHint => 'Appuyez pour télécharger la preuve de paiement';
+  String get subscriptionProofHint =>
+      'Appuyez pour télécharger la preuve de paiement';
 
   @override
   String get subscriptionPerYear => 'MRU/an';
@@ -1896,13 +1986,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get subscriptionSubmitting => 'Envoi en cours...';
 
   @override
-  String get subscriptionReviewNote => 'La preuve de paiement sera examinée par l\'administration dans les 24 heures';
+  String get subscriptionReviewNote =>
+      'La preuve de paiement sera examinée par l\'administration dans les 24 heures';
 
   @override
   String get subPendingActivatedTitle => 'Votre abonnement est activé !';
 
   @override
-  String get subPendingActivatedBody => 'Vous pouvez maintenant accéder à tout le contenu du cours.';
+  String get subPendingActivatedBody =>
+      'Vous pouvez maintenant accéder à tout le contenu du cours.';
 
   @override
   String get subPendingRedirecting => 'Redirection vers vos cours...';
@@ -1911,10 +2003,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get subPendingTitle => 'Votre abonnement est en cours d\'examen';
 
   @override
-  String get subPendingRejectedBody => 'La preuve de paiement n\'a pas pu être acceptée. Veuillez contacter l\'administration ou réessayer avec une preuve correcte.';
+  String get subPendingRejectedBody =>
+      'La preuve de paiement n\'a pas pu être acceptée. Veuillez contacter l\'administration ou réessayer avec une preuve correcte.';
 
   @override
-  String get subPendingPendingBody => 'Nous avons reçu votre preuve de paiement. Votre abonnement sera activé dans les 24 heures après vérification.';
+  String get subPendingPendingBody =>
+      'Nous avons reçu votre preuve de paiement. Votre abonnement sera activé dans les 24 heures après vérification.';
 
   @override
   String get subPendingStep1 => 'Preuve de paiement téléchargée avec succès';
@@ -1923,7 +2017,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get subPendingStep2 => 'Examen de l\'administration (jusqu\'à 24h)';
 
   @override
-  String get subPendingStep3 => 'Activation de l\'abonnement et accès au contenu';
+  String get subPendingStep3 =>
+      'Activation de l\'abonnement et accès au contenu';
 
   @override
   String get subPendingBackCourses => 'Retour à mes cours';
@@ -1971,7 +2066,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get payHistEmpty => 'Aucun paiement pour l\'instant';
 
   @override
-  String get payHistEmptyAll => 'Tous vos paiements de sessions et d\'abonnements apparaîtront ici';
+  String get payHistEmptyAll =>
+      'Tous vos paiements de sessions et d\'abonnements apparaîtront ici';
 
   @override
   String get payHistEmptySessions => 'Aucun paiement de session';
@@ -1980,13 +2076,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get payHistEmptySubscriptions => 'Aucun paiement d\'abonnement';
 
   @override
-  String get payHistLoadError => 'Impossible de charger l\'historique des paiements';
+  String get payHistLoadError =>
+      'Impossible de charger l\'historique des paiements';
 
   @override
   String get payHistRejectFake => 'Reçu falsifié — refusé définitivement';
 
   @override
-  String get payHistRejectIncompleteRefund => 'Montant incomplet — vous serez remboursé';
+  String get payHistRejectIncompleteRefund =>
+      'Montant incomplet — vous serez remboursé';
 
   @override
   String get payHistRejectIncomplete => 'Montant incomplet';
@@ -2048,7 +2146,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get editProfileSaveBtn => 'Enregistrer les modifications';
 
   @override
-  String get changePassErrTooShort => 'Le mot de passe doit comporter au moins 8 caractères';
+  String get changePassErrTooShort =>
+      'Le mot de passe doit comporter au moins 8 caractères';
 
   @override
   String get changePassErrMismatch => 'Les mots de passe ne correspondent pas';
@@ -2057,10 +2156,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get changePassSuccess => 'Mot de passe modifié avec succès';
 
   @override
-  String get changePassErrFailed => 'Échec de la modification — vérifiez votre connexion ou reconnectez-vous';
+  String get changePassErrFailed =>
+      'Échec de la modification — vérifiez votre connexion ou reconnectez-vous';
 
   @override
-  String get changePassInfoBanner => 'Vous devrez vous reconnecter après avoir modifié votre mot de passe';
+  String get changePassInfoBanner =>
+      'Vous devrez vous reconnecter après avoir modifié votre mot de passe';
 
   @override
   String get changePassNewLabel => 'Nouveau mot de passe';
@@ -2078,7 +2179,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get authBackToLogin => 'Retour à la connexion';
 
   @override
-  String get authSendOtpError => 'Échec d\'envoi du code — vérifiez votre connexion et réessayez';
+  String get authSendOtpError =>
+      'Échec d\'envoi du code — vérifiez votre connexion et réessayez';
 
   @override
   String get resetPassTitle => 'Nouveau mot de passe';
@@ -2089,7 +2191,8 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get resetPassErrTooShort => 'Le mot de passe doit comporter au moins 6 caractères';
+  String get resetPassErrTooShort =>
+      'Le mot de passe doit comporter au moins 6 caractères';
 
   @override
   String get resetPassErrConfirmEmpty => 'Confirmez votre mot de passe';
@@ -2101,13 +2204,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get resetPassSuccessTitle => 'Mot de passe modifié';
 
   @override
-  String get resetPassSuccessBody => 'Vous pouvez maintenant vous connecter avec votre nouveau mot de passe';
+  String get resetPassSuccessBody =>
+      'Vous pouvez maintenant vous connecter avec votre nouveau mot de passe';
 
   @override
-  String get resetPassErrNotFound => 'Ce numéro n\'est pas enregistré dans l\'application';
+  String get resetPassErrNotFound =>
+      'Ce numéro n\'est pas enregistré dans l\'application';
 
   @override
-  String get resetPassErrGeneral => 'Échec de la modification du mot de passe — réessayez';
+  String get resetPassErrGeneral =>
+      'Échec de la modification du mot de passe — réessayez';
 
   @override
   String get roomErrLoadMessages => 'Impossible de charger les messages';
@@ -2128,7 +2234,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get roomErrSendFile => 'Échec d\'envoi du fichier';
 
   @override
-  String get roomErrMicPermission => 'Veuillez autoriser l\'accès au microphone';
+  String get roomErrMicPermission =>
+      'Veuillez autoriser l\'accès au microphone';
 
   @override
   String get roomErrStartRecording => 'Échec du démarrage de l\'enregistrement';
@@ -2149,7 +2256,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get roomDeleteMessage => 'Supprimer le message';
 
   @override
-  String get roomDeleteMessageConfirm => 'Ce message sera supprimé pour tout le monde. Voulez-vous continuer ?';
+  String get roomDeleteMessageConfirm =>
+      'Ce message sera supprimé pour tout le monde. Voulez-vous continuer ?';
 
   @override
   String get roomErrDeleteMessage => 'Impossible de supprimer le message';
@@ -2164,7 +2272,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get myRatingsEmpty => 'Aucune évaluation pour l\'instant';
 
   @override
-  String get myRatingsEmptyHint => 'Après avoir terminé un cours, vous serez invité à l\'évaluer';
+  String get myRatingsEmptyHint =>
+      'Après avoir terminé un cours, vous serez invité à l\'évaluer';
 
   @override
   String get reqSessionTitle => 'Demander une session';
@@ -2176,16 +2285,19 @@ class AppLocalizationsFr extends AppLocalizations {
   String get reqSessionErrNoSlot => 'Veuillez choisir un créneau disponible';
 
   @override
-  String get reqSessionErrBooked => 'Ce créneau est déjà réservé, choisissez un autre';
+  String get reqSessionErrBooked =>
+      'Ce créneau est déjà réservé, choisissez un autre';
 
   @override
   String get reqSessionErrNoLevel => 'Veuillez indiquer votre niveau scolaire';
 
   @override
-  String get reqSessionErrGeneral => 'Une erreur s\'est produite lors de l\'envoi, réessayez';
+  String get reqSessionErrGeneral =>
+      'Une erreur s\'est produite lors de l\'envoi, réessayez';
 
   @override
-  String get reqSessionErrLoadTeacher => 'Impossible de charger les données du professeur';
+  String get reqSessionErrLoadTeacher =>
+      'Impossible de charger les données du professeur';
 
   @override
   String get reqSessionTeacherNotFound => 'Professeur introuvable';
@@ -2200,7 +2312,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get reqSessionNoSlotsLeft => 'Aucun créneau disponible pour ce jour';
 
   @override
-  String get reqSessionTeacherUnavailable => 'Le professeur n\'est pas disponible ce jour';
+  String get reqSessionTeacherUnavailable =>
+      'Le professeur n\'est pas disponible ce jour';
 
   @override
   String get reqSessionSelectDay => 'Choisissez le jour';
@@ -2227,7 +2340,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get reqSessionTotal => 'Total estimé';
 
   @override
-  String get reqSessionPaymentNote => 'Le paiement commence après approbation du professeur. Aucun paiement requis maintenant.';
+  String get reqSessionPaymentNote =>
+      'Le paiement commence après approbation du professeur. Aucun paiement requis maintenant.';
 
   @override
   String get reqSessionSubmit => 'Envoyer la demande';
@@ -2275,7 +2389,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get liveSessionEndTitle => 'Terminer la session ?';
 
   @override
-  String get liveSessionEndBody => 'Êtes-vous sûr de vouloir terminer la session ? L\'étudiant sera notifié.';
+  String get liveSessionEndBody =>
+      'Êtes-vous sûr de vouloir terminer la session ? L\'étudiant sera notifié.';
 
   @override
   String get liveSessionEndContinue => 'Continuer';
@@ -2307,7 +2422,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get noShowRecordAndEnd => 'Enregistrer l\'absence et terminer';
 
   @override
-  String get noShowSuccessMsg => 'Absence enregistrée — votre salaire est sécurisé';
+  String get noShowSuccessMsg =>
+      'Absence enregistrée — votre salaire est sécurisé';
 
   @override
   String get noShowStudentDefault => 'L\'étudiant';
@@ -2323,7 +2439,8 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get teacherRatingsEmptyHint => 'Les avis des étudiants apparaîtront ici après les sessions';
+  String get teacherRatingsEmptyHint =>
+      'Les avis des étudiants apparaîtront ici après les sessions';
 
   @override
   String get disputePrefix => 'Litige #';
@@ -2335,13 +2452,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get disputeStatusResolved => 'Résolu';
 
   @override
-  String get disputeOpenedBody => 'L\'étudiant a ouvert un litige pour une session';
+  String get disputeOpenedBody =>
+      'L\'étudiant a ouvert un litige pour une session';
 
   @override
   String get disputeResolvedBody => 'Le litige est résolu';
 
   @override
-  String get disputeDeadlineNote => 'Soumettez votre réponse et preuves sous 48 heures, sinon le litige sera tranché en faveur de l\'étudiant. Le montant est gelé jusqu\'à la décision.';
+  String get disputeDeadlineNote =>
+      'Soumettez votre réponse et preuves sous 48 heures, sinon le litige sera tranché en faveur de l\'étudiant. Le montant est gelé jusqu\'à la décision.';
 
   @override
   String get disputeReasonLabel => 'Motif du litige';
@@ -2362,7 +2481,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get disputeSentResponseTitle => 'Votre réponse envoyée';
 
   @override
-  String get disputeResponseHint => 'Écrivez votre réponse et expliquez ce qui s\'est passé de votre côté…';
+  String get disputeResponseHint =>
+      'Écrivez votre réponse et expliquez ce qui s\'est passé de votre côté…';
 
   @override
   String disputeEvidenceCount(int count) {
@@ -2376,7 +2496,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get disputeAdminDecisionLabel => 'La décision finale revient à';
 
   @override
-  String get disputeAdminDecisionValue => 'L\'administration — après avoir entendu les deux parties';
+  String get disputeAdminDecisionValue =>
+      'L\'administration — après avoir entendu les deux parties';
 
   @override
   String get disputeAttachBtn => 'Joindre une preuve';
@@ -2390,10 +2511,12 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get disputeErrEmptyResponse => 'Veuillez d\'abord écrire votre réponse';
+  String get disputeErrEmptyResponse =>
+      'Veuillez d\'abord écrire votre réponse';
 
   @override
-  String get disputeResponseSent => 'Votre réponse a été envoyée — l\'administration va l\'examiner';
+  String get disputeResponseSent =>
+      'Votre réponse a été envoyée — l\'administration va l\'examiner';
 
   @override
   String disputeLoadErr(String error) {
@@ -2415,7 +2538,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get availEndTime => 'Heure de fin';
 
   @override
-  String get availErrEndBeforeStart => 'L\'heure de fin doit être après l\'heure de début';
+  String get availErrEndBeforeStart =>
+      'L\'heure de fin doit être après l\'heure de début';
 
   @override
   String availErrGeneral(String error) {
@@ -2423,7 +2547,8 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get availInfoText => 'Définissez les jours et heures où vous êtes disponible. Les étudiants pourront réserver des sessions pendant ces créneaux.';
+  String get availInfoText =>
+      'Définissez les jours et heures où vous êtes disponible. Les étudiants pourront réserver des sessions pendant ces créneaux.';
 
   @override
   String get availAddSlotBtn => 'Ajouter un créneau';
@@ -2483,7 +2608,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get onboardingWelcomeTitle => 'Bienvenue en tant que professeur';
 
   @override
-  String get onboardingWelcomeBody => 'Complétez votre profil pour commencer à recevoir des étudiants. L\'équipe examinera votre demande dans les 24 heures.';
+  String get onboardingWelcomeBody =>
+      'Complétez votre profil pour commencer à recevoir des étudiants. L\'équipe examinera votre demande dans les 24 heures.';
 
   @override
   String get onboardingErrNoSubject => 'Choisissez au moins une matière';
@@ -2500,7 +2626,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get onboardingBioLabel => 'À propos de vous';
 
   @override
-  String get onboardingBioHint => 'Décrivez votre expérience et votre méthode d\'enseignement…';
+  String get onboardingBioHint =>
+      'Décrivez votre expérience et votre méthode d\'enseignement…';
 
   @override
   String get onboardingBioTooShort => 'Écrivez au moins 20 caractères';
@@ -2529,7 +2656,8 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get onboardingInfoNote => 'Après l\'envoi, l\'équipe vérifiera vos données et activera votre compte dans les 24 heures.';
+  String get onboardingInfoNote =>
+      'Après l\'envoi, l\'équipe vérifiera vos données et activera votre compte dans les 24 heures.';
 
   @override
   String get onboardingSubmitBtn => 'Envoyer la demande pour examen';
@@ -2541,13 +2669,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get profileDeleteAccount => 'Supprimer le compte';
 
   @override
-  String get profileDeleteAccountBody => 'Cette action est irréversible.\nToutes vos données seront définitivement supprimées.';
+  String get profileDeleteAccountBody =>
+      'Cette action est irréversible.\nToutes vos données seront définitivement supprimées.';
 
   @override
   String get profileDeleteBtn => 'Supprimer';
 
   @override
-  String get profileDeleteConfirmTitle => 'Confirmation de suppression définitive';
+  String get profileDeleteConfirmTitle =>
+      'Confirmation de suppression définitive';
 
   @override
   String profileDeleteConfirmBody(String phrase) {
@@ -2566,7 +2696,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get profileDeleteAccountLink => 'Supprimer définitivement le compte';
 
   @override
-  String get profileLogoutConfirmBody => 'Êtes-vous sûr de vouloir vous déconnecter ?';
+  String get profileLogoutConfirmBody =>
+      'Êtes-vous sûr de vouloir vous déconnecter ?';
 
   @override
   String get profileLogoutConfirmYes => 'Quitter';
@@ -2601,7 +2732,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get teacherOnboardingMenuItem => 'Vérification du compte';
 
   @override
-  String get teacherEditTeachingInfo => 'Infos d\'enseignement (matières et tarif)';
+  String get teacherEditTeachingInfo =>
+      'Infos d\'enseignement (matières et tarif)';
 
   @override
   String get teacherMenuEarnings => 'Historique des revenus';
@@ -2616,10 +2748,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get profileMenuTerms => 'Conditions d\'utilisation';
 
   @override
-  String get teacherCompleteProfile => 'Complétez la vérification de votre compte';
+  String get teacherCompleteProfile =>
+      'Complétez la vérification de votre compte';
 
   @override
-  String get teacherCompleteProfileHint => 'Ajoutez vos informations pour recevoir des étudiants';
+  String get teacherCompleteProfileHint =>
+      'Ajoutez vos informations pour recevoir des étudiants';
 
   @override
   String get teacherBadgeRequired => 'Requis';
@@ -2668,37 +2802,43 @@ class AppLocalizationsFr extends AppLocalizations {
   String get actionConfirmRequest => 'Confirmer la demande';
 
   @override
-  String get sessionRefundPendingMsg => 'Remboursement demandé — en attente de traitement.';
+  String get sessionRefundPendingMsg =>
+      'Remboursement demandé — en attente de traitement.';
 
   @override
   String get dialogRefundTitle => 'Demande de remboursement';
 
   @override
-  String get dialogRefundContent => 'Votre demande sera envoyée à l\'administration.\n\nVous ne pourrez plus reprogrammer après cette demande.';
+  String get dialogRefundContent =>
+      'Votre demande sera envoyée à l\'administration.\n\nVous ne pourrez plus reprogrammer après cette demande.';
 
   @override
   String get cancelledNoPaymentTitle => 'Annulée — délai expiré';
 
   @override
-  String get cancelledNoPaymentBody => 'La preuve de paiement n\'a pas été envoyée dans le délai imparti, la session a été annulée automatiquement.';
+  String get cancelledNoPaymentBody =>
+      'La preuve de paiement n\'a pas été envoyée dans le délai imparti, la session a été annulée automatiquement.';
 
   @override
   String get cancelledFakeProofTitle => 'Annulée — preuve falsifiée';
 
   @override
-  String get cancelledFakeProofBody => 'La preuve de paiement a été rejetée car incorrecte et le délai de correction est expiré.';
+  String get cancelledFakeProofBody =>
+      'La preuve de paiement a été rejetée car incorrecte et le délai de correction est expiré.';
 
   @override
   String get cancelledInsufficientTitle => 'Annulée — montant insuffisant';
 
   @override
-  String get cancelledInsufficientBody => 'Le montant était incomplet et le délai a expiré. Le montant payé vous sera remboursé.';
+  String get cancelledInsufficientBody =>
+      'Le montant était incomplet et le délai a expiré. Le montant payé vous sera remboursé.';
 
   @override
   String get cancelledNoShowRefundTitle => 'Annulée — remboursement';
 
   @override
-  String get cancelledNoShowRefundBody => 'Le professeur était absent et vous avez demandé un remboursement. Le montant vous sera transféré.';
+  String get cancelledNoShowRefundBody =>
+      'Le professeur était absent et vous avez demandé un remboursement. Le montant vous sera transféré.';
 
   @override
   String get cancelledDefaultTitle => 'Session annulée';
@@ -2707,25 +2847,31 @@ class AppLocalizationsFr extends AppLocalizations {
   String get cancelledDefaultBody => 'La session a été annulée.';
 
   @override
-  String get cancelledAutoDeposit => 'Le montant sera déposé automatiquement sur votre compte';
+  String get cancelledAutoDeposit =>
+      'Le montant sera déposé automatiquement sur votre compte';
 
   @override
   String get cancelledStudentCancelledTitle => 'Session annulée';
 
   @override
-  String get cancelledStudentCancelledBody => 'Vous avez annulé cette session avec succès.';
+  String get cancelledStudentCancelledBody =>
+      'Vous avez annulé cette session avec succès.';
 
   @override
-  String get cancelledTeacherTimeoutTitle => 'Annulée — sans réponse du professeur';
+  String get cancelledTeacherTimeoutTitle =>
+      'Annulée — sans réponse du professeur';
 
   @override
-  String get cancelledTeacherTimeoutBody => 'Le professeur n\'a pas répondu dans le délai imparti. Vous pouvez essayer un autre professeur.';
+  String get cancelledTeacherTimeoutBody =>
+      'Le professeur n\'a pas répondu dans le délai imparti. Vous pouvez essayer un autre professeur.';
 
   @override
-  String get cancelledPaymentTimeoutTitle => 'Annulée — délai de paiement expiré';
+  String get cancelledPaymentTimeoutTitle =>
+      'Annulée — délai de paiement expiré';
 
   @override
-  String get cancelledPaymentTimeoutBody => 'La preuve de paiement n\'a pas été envoyée dans le délai imparti, la session a été annulée automatiquement.';
+  String get cancelledPaymentTimeoutBody =>
+      'La preuve de paiement n\'a pas été envoyée dans le délai imparti, la session a été annulée automatiquement.';
 
   @override
   String get evtRequested => 'Demande envoyée';
@@ -2842,115 +2988,141 @@ class AppLocalizationsFr extends AppLocalizations {
   String get evtTRefundProcessed => 'Remboursement traité';
 
   @override
-  String get notifBodySessionRequested => 'Un nouvel étudiant souhaite réserver une session avec vous';
+  String get notifBodySessionRequested =>
+      'Un nouvel étudiant souhaite réserver une session avec vous';
 
   @override
-  String get notifBodyTeacherApproved => 'Vous pouvez maintenant effectuer le paiement';
+  String get notifBodyTeacherApproved =>
+      'Vous pouvez maintenant effectuer le paiement';
 
   @override
-  String get notifBodyTeacherRejected => 'Vous pouvez chercher un autre professeur';
+  String get notifBodyTeacherRejected =>
+      'Vous pouvez chercher un autre professeur';
 
   @override
-  String get notifBodyPaymentRequired => 'Envoyez la preuve de paiement pour confirmer la réservation';
+  String get notifBodyPaymentRequired =>
+      'Envoyez la preuve de paiement pour confirmer la réservation';
 
   @override
   String get notifBodyPaymentConfirmed => 'Votre réservation est confirmée !';
 
   @override
-  String get notifBodySessionConfirmed => 'Votre session est confirmée — préparez-vous !';
+  String get notifBodySessionConfirmed =>
+      'Votre session est confirmée — préparez-vous !';
 
   @override
   String get notifBodySessionStarting => 'La session commence très bientôt';
 
   @override
-  String get notifBodyTeacherNoShow => 'L\'absence du professeur a été enregistrée';
+  String get notifBodyTeacherNoShow =>
+      'L\'absence du professeur a été enregistrée';
 
   @override
-  String get notifBodyStudentNoShow => 'L\'absence de l\'étudiant a été enregistrée';
+  String get notifBodyStudentNoShow =>
+      'L\'absence de l\'étudiant a été enregistrée';
 
   @override
-  String get notifBodySessionCompleted => 'La session est terminée — évaluez le professeur';
+  String get notifBodySessionCompleted =>
+      'La session est terminée — évaluez le professeur';
 
   @override
-  String get notifBodyDisputeOpened => 'Un litige a été ouvert — l\'administration va examiner la situation';
+  String get notifBodyDisputeOpened =>
+      'Un litige a été ouvert — l\'administration va examiner la situation';
 
   @override
   String get notifBodyRescheduled => 'Votre session a été reprogrammée';
 
   @override
-  String get notifBodySubPending => 'Votre abonnement sera examiné et activé dans les 24h';
+  String get notifBodySubPending =>
+      'Votre abonnement sera examiné et activé dans les 24h';
 
   @override
-  String get notifBodySubActive => 'Vous pouvez maintenant accéder à tout le contenu';
+  String get notifBodySubActive =>
+      'Vous pouvez maintenant accéder à tout le contenu';
 
   @override
-  String get notifBodySubRejected => 'La preuve de paiement n\'a pas été acceptée — réessayez ou contactez le support';
+  String get notifBodySubRejected =>
+      'La preuve de paiement n\'a pas été acceptée — réessayez ou contactez le support';
 
   @override
-  String get notifTypeSessionApproved => 'Le professeur a accepté votre demande 🎉';
+  String get notifTypeSessionApproved =>
+      'Le professeur a accepté votre demande 🎉';
 
   @override
-  String get notifBodySessionApproved => 'Envoyez votre preuve de paiement pour confirmer la réservation';
+  String get notifBodySessionApproved =>
+      'Envoyez votre preuve de paiement pour confirmer la réservation';
 
   @override
   String get notifTypePaymentRejected => 'Preuve de paiement refusée';
 
   @override
-  String get notifBodyPaymentRejected => 'Renvoyez une preuve de paiement valide';
+  String get notifBodyPaymentRejected =>
+      'Renvoyez une preuve de paiement valide';
 
   @override
   String get notifTypeDisputeResolved => 'Litige résolu ✅';
 
   @override
-  String get notifBodyDisputeResolved => 'Le litige a été résolu en votre faveur';
+  String get notifBodyDisputeResolved =>
+      'Le litige a été résolu en votre faveur';
 
   @override
   String get notifTypeRefundProcessed => 'Remboursement traité ✅';
 
   @override
-  String get notifBodyRefundProcessed => 'Le montant vous sera transféré prochainement';
+  String get notifBodyRefundProcessed =>
+      'Le montant vous sera transféré prochainement';
 
   @override
-  String get notifTypeSubscriptionRefunded => 'Remboursement de votre abonnement 💰';
+  String get notifTypeSubscriptionRefunded =>
+      'Remboursement de votre abonnement 💰';
 
   @override
-  String get notifBodySubscriptionRefunded => 'Votre abonnement a été refusé et vous serez remboursé prochainement';
+  String get notifBodySubscriptionRefunded =>
+      'Votre abonnement a été refusé et vous serez remboursé prochainement';
 
   @override
-  String get notifTypeTeacherAccountApproved => 'Félicitations ! Compte approuvé 🎉';
+  String get notifTypeTeacherAccountApproved =>
+      'Félicitations ! Compte approuvé 🎉';
 
   @override
-  String get notifBodyTeacherAccountApproved => 'Vous pouvez désormais recevoir des demandes de sessions d\'étudiants';
+  String get notifBodyTeacherAccountApproved =>
+      'Vous pouvez désormais recevoir des demandes de sessions d\'étudiants';
 
   @override
   String get notifTypeTeacherAccountRejected => 'Demande non acceptée';
 
   @override
-  String get notifBodyTeacherAccountRejected => 'Votre demande n\'a pas pu être acceptée. Contactez-nous pour plus d\'informations';
+  String get notifBodyTeacherAccountRejected =>
+      'Votre demande n\'a pas pu être acceptée. Contactez-nous pour plus d\'informations';
 
   @override
   String get notifTypeTeacherRevoked => 'Compte suspendu';
 
   @override
-  String get notifBodyTeacherRevoked => 'Votre compte a été suspendu — contactez l\'administration';
+  String get notifBodyTeacherRevoked =>
+      'Votre compte a été suspendu — contactez l\'administration';
 
   @override
   String get notifTypeNewCourse => 'Nouveau cours disponible 📖';
 
   @override
-  String get notifBodyNewCourse => 'Un nouveau cours a été publié — découvrez-le !';
+  String get notifBodyNewCourse =>
+      'Un nouveau cours a été publié — découvrez-le !';
 
   @override
   String get notifTypeNewPackage => 'Nouveau forfait disponible 🎁';
 
   @override
-  String get notifBodyNewPackage => 'Un nouveau forfait a été ajouté — consultez-le !';
+  String get notifBodyNewPackage =>
+      'Un nouveau forfait a été ajouté — consultez-le !';
 
   @override
   String get notifTypeNewTeacher => 'Nouveau professeur 🎓';
 
   @override
-  String get notifBodyNewTeacher => 'Un nouveau professeur a rejoint la plateforme !';
+  String get notifBodyNewTeacher =>
+      'Un nouveau professeur a rejoint la plateforme !';
 
   @override
   String get notifTypeSessionCancelled => 'Session annulée';
@@ -2959,13 +3131,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get notifTypeAutoCancelled => 'Délai de paiement expiré';
 
   @override
-  String get notifBodyAutoCancelled => 'Votre demande a été annulée automatiquement — délai de paiement dépassé';
+  String get notifBodyAutoCancelled =>
+      'Votre demande a été annulée automatiquement — délai de paiement dépassé';
 
   @override
-  String get subRejectedFakeProofNote => 'Preuve de paiement incorrecte — veuillez vous réabonner avec une vraie preuve de virement';
+  String get subRejectedFakeProofNote =>
+      'Preuve de paiement incorrecte — veuillez vous réabonner avec une vraie preuve de virement';
 
   @override
-  String get subRejectedIncompleteAmountNote => 'Montant incomplet — vous serez remboursé automatiquement';
+  String get subRejectedIncompleteAmountNote =>
+      'Montant incomplet — vous serez remboursé automatiquement';
 
   @override
   String get paymentIncompleteLabel => 'Montant incomplet';
@@ -2974,19 +3149,24 @@ class AppLocalizationsFr extends AppLocalizations {
   String get subCancelledNoPaymentTitle => 'Abonnement annulé — délai expiré';
 
   @override
-  String get subCancelledNoPaymentBody => 'La preuve de paiement n\'a pas été envoyée dans le délai imparti, l\'abonnement a été annulé automatiquement.';
+  String get subCancelledNoPaymentBody =>
+      'La preuve de paiement n\'a pas été envoyée dans le délai imparti, l\'abonnement a été annulé automatiquement.';
 
   @override
-  String get subCancelledFakeProofTitle => 'Abonnement annulé — preuve incorrecte';
+  String get subCancelledFakeProofTitle =>
+      'Abonnement annulé — preuve incorrecte';
 
   @override
-  String get subCancelledFakeProofBody => 'La preuve de paiement a été rejetée car incorrecte et le délai de correction est expiré.';
+  String get subCancelledFakeProofBody =>
+      'La preuve de paiement a été rejetée car incorrecte et le délai de correction est expiré.';
 
   @override
-  String get subCancelledInsufficientTitle => 'Abonnement annulé — montant insuffisant';
+  String get subCancelledInsufficientTitle =>
+      'Abonnement annulé — montant insuffisant';
 
   @override
-  String get subCancelledInsufficientBody => 'Le montant était incomplet et le délai a expiré. Le montant payé vous sera remboursé.';
+  String get subCancelledInsufficientBody =>
+      'Le montant était incomplet et le délai a expiré. Le montant payé vous sera remboursé.';
 
   @override
   String get subCancelledDefaultTitle => 'Abonnement annulé';
@@ -2995,7 +3175,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get subCancelledDefaultBody => 'Votre abonnement a été annulé.';
 
   @override
-  String get subCancelledRefundNote => 'Le montant sera déposé automatiquement sur votre compte';
+  String get subCancelledRefundNote =>
+      'Le montant sera déposé automatiquement sur votre compte';
 
   @override
   String get roomChatLog => 'Historique de la session';
@@ -3013,13 +3194,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get roomLeaveTeacherTitle => 'Quitter la session ?';
 
   @override
-  String get roomLeaveTeacherBody => 'La session continuera et se terminera automatiquement à la fin du temps imparti.';
+  String get roomLeaveTeacherBody =>
+      'La session continuera et se terminera automatiquement à la fin du temps imparti.';
 
   @override
   String get roomLeaveStudentTitle => 'Quitter la session';
 
   @override
-  String get roomLeaveStudentBody => 'Vous pouvez revenir à tout moment tant que la session est active.';
+  String get roomLeaveStudentBody =>
+      'Vous pouvez revenir à tout moment tant que la session est active.';
 
   @override
   String get roomWarn5Min => 'Il reste 5 minutes avant la fin de la session';

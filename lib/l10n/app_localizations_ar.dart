@@ -159,10 +159,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get authValidName => 'أدخل اسمك الكامل';
 
   @override
-  String get authErrInvalidCredentials => 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+  String get authErrInvalidCredentials =>
+      'البريد الإلكتروني أو كلمة المرور غير صحيحة';
 
   @override
-  String get authErrEmailNotConfirmed => 'لم يتم تأكيد البريد الإلكتروني، تحقق من صندوق الوارد';
+  String get authErrEmailNotConfirmed =>
+      'لم يتم تأكيد البريد الإلكتروني، تحقق من صندوق الوارد';
 
   @override
   String get authErrUserNotFound => 'لا يوجد حساب بهذا البريد الإلكتروني';
@@ -180,7 +182,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get authErrGeneral => 'حدث خطأ، حاول مرة أخرى';
 
   @override
-  String get authErrEmailExists => 'هذا البريد الإلكتروني مسجّل مسبقاً، سجّل دخولك بدلاً من ذلك';
+  String get authErrEmailExists =>
+      'هذا البريد الإلكتروني مسجّل مسبقاً، سجّل دخولك بدلاً من ذلك';
 
   @override
   String get authErrEmailFormat => 'صيغة البريد الإلكتروني غير صحيحة';
@@ -195,13 +198,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get authAccountDisabledTitle => 'الحساب معطّل';
 
   @override
-  String get authAccountDisabled => 'تم تعطيل حسابك من قِبل الإدارة. للاستفسار تواصل مع:';
+  String get authAccountDisabled =>
+      'تم تعطيل حسابك من قِبل الإدارة. للاستفسار تواصل مع:';
 
   @override
   String get authDeviceMismatchTitle => 'الحساب مرتبط بجهاز آخر';
 
   @override
-  String get authDeviceMismatch => 'حسابك مرتبط بجهاز آخر. إذا فقدت هاتفك القديم أو بدّلته تواصل مع الإدارة لإعادة الربط:';
+  String get authDeviceMismatch =>
+      'حسابك مرتبط بجهاز آخر. إذا فقدت هاتفك القديم أو بدّلته تواصل مع الإدارة لإعادة الربط:';
 
   @override
   String get homeTitle => 'اكتشف الأساتذة';
@@ -475,10 +480,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get paymentProofSentTitle => 'تم إرسال إثبات الدفع';
 
   @override
-  String get paymentProofSentBody => 'الإدارة ستراجع إثباتك خلال ساعة وتؤكد الحجز.';
+  String get paymentProofSentBody =>
+      'الإدارة ستراجع إثباتك خلال ساعة وتؤكد الحجز.';
 
   @override
-  String get paymentAwaitingInstruction => 'أرسل المبلغ عبر إحدى وسائل الدفع أدناه ثم ارفع صورة إثبات الدفع.';
+  String get paymentAwaitingInstruction =>
+      'أرسل المبلغ عبر إحدى وسائل الدفع أدناه ثم ارفع صورة إثبات الدفع.';
 
   @override
   String get paymentAmountLabel => 'المبلغ المطلوب';
@@ -502,7 +509,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get paymentProofHintSub => 'PNG · JPG حتى 5MB';
 
   @override
-  String get paymentWarning => 'لا تدفع إلا للأرقام المعروضة أعلاه. لا تبعث المبلغ لأي رقم آخر.';
+  String get paymentWarning =>
+      'لا تدفع إلا للأرقام المعروضة أعلاه. لا تبعث المبلغ لأي رقم آخر.';
 
   @override
   String get paymentSubmitBtn => 'أرسلت الدفع — تأكيد';
@@ -511,13 +519,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get paymentErrNoProof => 'ارفع صورة إثبات الدفع أولاً';
 
   @override
-  String get paymentRejectedBanner => 'رُفض إثبات الدفع — أعد رفع صورة واضحة للتحويل';
+  String get paymentRejectedBanner =>
+      'رُفض إثبات الدفع — أعد رفع صورة واضحة للتحويل';
 
   @override
   String get paymentDeadlineExpired => 'انتهت مهلة الدفع';
 
   @override
-  String get paymentDeadlineExpiredAction => 'انتهت مهلة إتمام الدفع — لا يمكن المتابعة. تواصل مع الدعم إن كان لديك استفسار.';
+  String get paymentDeadlineExpiredAction =>
+      'انتهت مهلة إتمام الدفع — لا يمكن المتابعة. تواصل مع الدعم إن كان لديك استفسار.';
 
   @override
   String get liveConnectError => 'تعذّر الاتصال';
@@ -550,7 +560,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get liveNoShowTitle => 'الإبلاغ عن غياب الأستاذ';
 
   @override
-  String get liveNoShowContent => 'سيُسجَّل غياب الأستاذ ويمكنك إعادة الجدولة بنفس الدفعة. هل تريد المتابعة؟';
+  String get liveNoShowContent =>
+      'سيُسجَّل غياب الأستاذ ويمكنك إعادة الجدولة بنفس الدفعة. هل تريد المتابعة؟';
 
   @override
   String get liveConfirmNoShow => 'تأكيد الغياب';
@@ -646,7 +657,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get teacherRejectReasonHint => 'أدخل سبب الرفض';
 
   @override
-  String get teacherRejectReasonRequired => 'مطلوب — سيُرسَل للطالب لمساعدته على الفهم';
+  String get teacherRejectReasonRequired =>
+      'مطلوب — سيُرسَل للطالب لمساعدته على الفهم';
 
   @override
   String get teacherNetEarning => 'صافي ربحك';
@@ -669,7 +681,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get teacherRequestRejected => 'تم رفض هذا الطلب';
 
   @override
-  String get teacherRequestCancelledByStudent => 'تم إلغاء الجلسة من قِبل الطالب';
+  String get teacherRequestCancelledByStudent =>
+      'تم إلغاء الجلسة من قِبل الطالب';
 
   @override
   String get teacherSubjectLabel => 'المادة';
@@ -696,7 +709,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get teacherEarningsWithdraw => 'سحب الأرباح';
 
   @override
-  String get teacherEarningsWithdrawContact => 'للسحب تواصل مع الإدارة: 42740370';
+  String get teacherEarningsWithdrawContact =>
+      'للسحب تواصل مع الإدارة: 42740370';
 
   @override
   String get teacherEarningsWeek => 'هذا الأسبوع';
@@ -747,7 +761,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get teacherStatusNoShow => 'سُجِّل غيابك في هذه الجلسة';
 
   @override
-  String get teacherStatusStudentNoShow => 'لم يحضر الطالب. ستصلك أرباح الجلسة كاملةً وفق سياسة المنصة.';
+  String get teacherStatusStudentNoShow =>
+      'لم يحضر الطالب. ستصلك أرباح الجلسة كاملةً وفق سياسة المنصة.';
 
   @override
   String get teacherStatusDispute => 'هذه الجلسة قيد النزاع الإداري';
@@ -846,7 +861,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get complaintEmptyError => 'الرجاء كتابة رسالتك أولاً';
 
   @override
-  String get complaintSuccessMsg => 'تم إرسال رسالتك بنجاح، سيتم مراجعتها من قبل الإدارة';
+  String get complaintSuccessMsg =>
+      'تم إرسال رسالتك بنجاح، سيتم مراجعتها من قبل الإدارة';
 
   @override
   String get complaintHistoryTitle => 'رسائلي السابقة';
@@ -960,16 +976,20 @@ class AppLocalizationsAr extends AppLocalizations {
   String get paymentFakeProofLabel => 'إثبات الدفع مزيف — يرجى رفع إثبات حقيقي';
 
   @override
-  String get paymentFakeInstruction => 'يرجى رفع صورة إثبات دفع صحيحة خلال المهلة المحددة.';
+  String get paymentFakeInstruction =>
+      'يرجى رفع صورة إثبات دفع صحيحة خلال المهلة المحددة.';
 
   @override
-  String get paymentAmountInstruction => 'يرجى تسوية المبلغ كاملاً وإعادة رفع الإثبات خلال المهلة.';
+  String get paymentAmountInstruction =>
+      'يرجى تسوية المبلغ كاملاً وإعادة رفع الإثبات خلال المهلة.';
 
   @override
-  String get paymentDeadlineExpiredMsg => 'انتهت المهلة — سيُلغى الطلب تلقائياً';
+  String get paymentDeadlineExpiredMsg =>
+      'انتهت المهلة — سيُلغى الطلب تلقائياً';
 
   @override
-  String get paymentDeadlineContactSupport => 'سيُلغى الطلب تلقائياً — تواصل مع الدعم إن احتجت مساعدة';
+  String get paymentDeadlineContactSupport =>
+      'سيُلغى الطلب تلقائياً — تواصل مع الدعم إن احتجت مساعدة';
 
   @override
   String paymentRemainingTime(String time) {
@@ -988,13 +1008,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get paymentConfirmedTitle => 'جارٍ إعداد الحجز…';
 
   @override
-  String get paymentConfirmedInfo => 'تم تأكيد دفعتك. سيتم تثبيت موعد جلستك تلقائياً خلال لحظات وستصل إشعاراً بذلك.';
+  String get paymentConfirmedInfo =>
+      'تم تأكيد دفعتك. سيتم تثبيت موعد جلستك تلقائياً خلال لحظات وستصل إشعاراً بذلك.';
 
   @override
   String get actionCancelFinal => 'إلغاء الجلسة نهائياً';
 
   @override
-  String get dialogCancelConfirmText2 => 'هل أنت متأكد؟ سيتم إلغاء الطلب نهائياً.';
+  String get dialogCancelConfirmText2 =>
+      'هل أنت متأكد؟ سيتم إلغاء الطلب نهائياً.';
 
   @override
   String get dialogBack2 => 'تراجع';
@@ -1009,7 +1031,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get sessionRatingThanks => 'شكراً على تقييمك للأستاذ.';
 
   @override
-  String get sessionTeacherRejectedInfo => 'رفض الأستاذ الطلب. يمكنك البحث عن أستاذ آخر.';
+  String get sessionTeacherRejectedInfo =>
+      'رفض الأستاذ الطلب. يمكنك البحث عن أستاذ آخر.';
 
   @override
   String get sessionReturnSearch => 'العودة للبحث';
@@ -1027,13 +1050,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get sessionDisputeTitle => 'نزاع مفتوح';
 
   @override
-  String get sessionDisputeInfo => 'فتح الأستاذ نزاعاً على هذه الجلسة. الإدارة تراجع الحالة وستتواصل معك في أقرب وقت.';
+  String get sessionDisputeInfo =>
+      'فتح الأستاذ نزاعاً على هذه الجلسة. الإدارة تراجع الحالة وستتواصل معك في أقرب وقت.';
 
   @override
-  String get sessionDisputeNextStep => 'الخطوة التالية: انتظر قرار الإدارة — لا إجراء منك حالياً.';
+  String get sessionDisputeNextStep =>
+      'الخطوة التالية: انتظر قرار الإدارة — لا إجراء منك حالياً.';
 
   @override
-  String get sessionTeacherNoShowInfo => 'تم رصد غياب الأستاذ. يمكنك إعادة الجدولة بنفس الدفعة.';
+  String get sessionTeacherNoShowInfo =>
+      'تم رصد غياب الأستاذ. يمكنك إعادة الجدولة بنفس الدفعة.';
 
   @override
   String get sessionRescheduledSuccess => 'تمت إعادة الجدولة بنجاح';
@@ -1385,16 +1411,20 @@ class AppLocalizationsAr extends AppLocalizations {
   String get teacherSubAwaitingPayment => 'في انتظار أن يُكمل الطالب الدفع.';
 
   @override
-  String get teacherSubPaymentSubmitted => 'الإدارة تراجع إثبات الدفع. لا إجراء منك.';
+  String get teacherSubPaymentSubmitted =>
+      'الإدارة تراجع إثبات الدفع. لا إجراء منك.';
 
   @override
-  String get teacherSubPaymentConfirmed => 'تأكّد الدفع. الجلسة ستُفتح عند موعدها.';
+  String get teacherSubPaymentConfirmed =>
+      'تأكّد الدفع. الجلسة ستُفتح عند موعدها.';
 
   @override
-  String get teacherPaymentConfirmedWaiting => 'تأكّد الدفع — يجاري النظام إعداد الحجز تلقائياً. ستصل إشعاراً بمجرد تأكيد الجلسة.';
+  String get teacherPaymentConfirmedWaiting =>
+      'تأكّد الدفع — يجاري النظام إعداد الحجز تلقائياً. ستصل إشعاراً بمجرد تأكيد الجلسة.';
 
   @override
-  String get teacherSubConfirmedBooking => 'الحجز مؤكّد — جلستك جاهزة. ابدأ عند الموعد.';
+  String get teacherSubConfirmedBooking =>
+      'الحجز مؤكّد — جلستك جاهزة. ابدأ عند الموعد.';
 
   @override
   String get teacherSubActiveSession => 'الجلسة جارية الآن — ادخل للانضمام.';
@@ -1433,7 +1463,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get teacherMarkNoShow => 'تسجيل غياب الطالب';
 
   @override
-  String get teacherStudentAlreadyJoined => 'تنبيه: الطالب انضم للجلسة مسبقاً. تأكّد من عدم وجود مشكلة تقنية قبل تسجيل الغياب.';
+  String get teacherStudentAlreadyJoined =>
+      'تنبيه: الطالب انضم للجلسة مسبقاً. تأكّد من عدم وجود مشكلة تقنية قبل تسجيل الغياب.';
 
   @override
   String get teacherStartSession => 'بدء الجلسة الآن';
@@ -1445,7 +1476,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get teacherOpenDispute => 'فتح نزاع';
 
   @override
-  String get teacherDisputeDialogContent => 'الدفع مؤكّد — لا يمكن الإلغاء المباشر.\nسيُفتح نزاع وتراجعه الإدارة.';
+  String get teacherDisputeDialogContent =>
+      'الدفع مؤكّد — لا يمكن الإلغاء المباشر.\nسيُفتح نزاع وتراجعه الإدارة.';
 
   @override
   String get teacherCancelSessionContent => 'هل أنت متأكد من إلغاء هذه الجلسة؟';
@@ -1508,7 +1540,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileDeleteTitle => 'حذف الحساب';
 
   @override
-  String get profileDeleteContent => 'هذا الإجراء لا يمكن التراجع عنه.\nسيتم حذف جميع بياناتك بشكل نهائي.';
+  String get profileDeleteContent =>
+      'هذا الإجراء لا يمكن التراجع عنه.\nسيتم حذف جميع بياناتك بشكل نهائي.';
 
   @override
   String get profileDeleteFinalTitle => 'تأكيد الحذف النهائي';
@@ -1555,7 +1588,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get rescheduleTitle => 'إعادة الجدولة';
 
   @override
-  String get rescheduleNoShowBanner => 'الأستاذ لم يحضر — سيتم إنشاء جلسة جديدة مؤكّدة مباشرةً بدون دفع إضافي.';
+  String get rescheduleNoShowBanner =>
+      'الأستاذ لم يحضر — سيتم إنشاء جلسة جديدة مؤكّدة مباشرةً بدون دفع إضافي.';
 
   @override
   String rescheduleSamePriceBanner(String amount) {
@@ -1572,7 +1606,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get rescheduleErrSelectTime => 'اختر اليوم والوقت';
 
   @override
-  String get rescheduleErrDoubleBooked => 'هذا الوقت محجوز مسبقاً، اختر وقتاً آخر';
+  String get rescheduleErrDoubleBooked =>
+      'هذا الوقت محجوز مسبقاً، اختر وقتاً آخر';
 
   @override
   String get rescheduleSubmitBtn => 'إرسال طلب إعادة الجدولة';
@@ -1607,31 +1642,37 @@ class AppLocalizationsAr extends AppLocalizations {
   String get faqQ1 => 'كيف أحجز جلسة مع أستاذ؟';
 
   @override
-  String get faqA1 => 'ابحث عن الأستاذ المناسب في الصفحة الرئيسية، اضغط على اسمه لعرض ملفه الشخصي، ثم اضغط \"احجز جلسة\" وحدد التاريخ والوقت المناسب.';
+  String get faqA1 =>
+      'ابحث عن الأستاذ المناسب في الصفحة الرئيسية، اضغط على اسمه لعرض ملفه الشخصي، ثم اضغط \"احجز جلسة\" وحدد التاريخ والوقت المناسب.';
 
   @override
   String get faqQ2 => 'ما هي طرق الدفع المتاحة؟';
 
   @override
-  String get faqA2 => 'يمكنك الدفع عبر التحويل المصرفي. بعد إرسال الطلب يُرسل لك رقم الحساب ويُطلب منك رفع إيصال الدفع.';
+  String get faqA2 =>
+      'يمكنك الدفع عبر التحويل المصرفي. بعد إرسال الطلب يُرسل لك رقم الحساب ويُطلب منك رفع إيصال الدفع.';
 
   @override
   String get faqQ3 => 'ماذا يحدث إذا تغيّب الأستاذ؟';
 
   @override
-  String get faqA3 => 'في حال واجهتَ أي مشكلة مع الأستاذ يُرجى التواصل معنا فوراً عبر الهاتف أو البريد الإلكتروني وسنعمل على حلّها.';
+  String get faqA3 =>
+      'في حال واجهتَ أي مشكلة مع الأستاذ يُرجى التواصل معنا فوراً عبر الهاتف أو البريد الإلكتروني وسنعمل على حلّها.';
 
   @override
   String get faqQ4 => 'كيف أُقيّم الأستاذ؟';
 
   @override
-  String get faqA4 => 'بعد انتهاء الجلسة ستظهر لك نافذة لتقييم تجربتك مع الأستاذ من 1 إلى 5 نجوم مع إمكانية كتابة تعليق.';
+  String get faqA4 =>
+      'بعد انتهاء الجلسة ستظهر لك نافذة لتقييم تجربتك مع الأستاذ من 1 إلى 5 نجوم مع إمكانية كتابة تعليق.';
 
   @override
-  String get privacyPolicyContent => '# سياسة الخصوصية\n\nآخر تحديث: يناير 2025\n\n## مقدمة\n\nنحن في حصتي نلتزم بحماية خصوصيتك. توضّح هذه السياسة كيفية جمع معلوماتك واستخدامها وحمايتها عند استخدامك لتطبيقنا.\n\n## المعلومات التي نجمعها\n\nنجمع المعلومات التي تقدّمها مباشرةً عند إنشاء حساب، مثل: الاسم، عنوان البريد الإلكتروني، رقم الهاتف، وصورة الملف الشخصي. كما نجمع بيانات استخدام التطبيق مثل الجلسات المحجوزة والمدفوعات.\n\n## كيف نستخدم معلوماتك\n\nنستخدم بياناتك لتشغيل الخدمة وتحسينها، وتيسير التواصل بين الطلاب والأساتذة، ومعالجة المدفوعات، وإرسال إشعارات تتعلق بالجلسات.\n\n## مشاركة المعلومات\n\nلا نبيع بياناتك لأطراف خارجية. قد نشارك معلوماتك مع مزودي الخدمة الضروريين لتشغيل المنصة (مثل خدمات الدفع) فقط وفق اتفاقيات سرية صارمة.\n\n## حماية البيانات\n\nنستخدم تشفيراً من الدرجة الأولى لحماية بياناتك. يُخزَّن كل شيء بشكل آمن على خوادم معتمدة.\n\n## حقوقك\n\nيحق لك في أي وقت: الاطلاع على بياناتك، تصحيحها، أو طلب حذفها. تواصل معنا عبر: ahmedelkentawi@gmail.com\n\n## التواصل معنا\n\nلأي استفسار حول سياسة الخصوصية تواصل معنا عبر رقم الدعم أو البريد الإلكتروني الموضّحَين أدناه.';
+  String get privacyPolicyContent =>
+      '# سياسة الخصوصية\n\nآخر تحديث: يناير 2025\n\n## مقدمة\n\nنحن في حصتي نلتزم بحماية خصوصيتك. توضّح هذه السياسة كيفية جمع معلوماتك واستخدامها وحمايتها عند استخدامك لتطبيقنا.\n\n## المعلومات التي نجمعها\n\nنجمع المعلومات التي تقدّمها مباشرةً عند إنشاء حساب، مثل: الاسم، عنوان البريد الإلكتروني، رقم الهاتف، وصورة الملف الشخصي. كما نجمع بيانات استخدام التطبيق مثل الجلسات المحجوزة والمدفوعات.\n\n## كيف نستخدم معلوماتك\n\nنستخدم بياناتك لتشغيل الخدمة وتحسينها، وتيسير التواصل بين الطلاب والأساتذة، ومعالجة المدفوعات، وإرسال إشعارات تتعلق بالجلسات.\n\n## مشاركة المعلومات\n\nلا نبيع بياناتك لأطراف خارجية. قد نشارك معلوماتك مع مزودي الخدمة الضروريين لتشغيل المنصة (مثل خدمات الدفع) فقط وفق اتفاقيات سرية صارمة.\n\n## حماية البيانات\n\nنستخدم تشفيراً من الدرجة الأولى لحماية بياناتك. يُخزَّن كل شيء بشكل آمن على خوادم معتمدة.\n\n## حقوقك\n\nيحق لك في أي وقت: الاطلاع على بياناتك، تصحيحها، أو طلب حذفها. تواصل معنا عبر: ahmedelkentawi@gmail.com\n\n## التواصل معنا\n\nلأي استفسار حول سياسة الخصوصية تواصل معنا عبر رقم الدعم أو البريد الإلكتروني الموضّحَين أدناه.';
 
   @override
-  String get termsContent => '# شروط الاستخدام\n\nآخر تحديث: يناير 2025\n\n## قبول الشروط\n\nباستخدامك لتطبيق حصتي فإنك توافق على هذه الشروط كاملةً. إن لم توافق، يُرجى التوقف عن استخدام التطبيق.\n\n## الخدمة\n\nحصتي منصة تربط الطلاب بالأساتذة لحجز جلسات تعليمية خاصة. نحن وسيط ولسنا طرفاً في العقد بين الطالب والأستاذ.\n\n## حساب المستخدم\n\nأنت مسؤول عن الحفاظ على سرية بيانات دخولك. يجب أن تكون المعلومات المقدمة صحيحة وحديثة. يحق لنا تعليق الحسابات المخالفة للشروط.\n\n## الجلسات والمدفوعات\n\nتُعقد الجلسات وفق المواعيد المتفق عليها. يجب إتمام الدفع قبل تأكيد الجلسة. في حال الإلغاء قبل 24 ساعة يمكن استرداد المبلغ وفق سياسة الاسترداد.\n\n## سلوك المستخدم\n\nيُحظر استخدام التطبيق لأي غرض غير قانوني أو مسيء. يُحظر مشاركة محتوى الجلسات دون إذن. يُحظر انتحال شخصية الآخرين.\n\n## إخلاء المسؤولية\n\nنسعى لتقديم أفضل خدمة ممكنة، لكننا لا نضمن عدم الانقطاع. جودة التعليم تعتمد على الأستاذ وحصتي ليست مسؤولة عن النتائج التعليمية.\n\n## التعديلات\n\nنحتفظ بحق تعديل هذه الشروط في أي وقت. سيُبلَّغ المستخدمون بالتغييرات الجوهرية عبر الإشعارات داخل التطبيق.\n\n## التواصل معنا\n\nلأي استفسار تواصل معنا عبر رقم الدعم أو البريد الإلكتروني الموضّحَين أدناه.';
+  String get termsContent =>
+      '# شروط الاستخدام\n\nآخر تحديث: يناير 2025\n\n## قبول الشروط\n\nباستخدامك لتطبيق حصتي فإنك توافق على هذه الشروط كاملةً. إن لم توافق، يُرجى التوقف عن استخدام التطبيق.\n\n## الخدمة\n\nحصتي منصة تربط الطلاب بالأساتذة لحجز جلسات تعليمية خاصة. نحن وسيط ولسنا طرفاً في العقد بين الطالب والأستاذ.\n\n## حساب المستخدم\n\nأنت مسؤول عن الحفاظ على سرية بيانات دخولك. يجب أن تكون المعلومات المقدمة صحيحة وحديثة. يحق لنا تعليق الحسابات المخالفة للشروط.\n\n## الجلسات والمدفوعات\n\nتُعقد الجلسات وفق المواعيد المتفق عليها. يجب إتمام الدفع قبل تأكيد الجلسة. في حال الإلغاء قبل 24 ساعة يمكن استرداد المبلغ وفق سياسة الاسترداد.\n\n## سلوك المستخدم\n\nيُحظر استخدام التطبيق لأي غرض غير قانوني أو مسيء. يُحظر مشاركة محتوى الجلسات دون إذن. يُحظر انتحال شخصية الآخرين.\n\n## إخلاء المسؤولية\n\nنسعى لتقديم أفضل خدمة ممكنة، لكننا لا نضمن عدم الانقطاع. جودة التعليم تعتمد على الأستاذ وحصتي ليست مسؤولة عن النتائج التعليمية.\n\n## التعديلات\n\nنحتفظ بحق تعديل هذه الشروط في أي وقت. سيُبلَّغ المستخدمون بالتغييرات الجوهرية عبر الإشعارات داخل التطبيق.\n\n## التواصل معنا\n\nلأي استفسار تواصل معنا عبر رقم الدعم أو البريد الإلكتروني الموضّحَين أدناه.';
 
   @override
   String courseSubscribersCount(String n) {
@@ -1678,7 +1719,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get courseSubPendingTitle => 'طلب اشتراكك قيد المراجعة';
 
   @override
-  String get courseSubPendingBody => 'سيتم تفعيل اشتراكك خلال 24 ساعة بعد تأكيد الدفع من الإدارة.';
+  String get courseSubPendingBody =>
+      'سيتم تفعيل اشتراكك خلال 24 ساعة بعد تأكيد الدفع من الإدارة.';
 
   @override
   String get courseLessonLockedTitle => 'هذا الدرس للمشتركين فقط';
@@ -1720,10 +1762,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get lessonNoVideo => 'لا يوجد فيديو متاح لهذا الدرس';
 
   @override
-  String get lessonVideoLoadError => 'تعذّر تحميل الفيديو، تحقق من اتصالك بالإنترنت وحاول مرة أخرى';
+  String get lessonVideoLoadError =>
+      'تعذّر تحميل الفيديو، تحقق من اتصالك بالإنترنت وحاول مرة أخرى';
 
   @override
-  String get lessonVideoHint => 'شاهد الدرس كاملاً ثم اضغط \"تم الانتهاء\" لتسجيل تقدّمك';
+  String get lessonVideoHint =>
+      'شاهد الدرس كاملاً ثم اضغط \"تم الانتهاء\" لتسجيل تقدّمك';
 
   @override
   String get lessonFreePreview => 'هذا درس مجاني للمعاينة';
@@ -1759,7 +1803,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get requestSentHeadline => 'تم إرسال طلبك';
 
   @override
-  String get requestSentBody => 'سيراجع الأستاذ طلبك ويردّ عادةً خلال ساعتين. سنُعلمك فور الموافقة لتنتقل إلى الدفع.';
+  String get requestSentBody =>
+      'سيراجع الأستاذ طلبك ويردّ عادةً خلال ساعتين. سنُعلمك فور الموافقة لتنتقل إلى الدفع.';
 
   @override
   String get requestSentCancelBtn => 'إلغاء الطلب';
@@ -1768,7 +1813,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get requestSentTrackBtn => 'تتبّع الحالة';
 
   @override
-  String get requestSentCancelConfirm => 'هل أنت متأكد من رغبتك في إلغاء هذا الطلب؟';
+  String get requestSentCancelConfirm =>
+      'هل أنت متأكد من رغبتك في إلغاء هذا الطلب؟';
 
   @override
   String get requestSentCancelYes => 'نعم، إلغاء';
@@ -1783,7 +1829,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get paymentSubmittedHeadline => 'الإدارة تتحقق من دفعتك';
 
   @override
-  String get paymentSubmittedBody => 'استلمنا إثبات التحويل. يراجعه فريق الإدارة ويؤكّده عادةً خلال 30 دقيقة. سيتحوّل الحجز إلى «مؤكّد» تلقائياً.';
+  String get paymentSubmittedBody =>
+      'استلمنا إثبات التحويل. يراجعه فريق الإدارة ويؤكّده عادةً خلال 30 دقيقة. سيتحوّل الحجز إلى «مؤكّد» تلقائياً.';
 
   @override
   String get paymentMethodLabel => 'الوسيلة';
@@ -1896,7 +1943,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get subscriptionSubmitting => 'جاري الإرسال...';
 
   @override
-  String get subscriptionReviewNote => 'سيُراجَع إثبات الدفع من قِبل الإدارة خلال 24 ساعة';
+  String get subscriptionReviewNote =>
+      'سيُراجَع إثبات الدفع من قِبل الإدارة خلال 24 ساعة';
 
   @override
   String get subPendingActivatedTitle => 'تم تفعيل اشتراكك!';
@@ -1911,10 +1959,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get subPendingTitle => 'اشتراكك قيد المراجعة';
 
   @override
-  String get subPendingRejectedBody => 'تعذّر قبول إثبات الدفع. يرجى مراجعة الإدارة أو إعادة المحاولة بصورة صحيحة.';
+  String get subPendingRejectedBody =>
+      'تعذّر قبول إثبات الدفع. يرجى مراجعة الإدارة أو إعادة المحاولة بصورة صحيحة.';
 
   @override
-  String get subPendingPendingBody => 'تم استلام إثبات دفعك وسيتم تفعيل اشتراكك خلال 24 ساعة بعد مراجعة الإدارة.';
+  String get subPendingPendingBody =>
+      'تم استلام إثبات دفعك وسيتم تفعيل اشتراكك خلال 24 ساعة بعد مراجعة الإدارة.';
 
   @override
   String get subPendingStep1 => 'رُفع إثبات الدفع بنجاح';
@@ -1986,7 +2036,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get payHistRejectFake => 'الوصل مزيف — مرفوض نهائياً';
 
   @override
-  String get payHistRejectIncompleteRefund => 'المبلغ غير مكتمل — سيُسترد مبلغك';
+  String get payHistRejectIncompleteRefund =>
+      'المبلغ غير مكتمل — سيُسترد مبلغك';
 
   @override
   String get payHistRejectIncomplete => 'المبلغ غير مكتمل';
@@ -2048,7 +2099,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editProfileSaveBtn => 'حفظ التعديلات';
 
   @override
-  String get changePassErrTooShort => 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
+  String get changePassErrTooShort =>
+      'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
 
   @override
   String get changePassErrMismatch => 'كلمتا المرور غير متطابقتين';
@@ -2057,10 +2109,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get changePassSuccess => 'تم تغيير كلمة المرور بنجاح';
 
   @override
-  String get changePassErrFailed => 'فشل تغيير كلمة المرور — تأكد من اتصالك أو سجّل دخولك مجدداً';
+  String get changePassErrFailed =>
+      'فشل تغيير كلمة المرور — تأكد من اتصالك أو سجّل دخولك مجدداً';
 
   @override
-  String get changePassInfoBanner => 'ستحتاج إلى تسجيل الدخول مجدداً بعد تغيير كلمة المرور';
+  String get changePassInfoBanner =>
+      'ستحتاج إلى تسجيل الدخول مجدداً بعد تغيير كلمة المرور';
 
   @override
   String get changePassNewLabel => 'كلمة المرور الجديدة';
@@ -2078,7 +2132,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get authBackToLogin => 'العودة إلى تسجيل الدخول';
 
   @override
-  String get authSendOtpError => 'تعذّر إرسال رمز التحقق — تحقق من الاتصال وحاول مجدداً';
+  String get authSendOtpError =>
+      'تعذّر إرسال رمز التحقق — تحقق من الاتصال وحاول مجدداً';
 
   @override
   String get resetPassTitle => 'كلمة المرور الجديدة';
@@ -2101,7 +2156,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get resetPassSuccessTitle => 'تم تغيير كلمة المرور';
 
   @override
-  String get resetPassSuccessBody => 'يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة';
+  String get resetPassSuccessBody =>
+      'يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة';
 
   @override
   String get resetPassErrNotFound => 'رقم الهاتف غير مسجّل في التطبيق';
@@ -2128,7 +2184,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get roomErrSendFile => 'فشل إرسال الملف';
 
   @override
-  String get roomErrMicPermission => 'يرجى السماح للتطبيق بالوصول إلى الميكروفون';
+  String get roomErrMicPermission =>
+      'يرجى السماح للتطبيق بالوصول إلى الميكروفون';
 
   @override
   String get roomErrStartRecording => 'فشل بدء التسجيل';
@@ -2149,7 +2206,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get roomDeleteMessage => 'حذف الرسالة';
 
   @override
-  String get roomDeleteMessageConfirm => 'سيتم حذف هذه الرسالة للجميع. هل تريد المتابعة؟';
+  String get roomDeleteMessageConfirm =>
+      'سيتم حذف هذه الرسالة للجميع. هل تريد المتابعة؟';
 
   @override
   String get roomErrDeleteMessage => 'تعذّر حذف الرسالة';
@@ -2227,7 +2285,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get reqSessionTotal => 'الإجمالي المتوقع';
 
   @override
-  String get reqSessionPaymentNote => 'الدفع يبدأ بعد موافقة الأستاذ. لن يُطلب منك الدفع الآن.';
+  String get reqSessionPaymentNote =>
+      'الدفع يبدأ بعد موافقة الأستاذ. لن يُطلب منك الدفع الآن.';
 
   @override
   String get reqSessionSubmit => 'إرسال الطلب';
@@ -2275,7 +2334,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get liveSessionEndTitle => 'إنهاء الجلسة؟';
 
   @override
-  String get liveSessionEndBody => 'هل أنت متأكد من إنهاء الجلسة؟ سيُعلَم الطالب.';
+  String get liveSessionEndBody =>
+      'هل أنت متأكد من إنهاء الجلسة؟ سيُعلَم الطالب.';
 
   @override
   String get liveSessionEndContinue => 'متابعة';
@@ -2323,7 +2383,8 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get teacherRatingsEmptyHint => 'ستظهر تقييمات الطلاب هنا بعد انتهاء الجلسات';
+  String get teacherRatingsEmptyHint =>
+      'ستظهر تقييمات الطلاب هنا بعد انتهاء الجلسات';
 
   @override
   String get disputePrefix => 'نزاع #';
@@ -2341,7 +2402,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get disputeResolvedBody => 'تم حل النزاع';
 
   @override
-  String get disputeDeadlineNote => 'قدّم ردّك وأدلتك خلال 48 ساعة، وإلا تُحسم لصالح الطالب. المبلغ مجمّد حتى القرار.';
+  String get disputeDeadlineNote =>
+      'قدّم ردّك وأدلتك خلال 48 ساعة، وإلا تُحسم لصالح الطالب. المبلغ مجمّد حتى القرار.';
 
   @override
   String get disputeReasonLabel => 'سبب النزاع';
@@ -2415,7 +2477,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get availEndTime => 'وقت النهاية';
 
   @override
-  String get availErrEndBeforeStart => 'وقت النهاية يجب أن يكون بعد وقت البداية';
+  String get availErrEndBeforeStart =>
+      'وقت النهاية يجب أن يكون بعد وقت البداية';
 
   @override
   String availErrGeneral(String error) {
@@ -2423,7 +2486,8 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get availInfoText => 'حدّد الأيام والساعات التي تكون متاحاً فيها. سيتمكن الطلاب من حجز جلسات في هذه الأوقات.';
+  String get availInfoText =>
+      'حدّد الأيام والساعات التي تكون متاحاً فيها. سيتمكن الطلاب من حجز جلسات في هذه الأوقات.';
 
   @override
   String get availAddSlotBtn => 'إضافة وقت';
@@ -2483,7 +2547,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get onboardingWelcomeTitle => 'مرحباً بك كأستاذ';
 
   @override
-  String get onboardingWelcomeBody => 'أكمل ملفك الشخصي لتبدأ استقبال الطلاب. سيراجع الفريق طلبك خلال 24 ساعة.';
+  String get onboardingWelcomeBody =>
+      'أكمل ملفك الشخصي لتبدأ استقبال الطلاب. سيراجع الفريق طلبك خلال 24 ساعة.';
 
   @override
   String get onboardingErrNoSubject => 'اختر مادة واحدة على الأقل';
@@ -2529,7 +2594,8 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get onboardingInfoNote => 'بعد إرسال طلبك، سيتحقق الفريق من بياناتك ويُفعّل حسابك خلال 24 ساعة.';
+  String get onboardingInfoNote =>
+      'بعد إرسال طلبك، سيتحقق الفريق من بياناتك ويُفعّل حسابك خلال 24 ساعة.';
 
   @override
   String get onboardingSubmitBtn => 'إرسال الطلب للمراجعة';
@@ -2541,7 +2607,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileDeleteAccount => 'حذف الحساب';
 
   @override
-  String get profileDeleteAccountBody => 'هذا الإجراء لا يمكن التراجع عنه.\nسيتم حذف جميع بياناتك بشكل نهائي.';
+  String get profileDeleteAccountBody =>
+      'هذا الإجراء لا يمكن التراجع عنه.\nسيتم حذف جميع بياناتك بشكل نهائي.';
 
   @override
   String get profileDeleteBtn => 'حذف';
@@ -2566,7 +2633,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileDeleteAccountLink => 'حذف الحساب نهائياً';
 
   @override
-  String get profileLogoutConfirmBody => 'هل أنت متأكد من رغبتك في تسجيل الخروج؟';
+  String get profileLogoutConfirmBody =>
+      'هل أنت متأكد من رغبتك في تسجيل الخروج؟';
 
   @override
   String get profileLogoutConfirmYes => 'خروج';
@@ -2668,37 +2736,43 @@ class AppLocalizationsAr extends AppLocalizations {
   String get actionConfirmRequest => 'تأكيد الطلب';
 
   @override
-  String get sessionRefundPendingMsg => 'طلبت استرداد المبلغ — بانتظار معالجة الإدارة.';
+  String get sessionRefundPendingMsg =>
+      'طلبت استرداد المبلغ — بانتظار معالجة الإدارة.';
 
   @override
   String get dialogRefundTitle => 'طلب استرداد المبلغ';
 
   @override
-  String get dialogRefundContent => 'سيتم إرسال طلبك إلى الإدارة لمعالجته.\n\nلن تتمكن من إعادة الجدولة بعد هذا الطلب.';
+  String get dialogRefundContent =>
+      'سيتم إرسال طلبك إلى الإدارة لمعالجته.\n\nلن تتمكن من إعادة الجدولة بعد هذا الطلب.';
 
   @override
   String get cancelledNoPaymentTitle => 'ألغيت — انتهت مهلة الدفع';
 
   @override
-  String get cancelledNoPaymentBody => 'لم يُرسَل إثبات الدفع خلال المهلة المحددة فأُلغيت الجلسة تلقائياً.';
+  String get cancelledNoPaymentBody =>
+      'لم يُرسَل إثبات الدفع خلال المهلة المحددة فأُلغيت الجلسة تلقائياً.';
 
   @override
   String get cancelledFakeProofTitle => 'ألغيت — إثبات دفع مزيف';
 
   @override
-  String get cancelledFakeProofBody => 'رُفض إثبات الدفع لأنه غير صحيح وانتهت المهلة المعطاة للتصحيح.';
+  String get cancelledFakeProofBody =>
+      'رُفض إثبات الدفع لأنه غير صحيح وانتهت المهلة المعطاة للتصحيح.';
 
   @override
   String get cancelledInsufficientTitle => 'ألغيت — مبلغ منقوص (استرداد)';
 
   @override
-  String get cancelledInsufficientBody => 'لم يكتمل المبلغ وانتهت المهلة. سيُعاد إليك المبلغ المدفوع قريباً.';
+  String get cancelledInsufficientBody =>
+      'لم يكتمل المبلغ وانتهت المهلة. سيُعاد إليك المبلغ المدفوع قريباً.';
 
   @override
   String get cancelledNoShowRefundTitle => 'ألغيت — استرداد مبلغك';
 
   @override
-  String get cancelledNoShowRefundBody => 'غاب الأستاذ وطلبت الاسترداد. ستُحوَّل قيمة الجلسة إليك قريباً.';
+  String get cancelledNoShowRefundBody =>
+      'غاب الأستاذ وطلبت الاسترداد. ستُحوَّل قيمة الجلسة إليك قريباً.';
 
   @override
   String get cancelledDefaultTitle => 'الجلسة ملغاة';
@@ -2719,13 +2793,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cancelledTeacherTimeoutTitle => 'ألغيت — لم يرد الأستاذ';
 
   @override
-  String get cancelledTeacherTimeoutBody => 'لم يرد الأستاذ في الوقت المحدد. يمكنك تجربة أستاذ آخر.';
+  String get cancelledTeacherTimeoutBody =>
+      'لم يرد الأستاذ في الوقت المحدد. يمكنك تجربة أستاذ آخر.';
 
   @override
   String get cancelledPaymentTimeoutTitle => 'ألغيت — انتهت مهلة الدفع';
 
   @override
-  String get cancelledPaymentTimeoutBody => 'لم يُرسل إثبات الدفع في الوقت المحدد فأُلغيت الجلسة تلقائياً.';
+  String get cancelledPaymentTimeoutBody =>
+      'لم يُرسل إثبات الدفع في الوقت المحدد فأُلغيت الجلسة تلقائياً.';
 
   @override
   String get evtRequested => 'أرسلت الطلب';
@@ -2878,13 +2954,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get notifBodyRescheduled => 'تم إعادة جدولة جلستك';
 
   @override
-  String get notifBodySubPending => 'اشتراكك قيد المراجعة وسيُفعَّل خلال 24 ساعة';
+  String get notifBodySubPending =>
+      'اشتراكك قيد المراجعة وسيُفعَّل خلال 24 ساعة';
 
   @override
   String get notifBodySubActive => 'يمكنك الآن الوصول إلى جميع المحتوى';
 
   @override
-  String get notifBodySubRejected => 'لم يُقبل إثبات الدفع — أعد المحاولة أو تواصل مع الدعم';
+  String get notifBodySubRejected =>
+      'لم يُقبل إثبات الدفع — أعد المحاولة أو تواصل مع الدعم';
 
   @override
   String get notifTypeSessionApproved => 'وافق الأستاذ على طلبك 🎉';
@@ -2914,25 +2992,29 @@ class AppLocalizationsAr extends AppLocalizations {
   String get notifTypeSubscriptionRefunded => 'سيُسترد مبلغك 💰';
 
   @override
-  String get notifBodySubscriptionRefunded => 'تم رفض الاشتراك وسيُسترد مبلغك قريباً';
+  String get notifBodySubscriptionRefunded =>
+      'تم رفض الاشتراك وسيُسترد مبلغك قريباً';
 
   @override
   String get notifTypeTeacherAccountApproved => 'تهانينا! تم اعتماد حسابك 🎉';
 
   @override
-  String get notifBodyTeacherAccountApproved => 'يمكنك الآن استقبال طلبات الجلسات من الطلاب';
+  String get notifBodyTeacherAccountApproved =>
+      'يمكنك الآن استقبال طلبات الجلسات من الطلاب';
 
   @override
   String get notifTypeTeacherAccountRejected => 'اعتذرنا عن طلبك';
 
   @override
-  String get notifBodyTeacherAccountRejected => 'لا يمكن قبول طلبك حالياً. تواصل معنا للمزيد';
+  String get notifBodyTeacherAccountRejected =>
+      'لا يمكن قبول طلبك حالياً. تواصل معنا للمزيد';
 
   @override
   String get notifTypeTeacherRevoked => 'تم إيقاف حسابك مؤقتاً';
 
   @override
-  String get notifBodyTeacherRevoked => 'تم إلغاء اعتماد حسابك. تواصل مع الإدارة للاستفسار';
+  String get notifBodyTeacherRevoked =>
+      'تم إلغاء اعتماد حسابك. تواصل مع الإدارة للاستفسار';
 
   @override
   String get notifTypeNewCourse => 'درس جديد متاح 📖';
@@ -2959,13 +3041,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get notifTypeAutoCancelled => 'انتهت مهلة الدفع';
 
   @override
-  String get notifBodyAutoCancelled => 'تم إلغاء طلبك تلقائياً لعدم إتمام الدفع في الوقت المحدد';
+  String get notifBodyAutoCancelled =>
+      'تم إلغاء طلبك تلقائياً لعدم إتمام الدفع في الوقت المحدد';
 
   @override
-  String get subRejectedFakeProofNote => 'الوصل مزيف — يرجى الاشتراك من جديد برفع وصل دفع حقيقي';
+  String get subRejectedFakeProofNote =>
+      'الوصل مزيف — يرجى الاشتراك من جديد برفع وصل دفع حقيقي';
 
   @override
-  String get subRejectedIncompleteAmountNote => 'المبلغ غير مكتمل — سيُعاد إليك المبلغ المدفوع تلقائياً';
+  String get subRejectedIncompleteAmountNote =>
+      'المبلغ غير مكتمل — سيُعاد إليك المبلغ المدفوع تلقائياً';
 
   @override
   String get paymentIncompleteLabel => 'المبلغ غير مكتمل';
@@ -2974,19 +3059,22 @@ class AppLocalizationsAr extends AppLocalizations {
   String get subCancelledNoPaymentTitle => 'ألغي الاشتراك — لم يُرسَل الدفع';
 
   @override
-  String get subCancelledNoPaymentBody => 'انتهت المهلة المحددة دون إرسال إثبات الدفع، فأُلغي الاشتراك تلقائياً.';
+  String get subCancelledNoPaymentBody =>
+      'انتهت المهلة المحددة دون إرسال إثبات الدفع، فأُلغي الاشتراك تلقائياً.';
 
   @override
   String get subCancelledFakeProofTitle => 'ألغي الاشتراك — إثبات مزيف';
 
   @override
-  String get subCancelledFakeProofBody => 'رُفض إثبات الدفع لأنه غير صحيح وانتهت المهلة المعطاة للتصحيح.';
+  String get subCancelledFakeProofBody =>
+      'رُفض إثبات الدفع لأنه غير صحيح وانتهت المهلة المعطاة للتصحيح.';
 
   @override
   String get subCancelledInsufficientTitle => 'ألغي الاشتراك — مبلغ منقوص';
 
   @override
-  String get subCancelledInsufficientBody => 'لم يكتمل المبلغ المدفوع وانتهت المهلة. سيُعاد إليك المبلغ المدفوع قريباً.';
+  String get subCancelledInsufficientBody =>
+      'لم يكتمل المبلغ المدفوع وانتهت المهلة. سيُعاد إليك المبلغ المدفوع قريباً.';
 
   @override
   String get subCancelledDefaultTitle => 'ألغي الاشتراك';
@@ -2995,7 +3083,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get subCancelledDefaultBody => 'تم إلغاء اشتراكك.';
 
   @override
-  String get subCancelledRefundNote => 'سيُودَع المبلغ المدفوع في حسابك تلقائياً';
+  String get subCancelledRefundNote =>
+      'سيُودَع المبلغ المدفوع في حسابك تلقائياً';
 
   @override
   String get roomChatLog => 'سجل المحادثة';
@@ -3013,13 +3102,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get roomLeaveTeacherTitle => 'مغادرة الجلسة؟';
 
   @override
-  String get roomLeaveTeacherBody => 'الجلسة ستستمر وتُغلق تلقائياً عند انتهاء وقتها.';
+  String get roomLeaveTeacherBody =>
+      'الجلسة ستستمر وتُغلق تلقائياً عند انتهاء وقتها.';
 
   @override
   String get roomLeaveStudentTitle => 'مغادرة الجلسة';
 
   @override
-  String get roomLeaveStudentBody => 'يمكنك العودة في أي وقت أثناء بقاء الجلسة نشطة.';
+  String get roomLeaveStudentBody =>
+      'يمكنك العودة في أي وقت أثناء بقاء الجلسة نشطة.';
 
   @override
   String get roomWarn5Min => 'تبقّى 5 دقائق على انتهاء الجلسة';

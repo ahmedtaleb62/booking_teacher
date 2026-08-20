@@ -86,12 +86,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // Teachers are exempt.
       if (role == 'student') {
         final deviceId = await DeviceService.getDeviceId();
+        bool mismatched = false;
         if (boundDeviceId == null) {
-          await SupabaseService.client
+          // Claim the device slot atomically (UPDATE ... WHERE device_id IS
+          // NULL) instead of read-then-write — two near-simultaneous first
+          // logins on different devices could otherwise both see NULL and
+          // both "win" the bind.
+          final claimed = await SupabaseService.client
               .from('profiles')
               .update({'device_id': deviceId})
-              .eq('id', user.id);
+              .eq('id', user.id)
+              .isFilter('device_id', null)
+              .select('id');
+          if ((claimed as List).isEmpty) {
+            // Someone else claimed it first — re-check against the real value.
+            final recheck = await SupabaseService.client
+                .from('profiles')
+                .select('device_id')
+                .eq('id', user.id)
+                .maybeSingle();
+            final actualDeviceId = recheck?['device_id'] as String?;
+            if (actualDeviceId != null && actualDeviceId != deviceId) {
+              mismatched = true;
+            }
+          }
         } else if (boundDeviceId != deviceId) {
+          mismatched = true;
+        }
+
+        if (mismatched) {
           await SupabaseService.client.auth.signOut();
           if (!mounted) return;
           final supportPhone = await ref.read(supportPhoneProvider.future);

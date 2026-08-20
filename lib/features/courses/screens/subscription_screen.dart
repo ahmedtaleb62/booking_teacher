@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -398,8 +399,26 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                             style: const TextStyle(
                                 fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                         if (m.number.isNotEmpty)
-                          Text(l.subscriptionAccountNumber(m.number),
-                              style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
+                          GestureDetector(
+                            onTap: () {
+                              Clipboard.setData(ClipboardData(text: m.number));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(l.commonCopied),
+                                  duration: const Duration(seconds: 1)),
+                              );
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(l.subscriptionAccountNumber(m.number),
+                                      style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.copy_rounded, size: 13, color: AppColors.textHint),
+                              ],
+                            ),
+                          ),
                         if (m.holder.isNotEmpty)
                           Text(l.subscriptionHolder(m.holder),
                               style: const TextStyle(fontSize: 12, color: AppColors.textHint)),
