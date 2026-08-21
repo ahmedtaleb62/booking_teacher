@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -15,5 +17,24 @@ class DeviceService {
       await prefs.setString(_key, id);
     }
     return id;
+  }
+
+  /// Human-readable device name/model shown to admin — purely informational,
+  /// never used to make the lock/mismatch decision (only device_id is).
+  static Future<String> getDeviceName() async {
+    try {
+      final plugin = DeviceInfoPlugin();
+      if (Platform.isAndroid) {
+        final info = await plugin.androidInfo;
+        return '${info.manufacturer} ${info.model}'.trim();
+      }
+      if (Platform.isIOS) {
+        final info = await plugin.iosInfo;
+        final nickname = info.name;
+        final model = info.utsname.machine;
+        return nickname.isNotEmpty ? '$nickname ($model)' : model;
+      }
+    } catch (_) {}
+    return 'جهاز غير معروف';
   }
 }

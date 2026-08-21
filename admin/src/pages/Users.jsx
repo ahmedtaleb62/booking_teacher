@@ -239,7 +239,7 @@ export default function Users() {
 
   async function resetDevice(id) {
     setActionId(id)
-    const { error } = await supabase.from('profiles').update({ device_id: null }).eq('id', id)
+    const { error } = await supabase.from('profiles').update({ device_id: null, device_name: null }).eq('id', id)
     setActionId(null)
     if (error) {
       toast('خطأ في إعادة تعيين الجهاز: ' + error.message, 'error')
@@ -391,6 +391,15 @@ export default function Users() {
                 </button>
               )}
               {u.role !== 'teacher' && u.device_id && (
+                <span
+                  className="badge"
+                  title={u.device_id}
+                  style={{ background: '#F1F5F9', color: '#334155', fontSize: 10.5, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                >
+                  📱 {u.device_name || 'جهاز غير مسمّى'}
+                </span>
+              )}
+              {u.role !== 'teacher' && u.device_id && (
                 <button
                   className="btn btn-sm"
                   title="فك ربط الجهاز — يسمح للطالب بالدخول من جهاز جديد"
@@ -398,7 +407,7 @@ export default function Users() {
                   disabled={!!actionId}
                   onClick={() => resetDevice(u.id)}
                 >
-                  📱 فك الربط
+                  فك الربط
                 </button>
               )}
               <button

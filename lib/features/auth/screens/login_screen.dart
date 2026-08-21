@@ -92,9 +92,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           // NULL) instead of read-then-write — two near-simultaneous first
           // logins on different devices could otherwise both see NULL and
           // both "win" the bind.
+          final deviceName = await DeviceService.getDeviceName();
           final claimed = await SupabaseService.client
               .from('profiles')
-              .update({'device_id': deviceId})
+              .update({'device_id': deviceId, 'device_name': deviceName})
               .eq('id', user.id)
               .isFilter('device_id', null)
               .select('id');
