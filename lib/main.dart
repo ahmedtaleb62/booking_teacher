@@ -39,9 +39,11 @@ void main() async {
 
   if (!kIsWeb) {
     await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    // No explicit statusBarColor here — Android 15+ (targetSdk 35) deprecates
+    // Window.setStatusBarColor() in favor of true edge-to-edge; bars are
+    // transparent by default, only icon brightness needs setting.
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
       ),
     );
