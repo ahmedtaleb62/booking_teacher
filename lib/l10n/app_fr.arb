@@ -689,6 +689,8 @@
   "subscriptionTypePackage": "Forfait",
   "subscriptionTypeCourse": "Cours",
   "subscriptionNoMethods": "Aucun mode de paiement disponible",
+  "subscriptionSuspendedMsg": "Cet abonnement a été suspendu par l'administration",
+  "subscriptionSuspendedRefundedLabel": "Suspendu — remboursé",
   "subscriptionPaymentMethodLabel": "Mode de paiement",
   "subscriptionAccountNumber": "Numéro de compte : {number}",
   "@subscriptionAccountNumber": { "placeholders": { "number": { "type": "String" } } },
@@ -1005,6 +1007,8 @@
   "cancelledTeacherTimeoutBody": "Le professeur n'a pas répondu dans le délai imparti. Vous pouvez essayer un autre professeur.",
   "cancelledPaymentTimeoutTitle": "Annulée — délai de paiement expiré",
   "cancelledPaymentTimeoutBody": "La preuve de paiement n'a pas été envoyée dans le délai imparti, la session a été annulée automatiquement.",
+  "cancelledAdminTitle": "L'administration a annulé cette session",
+  "cancelledAdminBody": "Cette session a été annulée par l'administration.",
 
   "evtRequested": "Demande envoyée",
   "evtTeacherApproved": "Professeur a accepté",

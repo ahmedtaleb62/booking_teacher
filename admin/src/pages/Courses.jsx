@@ -11,6 +11,8 @@ export default function Courses({ onNavigate }) {
   const [loading, setLoading] = useState(true)
   const [deleteId, setDeleteId] = useState(null)
   const [toggleId, setToggleId] = useState(null)
+  const [search, setSearch]   = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   useEffect(() => { loadData() }, [])
 
@@ -100,6 +102,17 @@ export default function Courses({ onNavigate }) {
 
   if (loading) return <div className="loading-center"><div className="spinner" /></div>
 
+  const filteredRows = rows.filter(c => {
+    if (statusFilter === 'published' && !c.is_active) return false
+    if (statusFilter === 'draft' && c.is_active) return false
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      const hay = [c.title, c.teacherName, c.level].filter(Boolean).join(' ').toLowerCase()
+      if (!hay.includes(q)) return false
+    }
+    return true
+  })
+
   return (
     <div>
       {/* Stats + Add */}
@@ -119,6 +132,29 @@ export default function Courses({ onNavigate }) {
           </div>
         </div>
         <button className="btn btn-primary" onClick={() => onNavigate('addCourse')}>+ إضافة درس</button>
+      </div>
+
+      {/* Search + filter */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
+        marginBottom: 14, padding: 12, background: 'var(--surface)',
+        border: '1px solid var(--border)', borderRadius: 12,
+      }}>
+        <input
+          className="field-input"
+          placeholder="بحث بعنوان الدرس أو اسم الأستاذ..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{ flex: '1 1 240px', minWidth: 200 }}
+        />
+        <select className="field-input" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: 150 }}>
+          <option value="all">كل الحالات</option>
+          <option value="published">منشور</option>
+          <option value="draft">مسودة</option>
+        </select>
+        <span style={{ fontSize: 12, color: 'var(--text3)', marginInlineStart: 'auto' }}>
+          {filteredRows.length} من {rows.length}
+        </span>
       </div>
 
       {/* Table */}
@@ -144,7 +180,11 @@ export default function Courses({ onNavigate }) {
           </div>
         )}
 
-        {rows.map(c => (
+        {rows.length > 0 && filteredRows.length === 0 && (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--text3)' }}>لا توجد نتائج مطابقة</div>
+        )}
+
+        {filteredRows.map(c => (
           <div key={c.id} className="table-row" style={{ gridTemplateColumns: COLS }}>
             <span className="fw-700" title={c.title}
               style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

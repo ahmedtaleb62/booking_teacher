@@ -705,6 +705,8 @@
   "subscriptionTypePackage": "باقة",
   "subscriptionTypeCourse": "درس",
   "subscriptionNoMethods": "لا توجد طرق دفع متاحة حالياً",
+  "subscriptionSuspendedMsg": "تم تعطيل هذا الاشتراك من قِبل الإدارة",
+  "subscriptionSuspendedRefundedLabel": "معطَّل مسترد",
   "subscriptionPaymentMethodLabel": "طريقة الدفع",
   "subscriptionAccountNumber": "رقم الحساب: {number}",
   "@subscriptionAccountNumber": { "placeholders": { "number": { "type": "String" } } },
@@ -1026,6 +1028,8 @@
   "cancelledTeacherTimeoutBody": "لم يرد الأستاذ في الوقت المحدد. يمكنك تجربة أستاذ آخر.",
   "cancelledPaymentTimeoutTitle": "ألغيت — انتهت مهلة الدفع",
   "cancelledPaymentTimeoutBody": "لم يُرسل إثبات الدفع في الوقت المحدد فأُلغيت الجلسة تلقائياً.",
+  "cancelledAdminTitle": "ألغت الإدارة هذه الجلسة",
+  "cancelledAdminBody": "تم إلغاء هذه الجلسة من قِبل الإدارة.",
 
   "evtRequested": "أرسلت الطلب",
   "evtTeacherApproved": "وافق الأستاذ على طلبك",

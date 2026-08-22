@@ -176,6 +176,20 @@ const REFUND_REASON_LABELS = {
 
 const TERMINAL_STATES = ['CANCELLED', 'CONFIRMED_BOOKING', 'ACTIVE_SESSION', 'COMPLETED', 'PAYMENT_CONFIRMED']
 
+const PAGE_SIZE = 30
+
+function Pager({ page, total, loading, onChange }) {
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  if (total <= PAGE_SIZE) return null
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, padding: '14px 0' }}>
+      <button className="btn btn-sm btn-secondary" disabled={page === 0 || loading} onClick={() => onChange(page - 1)}>السابق</button>
+      <span style={{ fontSize: 12, color: 'var(--text3)' }}>صفحة {page + 1} من {pageCount} · {total} سجل</span>
+      <button className="btn btn-sm btn-secondary" disabled={page + 1 >= pageCount || loading} onClick={() => onChange(page + 1)}>التالي</button>
+    </div>
+  )
+}
+
 export default function Payments({ adminId }) {
   const toast = useToast()
   const [tab, setTab]                     = useState('sessions')
@@ -186,6 +200,12 @@ export default function Payments({ adminId }) {
   const [disputeRefundedRows, setDisputeRefundedRows] = useState([])
   const [stats, setStats]                 = useState({})
   const [loading, setLoading]             = useState(true)
+  const [sessionPage, setSessionPage]     = useState(0)
+  const [subPage, setSubPage]             = useState(0)
+  const [sessionTotal, setSessionTotal]   = useState(0)
+  const [subTotal, setSubTotal]           = useState(0)
+  const [sessionLoading, setSessionLoading] = useState(false)
+  const [subLoading, setSubLoading]       = useState(false)
   const [sessionComm, setSessionComm]     = useState(DEFAULT_COMMISSION)
   const [subComm, setSubComm]             = useState(DEFAULT_COMMISSION)
   const [actionId, setActionId]           = useState(null)
@@ -201,24 +221,36 @@ export default function Payments({ adminId }) {
   const [disputeAction, setDisputeAction] = useState('')   // 'frozen' | 'refunded' | 'confirmed'
   const [disputeAmount, setDisputeAmount] = useState('')
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { init() }, [])
 
-  async function loadData() {
-    setLoading(true)
+  async function loadSettings() {
     const { data: settingsData } = await supabase.rpc('get_system_settings')
+    let sComm = DEFAULT_COMMISSION, subC = DEFAULT_COMMISSION
     if (settingsData) {
       const s = Object.fromEntries(settingsData.map(r => [r.key, parseFloat(r.value)]))
-      if (!isNaN(s.session_commission_pct))      setSessionComm(s.session_commission_pct / 100)
-      if (!isNaN(s.subscription_commission_pct)) setSubComm(s.subscription_commission_pct / 100)
+      if (!isNaN(s.session_commission_pct))      sComm = s.session_commission_pct / 100
+      if (!isNaN(s.subscription_commission_pct)) subC = s.subscription_commission_pct / 100
     }
+    setSessionComm(sComm)
+    setSubComm(subC)
+    return { sComm, subC }
+  }
 
-    const [payRes, subPayRes, refundedRes, subRefundRes, disputeRefundRes] = await Promise.all([
-      supabase.from('payments')
-        .select('*, session:session_id(id,subject,student_id,teacher_id,scheduled_at,payment_deadline,state,cancellation_reason), student:student_id(full_name)')
-        .order('created_at', { ascending: false }),
-      supabase.from('subscriptions')
-        .select('*, student:student_id(full_name), course:course_id(title, teacher_id), package:package_id(title)')
-        .order('created_at', { ascending: false }),
+  // Stats + refund lists: queried independently of the paginated tables below,
+  // via small bounded queries (counts, "today only", "active only", "refunded only")
+  // instead of scanning the whole (unboundedly growing) payments/subscriptions history.
+  async function loadStatsAndRefunds(sComm, subC) {
+    const todayStr        = new Date().toISOString().slice(0, 10)
+    const startOfDay      = todayStr + 'T00:00:00.000Z'
+    const startOfNextDay  = new Date(new Date(startOfDay).getTime() + 86400000).toISOString()
+
+    const [pendingSessionsRes, pendingSubsRes, confirmedTodayRes, activeSubsRes,
+      refundedRes, subRefundRes, disputeRefundRes] = await Promise.all([
+      supabase.from('payments').select('id', { count: 'exact', head: true }).eq('status', 'submitted'),
+      supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabase.from('payments').select('amount, dispute_status')
+        .eq('status', 'confirmed').gte('created_at', startOfDay).lt('created_at', startOfNextDay),
+      supabase.from('subscriptions').select('platform_commission, amount').eq('status', 'active'),
       supabase.from('sessions')
         .select('id, subject, amount, teacher_id, student_id, cancellation_reason, updated_at, state')
         .in('cancellation_reason', ['teacher_no_show_refund', 'insufficient_refund'])
@@ -235,22 +267,9 @@ export default function Payments({ adminId }) {
         .order('dispute_updated_at', { ascending: false }),
     ])
 
-    const pays      = payRes.data || []
-    let subs        = subPayRes.data || []
     let refunded    = refundedRes.data || []
     let subRef      = subRefundRes.data || []
     const dispRef   = disputeRefundRes.data || []
-
-    // Enrich subscriptions with teacher names
-    const teacherIds = [...new Set(subs.map(s => s.course?.teacher_id).filter(Boolean))]
-    if (teacherIds.length > 0) {
-      const { data: teachers } = await supabase.from('profiles').select('id, full_name').in('id', teacherIds)
-      const teacherMap = Object.fromEntries((teachers || []).map(t => [t.id, t.full_name]))
-      subs = subs.map(s => ({
-        ...s,
-        course: s.course ? { ...s.course, teacher_name: teacherMap[s.course.teacher_id] || '—' } : s.course,
-      }))
-    }
 
     // Enrich session refunds: profiles + payments (no joins — dual FK to profiles causes 400)
     const refundUserIds = [...new Set([
@@ -286,31 +305,82 @@ export default function Payments({ adminId }) {
       }))
     }
 
-    const today             = new Date().toISOString().slice(0, 10)
-    const confirmedToday    = pays.filter(p => p.status === 'confirmed' && p.created_at?.startsWith(today))
-    const sessionCommToday  = confirmedToday.reduce((s, p) => s + (p.amount || 0) * sessionComm, 0)
-    const activeSubs        = subs.filter(s => s.status === 'active')
-    const subCommTotal      = activeSubs.reduce((s, r) => s + (r.platform_commission ?? r.amount * subComm), 0)
-    const totalRefunded     = refunded.reduce((acc, s) => acc + (s.payment?.amount || s.amount || 0), 0)
-    const totalSubRefunded  = subRef.reduce((acc, s) => acc + (s.amount || 0), 0)
-    const totalDisputeRef   = dispRef.reduce((acc, p) => acc + (p.dispute_refund_amount || 0), 0)
-    const refundCount       = refunded.length + subRef.length + dispRef.length
+    const confirmedToday   = (confirmedTodayRes.data || []).filter(p => p.dispute_status !== 'refunded')
+    const sessionCommToday = confirmedToday.reduce((s, p) => s + (p.amount || 0) * sComm, 0)
+    const subCommTotal     = (activeSubsRes.data || []).reduce((s, r) => s + (r.platform_commission ?? r.amount * subC), 0)
+    const totalRefunded    = refunded.reduce((acc, s) => acc + (s.payment?.amount || s.amount || 0), 0)
+    const totalSubRefunded = subRef.reduce((acc, s) => acc + (s.amount || 0), 0)
+    const totalDisputeRef  = dispRef.reduce((acc, p) => acc + (p.dispute_refund_amount || 0), 0)
+    const refundCount      = refunded.length + subRef.length + dispRef.length
 
     setStats({
-      pendingSessions:  pays.filter(p => p.status === 'submitted').length,
-      pendingSubs:      subs.filter(s => s.status === 'pending').length,
+      pendingSessions:  pendingSessionsRes.count || 0,
+      pendingSubs:      pendingSubsRes.count || 0,
       sessionCommToday: Math.round(sessionCommToday),
       subCommTotal:     Math.round(subCommTotal),
       totalRefunded:    Math.round(totalRefunded + totalSubRefunded + totalDisputeRef),
       refundCount,
     })
-    setRows(pays)
-    setSubRows(subs)
     setRefundedRows(refunded)
     setSubRefundedRows(subRef)
     setDisputeRefundedRows(dispRef)
+  }
+
+  async function loadSessionsPage(page) {
+    setSessionLoading(true)
+    const from = page * PAGE_SIZE
+    const { data, count } = await supabase.from('payments')
+      .select('*, session:session_id(id,subject,student_id,teacher_id,scheduled_at,payment_deadline,state,cancellation_reason), student:student_id(full_name)', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, from + PAGE_SIZE - 1)
+    setRows(data || [])
+    setSessionTotal(count || 0)
+    setSessionLoading(false)
+  }
+
+  async function loadSubsPage(page) {
+    setSubLoading(true)
+    const from = page * PAGE_SIZE
+    const { data, count } = await supabase.from('subscriptions')
+      .select('*, student:student_id(full_name), course:course_id(title, teacher_id), package:package_id(title)', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, from + PAGE_SIZE - 1)
+    let subs = data || []
+    const teacherIds = [...new Set(subs.map(s => s.course?.teacher_id).filter(Boolean))]
+    if (teacherIds.length > 0) {
+      const { data: teachers } = await supabase.from('profiles').select('id, full_name').in('id', teacherIds)
+      const teacherMap = Object.fromEntries((teachers || []).map(t => [t.id, t.full_name]))
+      subs = subs.map(s => ({
+        ...s,
+        course: s.course ? { ...s.course, teacher_name: teacherMap[s.course.teacher_id] || '—' } : s.course,
+      }))
+    }
+    setSubRows(subs)
+    setSubTotal(count || 0)
+    setSubLoading(false)
+  }
+
+  async function init() {
+    setLoading(true)
+    const { sComm, subC } = await loadSettings()
+    await Promise.all([
+      loadStatsAndRefunds(sComm, subC),
+      loadSessionsPage(0),
+      loadSubsPage(0),
+    ])
     setLoading(false)
   }
+
+  async function refreshAll() {
+    await Promise.all([
+      loadStatsAndRefunds(sessionComm, subComm),
+      loadSessionsPage(sessionPage),
+      loadSubsPage(subPage),
+    ])
+  }
+
+  function goSessionPage(p) { setSessionPage(p); loadSessionsPage(p) }
+  function goSubPage(p) { setSubPage(p); loadSubsPage(p) }
 
   async function openModal(type, row) {
     setModal({ type, row })
@@ -355,7 +425,7 @@ export default function Payments({ adminId }) {
     try {
       const { error } = await supabase.rpc('admin_confirm_payment', { p_payment_id: paymentId, p_admin_id: adminId })
       if (error) throw error
-      closeModal(); await loadData()
+      closeModal(); await refreshAll()
       toast('تم تأكيد الدفع بنجاح وإشعار الطالب والأستاذ', 'success')
     } catch (err) {
       toast('خطأ في تأكيد الدفع: ' + (err.message || 'حدث خطأ غير متوقع'), 'error')
@@ -368,7 +438,7 @@ export default function Payments({ adminId }) {
     try {
       const { error } = await supabase.rpc('admin_reject_payment', { p_payment_id: paymentId, p_admin_id: adminId, p_reason: reason.trim() })
       if (error) throw error
-      closeModal(); await loadData()
+      closeModal(); await refreshAll()
       toast('تم رفض الدفع وإشعار الطالب', 'success')
     } catch (err) {
       toast('خطأ في رفض الدفع: ' + (err.message || 'حدث خطأ غير متوقع'), 'error')
@@ -380,7 +450,7 @@ export default function Payments({ adminId }) {
     try {
       const { error } = await supabase.rpc('admin_confirm_payment', { p_payment_id: paymentId, p_admin_id: adminId })
       if (error) throw error
-      closeModal(); await loadData()
+      closeModal(); await refreshAll()
       toast('تم تفعيل الجلسة رغم انتهاء المهلة', 'success')
     } catch (err) {
       toast('خطأ: ' + (err.message || ''), 'error')
@@ -400,7 +470,7 @@ export default function Payments({ adminId }) {
       if (payErr) throw payErr
       // on_session_state_change trigger sends bilingual notification for insufficient_refund
       await supabase.from('session_events').insert({ session_id: sessionId, event_type: 'REFUND_PROCESSED', actor: 'admin' })
-      closeModal(); await loadData()
+      closeModal(); await refreshAll()
       toast('تم إلغاء الجلسة وتسجيل استرداد المبلغ وإشعار الطالب', 'success')
     } catch (err) {
       toast('خطأ: ' + (err.message || ''), 'error')
@@ -415,7 +485,7 @@ export default function Payments({ adminId }) {
     try {
       const { error } = await supabase.rpc('admin_confirm_subscription', { p_subscription_id: id, p_admin_id: adminId, p_months: months })
       if (error) throw error
-      closeModal(); await loadData()
+      closeModal(); await refreshAll()
       toast('تم تأكيد الاشتراك وتفعيله بنجاح', 'success')
     } catch (err) {
       toast('خطأ في تأكيد الاشتراك: ' + (err.message || 'حدث خطأ غير متوقع'), 'error')
@@ -428,7 +498,7 @@ export default function Payments({ adminId }) {
     try {
       const { error } = await supabase.rpc('admin_reject_subscription', { p_subscription_id: id, p_admin_id: adminId, p_reason: reason.trim() })
       if (error) throw error
-      closeModal(); await loadData()
+      closeModal(); await refreshAll()
       toast('تم رفض الاشتراك وإشعار الطالب', 'success')
     } catch (err) {
       toast('خطأ في رفض الاشتراك: ' + (err.message || 'حدث خطأ غير متوقع'), 'error')
@@ -444,7 +514,7 @@ export default function Payments({ adminId }) {
         p_refund_amount: parseFloat(refundAmount),
       })
       if (error) throw error
-      closeModal(); await loadData()
+      closeModal(); await refreshAll()
       toast('تم رفض الاشتراك وإشعار الطالب باسترداد مبلغه', 'success')
     } catch (err) {
       toast('خطأ: ' + (err.message || ''), 'error')
@@ -458,7 +528,7 @@ export default function Payments({ adminId }) {
     try {
       const { error } = await supabase.rpc('admin_freeze_payment', { p_payment_id: paymentId, p_admin_id: adminId })
       if (error) throw error
-      closeModal(); await loadData()
+      closeModal(); await refreshAll()
       toast('تم تجميد المبلغ وإشعار الطرفين', 'success')
     } catch (err) {
       toast('خطأ: ' + (err.message || ''), 'error')
@@ -473,7 +543,7 @@ export default function Payments({ adminId }) {
         p_payment_id: paymentId, p_admin_id: adminId, p_refund_amount: parseFloat(amount),
       })
       if (error) throw error
-      closeModal(); await loadData()
+      closeModal(); await refreshAll()
       toast('تم تسجيل الاسترداد وإشعار الطرفين', 'success')
     } catch (err) {
       toast('خطأ: ' + (err.message || ''), 'error')
@@ -486,7 +556,7 @@ export default function Payments({ adminId }) {
     try {
       const { error } = await supabase.rpc('admin_confirm_after_dispute', { p_payment_id: paymentId, p_admin_id: adminId })
       if (error) throw error
-      closeModal(); await loadData()
+      closeModal(); await refreshAll()
       toast('تم تأكيد حق الأستاذ وإشعار الطرفين', 'success')
     } catch (err) {
       toast('خطأ: ' + (err.message || ''), 'error')
@@ -559,7 +629,7 @@ export default function Payments({ adminId }) {
           </div>
           {rows.length === 0 && <div style={{ padding: 24, textAlign: 'center', color: 'var(--text3)' }}>لا توجد مدفوعات</div>}
           {rows.map(r => {
-            const isRejected = r.status === 'rejected' || r.status === 'refunded'
+            const isRejected = r.status === 'rejected' || r.status === 'refunded' || r.dispute_status === 'refunded'
             const comm   = isRejected ? 0 : Math.round((r.amount || 0) * sessionComm)
             const net    = isRejected ? 0 : Math.round((r.amount || 0) - comm)
             const hasProof = !!r.proof_image_url
@@ -613,6 +683,7 @@ export default function Payments({ adminId }) {
           })}
         </div>
       )}
+      {tab === 'sessions' && <Pager page={sessionPage} total={sessionTotal} loading={sessionLoading} onChange={goSessionPage} />}
 
       {/* ── Subscriptions payments table ───────────────────────── */}
       {tab === 'subs' && (
@@ -655,6 +726,7 @@ export default function Payments({ adminId }) {
           })}
         </div>
       )}
+      {tab === 'subs' && <Pager page={subPage} total={subTotal} loading={subLoading} onChange={goSubPage} />}
 
       {/* ── Detail / review modal ─────────────────────────────── */}
       {modal && (
@@ -743,7 +815,7 @@ export default function Payments({ adminId }) {
 
             {/* ── Earnings ─────────────────────────────────────── */}
             {(() => {
-              const isRej   = modal.row.status === 'rejected' || modal.row.status === 'refunded'
+              const isRej   = modal.row.status === 'rejected' || modal.row.status === 'refunded' || modal.row.dispute_status === 'refunded'
               const amt     = modal.row.amount || 0
               const commRate = modal.type === 'sub' ? subComm : sessionComm
               const comm    = isRej ? 0 : Math.round(amt * commRate)

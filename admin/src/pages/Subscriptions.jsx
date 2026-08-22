@@ -18,10 +18,20 @@ const REASON_LABEL = {
 }
 
 /* ── Trail component ────────────────────────────────────────────── */
-function SubStatusTrail({ reason, status }) {
-  if (status === 'active')  return <span className="badge" style={{ background: '#D7F2E6', color: '#0A6E4E' }}>نشط</span>
-  if (status === 'expired') return <span className="badge" style={{ background: '#F1F5F9', color: '#475569' }}>منتهي</span>
-  if (status === 'pending') return <span className="badge" style={{ background: '#ECE5F7', color: '#5A3B95' }}>قيد المراجعة</span>
+function SubStatusTrail({ reason, status, refundAmount }) {
+  if (status === 'active')    return <span className="badge" style={{ background: '#D7F2E6', color: '#0A6E4E' }}>نشط</span>
+  if (status === 'suspended') return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+      <span className="badge" style={{ background: '#FBE0DB', color: '#A12B1D' }}>معطَّل</span>
+      {refundAmount != null && (
+        <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: '#D7F2E6', color: '#0A6E4E', whiteSpace: 'nowrap' }}>
+          مُسترد
+        </span>
+      )}
+    </div>
+  )
+  if (status === 'expired')   return <span className="badge" style={{ background: '#F1F5F9', color: '#475569' }}>منتهي</span>
+  if (status === 'pending')   return <span className="badge" style={{ background: '#ECE5F7', color: '#5A3B95' }}>قيد المراجعة</span>
 
   if (!reason) return <span className="badge" style={{ background: '#FBE0DB', color: '#A12B1D' }}>مرفوض</span>
 
@@ -79,6 +89,7 @@ export default function Subscriptions({ adminId }) {
   const [rejectMode, setRejectMode]   = useState(false)
   const [rejectValue, setRejectValue] = useState('')
   const [proofUrl, setProofUrl]       = useState(null)
+  const [suspendTarget, setSuspendTarget] = useState(null) // { id, amount }
 
   useEffect(() => { loadData() }, [])
 
@@ -134,6 +145,34 @@ export default function Subscriptions({ adminId }) {
       if (error) throw error
       closeModal(); await loadData()
       toast('تم تأكيد الاشتراك وتفعيله بنجاح', 'success')
+    } catch (err) {
+      toast('خطأ: ' + (err.message || 'حدث خطأ'), 'error')
+    } finally { setActionId(null) }
+  }
+
+  async function reactivateSub(id) {
+    setActionId(id)
+    try {
+      const { error } = await supabase.from('subscriptions').update({ status: 'active' }).eq('id', id)
+      if (error) throw error
+      await loadData()
+      toast('تم تفعيل الاشتراك وإشعار الطالب', 'success')
+    } catch (err) {
+      toast('خطأ: ' + (err.message || 'حدث خطأ'), 'error')
+    } finally { setActionId(null) }
+  }
+
+  async function confirmSuspend(refund) {
+    const id = suspendTarget.id
+    setActionId(id)
+    try {
+      const { error } = await supabase.rpc('admin_suspend_subscription', {
+        p_subscription_id: id, p_admin_id: adminId, p_refund: refund,
+      })
+      if (error) throw error
+      setSuspendTarget(null)
+      await loadData()
+      toast(refund ? 'تم تعطيل الاشتراك واسترداد المبلغ — تم إشعار الطالب والأستاذ' : 'تم تعطيل الاشتراك وإشعار الطالب', 'success')
     } catch (err) {
       toast('خطأ: ' + (err.message || 'حدث خطأ'), 'error')
     } finally { setActionId(null) }
@@ -224,7 +263,7 @@ export default function Subscriptions({ adminId }) {
               <span className="fw-700" style={{ fontSize: 12 }}>{s.amount?.toLocaleString('en-US')} أوق</span>
               <span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <SubStatusTrail status={s.status} reason={s.reject_reason} />
+                  <SubStatusTrail status={s.status} reason={s.reject_reason} refundAmount={s.actual_refund_amount} />
                   {s.status === 'active' && days && (
                     <span style={{ fontSize: 11, color: 'var(--text3)' }}>{days} · ينتهي {fmtDate(s.expires_at)}</span>
                   )}
@@ -237,6 +276,24 @@ export default function Subscriptions({ adminId }) {
                 {s.status === 'pending' ? (
                   <button className="btn btn-sm btn-review" onClick={() => openModal(s)} disabled={actionId === s.id}>
                     🔍 مراجعة
+                  </button>
+                ) : s.status === 'active' ? (
+                  <button
+                    className="btn btn-sm"
+                    style={{ background: '#FBE0DB', color: '#A12B1D', border: '1px solid #F3C5BD' }}
+                    disabled={actionId === s.id}
+                    onClick={() => setSuspendTarget({ id: s.id, amount: s.amount })}
+                  >
+                    {actionId === s.id ? '…' : '⛔ تعطيل'}
+                  </button>
+                ) : s.status === 'suspended' ? (
+                  <button
+                    className="btn btn-sm"
+                    style={{ background: '#D7F2E6', color: '#0A6E4E', border: '1px solid #A9E0CB' }}
+                    disabled={actionId === s.id}
+                    onClick={() => reactivateSub(s.id)}
+                  >
+                    {actionId === s.id ? '…' : '✓ تفعيل'}
                   </button>
                 ) : (
                   <span className="text-muted" style={{ fontSize: 12 }}>—</span>
@@ -365,6 +422,50 @@ export default function Subscriptions({ adminId }) {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Suspend modal ─────────────────────────────────────────── */}
+      {suspendTarget && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(30,27,75,.45)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={() => !actionId && setSuspendTarget(null)}
+        >
+          <div
+            style={{ background: '#fff', borderRadius: 20, padding: 28, width: 420, maxWidth: '95vw' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 8 }}>تعطيل الاشتراك</div>
+            <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20, lineHeight: 1.6 }}>
+              سيفقد الطالب الوصول فوراً. اختر هل تريد استرداد المبلغ ({suspendTarget.amount?.toLocaleString('en-US')} أوقية) له أم لا.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                className="btn btn-danger"
+                style={{ justifyContent: 'center' }}
+                disabled={!!actionId}
+                onClick={() => confirmSuspend(true)}
+              >
+                {actionId ? '…' : '💰 تعطيل مع استرداد المبلغ للطالب'}
+              </button>
+              <button
+                className="btn btn-secondary"
+                style={{ justifyContent: 'center' }}
+                disabled={!!actionId}
+                onClick={() => confirmSuspend(false)}
+              >
+                {actionId ? '…' : 'تعطيل بدون استرداد'}
+              </button>
+              <button
+                className="btn"
+                style={{ justifyContent: 'center' }}
+                disabled={!!actionId}
+                onClick={() => setSuspendTarget(null)}
+              >
+                إلغاء
+              </button>
+            </div>
           </div>
         </div>
       )}

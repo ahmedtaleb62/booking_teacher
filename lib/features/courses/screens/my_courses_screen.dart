@@ -97,9 +97,10 @@ class MyCoursesScreen extends ConsumerWidget {
   List<Subscription> _dedupeSubscriptions(List<Subscription> subs) {
     const priority = {
       SubscriptionStatus.active: 0,
-      SubscriptionStatus.pending: 1,
-      SubscriptionStatus.rejected: 2,
-      SubscriptionStatus.expired: 3,
+      SubscriptionStatus.suspended: 1,
+      SubscriptionStatus.pending: 2,
+      SubscriptionStatus.rejected: 3,
+      SubscriptionStatus.expired: 4,
     };
     final Map<String, Subscription> best = {};
     for (final sub in subs) {
@@ -155,7 +156,11 @@ class MyCoursesScreen extends ConsumerWidget {
     final l = context.l10n;
     final isActive = sub.status == SubscriptionStatus.active;
     final isPending = sub.status == SubscriptionStatus.pending;
+    final isSuspended = sub.status == SubscriptionStatus.suspended;
     final isPackage = sub.type == 'package';
+    final statusLabel = (isSuspended && sub.actualRefundAmount != null)
+        ? l.subscriptionSuspendedRefundedLabel
+        : sub.status.label;
 
     return GestureDetector(
       onTap: () {
@@ -167,6 +172,15 @@ class MyCoursesScreen extends ConsumerWidget {
           }
         } else if (isPending) {
           context.push('/subscription-pending/${sub.id}');
+        } else if (isSuspended) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l.subscriptionSuspendedMsg),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
         }
       },
       child: Container(
@@ -235,7 +249,7 @@ class MyCoursesScreen extends ConsumerWidget {
                           color: sub.status.bgColor,
                           borderRadius: BorderRadius.circular(999),
                         ),
-                        child: Text(sub.status.label,
+                        child: Text(statusLabel,
                             style: TextStyle(
                                 fontSize: 11, color: sub.status.color, fontWeight: FontWeight.w700)),
                       ),

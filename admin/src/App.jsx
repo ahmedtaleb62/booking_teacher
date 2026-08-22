@@ -18,6 +18,7 @@ import Policy from './pages/Policy'
 import Methods from './pages/Methods'
 import Notifications from './pages/Notifications'
 import Complaints from './pages/Complaints'
+import AuditLog from './pages/AuditLog'
 import Settings from './pages/Settings'
 
 const PAGE_META = {
@@ -37,6 +38,7 @@ const PAGE_META = {
   methods:      { title: 'طرق الدفع',            sub: 'إدارة طرق الدفع المتاحة للطلاب' },
   notifications:{ title: 'الإشعارات',           sub: 'الإشعارات الواردة وإرسال إشعارات للمستخدمين' },
   complaints:   { title: 'الشكاوى والاقتراحات',  sub: 'مراجعة رسائل الطلاب والأساتذة' },
+  auditLog:     { title: 'سجل النشاط',           sub: 'كل الإجراءات الحساسة التي قام بها المدراء' },
   settings:     { title: 'الإعدادات',            sub: 'رقم دعم العملاء وكلمة مرور المدير' },
 }
 
@@ -57,6 +59,7 @@ const PAGES = {
   methods:      Methods,
   notifications:Notifications,
   complaints:   Complaints,
+  auditLog:     AuditLog,
   settings:     Settings,
 }
 

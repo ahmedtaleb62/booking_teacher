@@ -30,7 +30,7 @@ export default function Overview({ onNavigate }) {
     const currentMonth = new Date().toISOString().slice(0, 7)
     const [sessRes, payRes, teachRes, subRes, subCommRes] = await Promise.all([
       supabase.from('sessions').select('id,state,amount,created_at').order('created_at', { ascending: false }).limit(1000),
-      supabase.from('payments').select('id,status,amount,created_at').order('created_at', { ascending: false }).limit(1000),
+      supabase.from('payments').select('id,status,amount,created_at,dispute_status').order('created_at', { ascending: false }).limit(1000),
       supabase.from('teacher_profiles').select('id,is_approved').eq('is_approved', false),
       supabase.from('subscriptions').select('id,status').eq('status', 'pending'),
       supabase.from('subscriptions').select('amount,platform_commission').eq('status', 'active').gte('started_at', currentMonth + '-01'),
@@ -41,14 +41,19 @@ export default function Overview({ onNavigate }) {
     const teachersPending = teachRes.data || []
     const subsPending = subRes.data || []
 
+    // A confirmed payment that was later refunded no longer counts as real
+    // revenue/commission — dispute_status is a separate overlay on top of
+    // status, so it must be checked explicitly here.
+    const notRefunded = p => p.dispute_status !== 'refunded'
+
     const today = new Date().toISOString().slice(0, 10)
-    const todayPay = payments.filter(p => p.status === 'confirmed' && p.created_at?.startsWith(today))
+    const todayPay = payments.filter(p => p.status === 'confirmed' && notRefunded(p) && p.created_at?.startsWith(today))
     const todayRevenue = todayPay.reduce((s, p) => s + (p.amount || 0), 0)
     const commission = todayRevenue * sessionCommRate
 
     const activeSubs = subCommRes.data || []
     const monthlySessionComm = payments
-      .filter(p => p.status === 'confirmed' && p.created_at?.startsWith(currentMonth))
+      .filter(p => p.status === 'confirmed' && notRefunded(p) && p.created_at?.startsWith(currentMonth))
       .reduce((s, p) => s + (p.amount || 0) * sessionCommRate, 0)
     const monthlySubComm = activeSubs.reduce((s, r) => s + (r.platform_commission ?? r.amount * subCommRate), 0)
 

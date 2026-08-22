@@ -1,5 +1,202 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
+import { useToast } from '../components/Toast'
+
+const WEEKDAY_SHORT = ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت']
+
+/* ── Reschedule modal: pick a new time from the teacher's real availability ── */
+function RescheduleModal({ session, onClose, onDone, adminId }) {
+  const toast = useToast()
+  const [availability, setAvailability] = useState([])
+  const [bookedByDay, setBookedByDay]   = useState({}) // { 'YYYY-MM-DD': [Date, ...] }
+  const [loading, setLoading]           = useState(true)
+  const [selectedDayIdx, setSelectedDayIdx] = useState(0)
+  const [selectedSlot, setSelectedSlot]     = useState(null) // { h, m }
+  const [saving, setSaving]                 = useState(false)
+
+  const days = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() + i)
+    d.setHours(0, 0, 0, 0)
+    return d
+  })
+
+  useEffect(() => {
+    (async () => {
+      const { data: avail } = await supabase
+        .from('teacher_availability')
+        .select('day_of_week, start_time, end_time')
+        .eq('teacher_id', session.teacher_id)
+        .eq('is_active', true)
+
+      const rangeStart = new Date(); rangeStart.setHours(0, 0, 0, 0)
+      const rangeEnd = new Date(rangeStart); rangeEnd.setDate(rangeEnd.getDate() + 14)
+      const { data: booked } = await supabase
+        .from('sessions')
+        .select('id, scheduled_at')
+        .eq('teacher_id', session.teacher_id)
+        .gte('scheduled_at', rangeStart.toISOString())
+        .lt('scheduled_at', rangeEnd.toISOString())
+        .not('state', 'in', '(TEACHER_REJECTED,CANCELLED)')
+
+      const byDay = {}
+      ;(booked || []).forEach(b => {
+        if (b.id === session.id) return // exclude the session being rescheduled itself
+        const key = b.scheduled_at.slice(0, 10)
+        if (!byDay[key]) byDay[key] = []
+        byDay[key].push(new Date(b.scheduled_at))
+      })
+
+      setAvailability(avail || [])
+      setBookedByDay(byDay)
+      setLoading(false)
+    })()
+  }, [session.id, session.teacher_id])
+
+  function slotsForDay(day) {
+    const dayOfWeek = day.getDay()
+    const duration = session.duration_minutes
+    const ranges = availability.filter(a => a.day_of_week === dayOfWeek)
+    if (ranges.length === 0) return []
+
+    const now = new Date()
+    const isToday = day.toDateString() === now.toDateString()
+    const dayKey = day.toISOString().slice(0, 10)
+    const bookedTimes = bookedByDay[dayKey] || []
+
+    const slots = []
+    for (const range of ranges) {
+      const [sH, sM] = range.start_time.split(':').map(Number)
+      const [eH, eM] = range.end_time.split(':').map(Number)
+      let h = sH, m = sM
+      while (true) {
+        const slotEndMin = h * 60 + m + duration
+        if (slotEndMin > eH * 60 + eM) break
+
+        const slotStart = new Date(day); slotStart.setHours(h, m, 0, 0)
+        if (isToday && slotStart.getTime() < now.getTime() + 30 * 60000) {
+          m += duration; h += Math.floor(m / 60); m = m % 60
+          continue
+        }
+
+        const isBooked = bookedTimes.some(bt => Math.abs(bt.getTime() - slotStart.getTime()) / 60000 < duration)
+        const period = h >= 12 ? 'م' : 'ص'
+        const h12 = h === 0 ? 12 : (h > 12 ? h - 12 : h)
+        slots.push({ h, m, label: `${h12}:${String(m).padStart(2, '0')} ${period}`, booked: isBooked })
+
+        m += duration; h += Math.floor(m / 60); m = m % 60
+      }
+    }
+    return slots
+  }
+
+  async function confirm() {
+    if (!selectedSlot) return
+    const day = days[selectedDayIdx]
+    const newDt = new Date(day)
+    newDt.setHours(selectedSlot.h, selectedSlot.m, 0, 0)
+
+    setSaving(true)
+    try {
+      const { error } = await supabase.rpc('admin_reschedule_session', {
+        p_session_id: session.id, p_admin_id: adminId, p_new_scheduled_at: newDt.toISOString(),
+      })
+      if (error) throw error
+      toast('تمت إعادة جدولة الجلسة وإشعار الطرفين', 'success')
+      onDone()
+    } catch (err) {
+      toast('خطأ: ' + (err.message || 'حدث خطأ'), 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const currentSlots = loading ? [] : slotsForDay(days[selectedDayIdx])
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(30,27,75,.55)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}
+      onClick={() => !saving && onClose()}
+    >
+      <div
+        style={{ background: '#fff', borderRadius: 20, padding: 28, width: 640, maxWidth: '96vw', maxHeight: '90vh', overflowY: 'auto' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>إعادة جدولة الجلسة</div>
+        <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 20 }}>
+          {session.studentName} ← {session.teacherName} · {session.duration_minutes} دقيقة
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 30 }}><div className="spinner" /></div>
+        ) : (
+          <>
+            {/* Day picker */}
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 16 }}>
+              {days.map((d, i) => {
+                const hasAvail = availability.some(a => a.day_of_week === d.getDay())
+                const sel = i === selectedDayIdx
+                return (
+                  <button
+                    key={i}
+                    onClick={() => { setSelectedDayIdx(i); setSelectedSlot(null) }}
+                    disabled={!hasAvail}
+                    style={{
+                      flexShrink: 0, minWidth: 58, padding: '8px 6px', borderRadius: 10, cursor: hasAvail ? 'pointer' : 'not-allowed',
+                      border: sel ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                      background: sel ? 'var(--primary)' : hasAvail ? '#fff' : '#F7F9FA',
+                      color: sel ? '#fff' : hasAvail ? 'var(--text1)' : 'var(--text3)',
+                      opacity: hasAvail ? 1 : 0.5,
+                    }}
+                  >
+                    <div style={{ fontSize: 10, fontWeight: 700 }}>{WEEKDAY_SHORT[d.getDay()]}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{d.getDate()}/{d.getMonth() + 1}</div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Slot grid */}
+            {currentSlots.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 24, color: 'var(--text3)', fontSize: 13, background: '#F7F9FA', borderRadius: 12 }}>
+                لا توجد أوقات متاحة لهذا الأستاذ في هذا اليوم
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 20 }}>
+                {currentSlots.map((s, i) => {
+                  const sel = selectedSlot && selectedSlot.h === s.h && selectedSlot.m === s.m
+                  return (
+                    <button
+                      key={i}
+                      disabled={s.booked}
+                      onClick={() => setSelectedSlot({ h: s.h, m: s.m })}
+                      style={{
+                        padding: '9px 4px', borderRadius: 9, fontSize: 12.5, fontWeight: 700, cursor: s.booked ? 'not-allowed' : 'pointer',
+                        border: sel ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                        background: s.booked ? '#F1F5F9' : sel ? 'var(--primary)' : '#fff',
+                        color: s.booked ? '#B0BEC5' : sel ? '#fff' : 'var(--text1)',
+                        textDecoration: s.booked ? 'line-through' : 'none',
+                      }}
+                    >
+                      {s.label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose} disabled={saving}>إلغاء</button>
+              <button className="btn btn-primary" style={{ flex: 2, justifyContent: 'center' }} disabled={!selectedSlot || saving} onClick={confirm}>
+                {saving ? '...جارٍ الحفظ' : '✓ تأكيد الموعد الجديد'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
 
 /* ── Readable labels for DB enum values ─────────────────────── */
 const CANCEL_REASON_LABELS = {
@@ -10,6 +207,7 @@ const CANCEL_REASON_LABELS = {
   insufficient_refund:    'مبلغ ناقص — سيُستَرد',
   no_payment_deadline:    'انتهت مهلة الدفع — لم يُرسَل إثبات',
   teacher_no_show_refund: 'غياب الأستاذ — سيُستَرد',
+  admin_cancelled:        'ألغتها الإدارة',
 }
 
 const REJECT_REASON_LABELS = {
@@ -216,11 +414,15 @@ function Timeline({ events, payments, session }) {
   )
 }
 
-export default function Sessions() {
+export default function Sessions({ adminId }) {
+  const toast = useToast()
   const [rows, setRows]       = useState([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats]     = useState({})
   const [modal, setModal]     = useState(null)   // { session, events, loadingEvents }
+  const [cancelTarget, setCancelTarget] = useState(null) // session object
+  const [cancelling, setCancelling]     = useState(false)
+  const [rescheduleTarget, setRescheduleTarget] = useState(null) // session object
 
   useEffect(() => {
     loadData()
@@ -264,6 +466,24 @@ export default function Sessions() {
     })
     setRows(sessions)
     setLoading(false)
+  }
+
+  async function confirmCancel(refund) {
+    setCancelling(true)
+    try {
+      const { error } = await supabase.rpc('admin_cancel_session', {
+        p_session_id: cancelTarget.id, p_admin_id: adminId, p_refund: refund,
+      })
+      if (error) throw error
+      toast(refund ? 'تم إلغاء الجلسة واسترداد المبلغ — تم إشعار الطالب والأستاذ' : 'تم إلغاء الجلسة وإشعار الطرفين', 'success')
+      setCancelTarget(null)
+      setModal(null)
+      await loadData()
+    } catch (err) {
+      toast('خطأ: ' + (err.message || 'حدث خطأ'), 'error')
+    } finally {
+      setCancelling(false)
+    }
   }
 
   async function openSession(s) {
@@ -418,6 +638,26 @@ export default function Sessions() {
               })()}
             </div>
 
+            {/* Admin actions — only for a stuck confirmed booking nobody joined */}
+            {modal.session.state === 'CONFIRMED_BOOKING' && (
+              <div style={{ display: 'flex', gap: 10, marginBottom: 22 }}>
+                <button
+                  className="btn btn-sm"
+                  style={{ flex: 1, justifyContent: 'center', background: '#FBE0DB', color: '#A12B1D', border: '1px solid #F3C5BD' }}
+                  onClick={() => setCancelTarget(modal.session)}
+                >
+                  🚫 إلغاء الجلسة
+                </button>
+                <button
+                  className="btn btn-sm"
+                  style={{ flex: 1, justifyContent: 'center', background: '#DEEAF7', color: '#1F5C99', border: '1px solid #B9D2F0' }}
+                  onClick={() => setRescheduleTarget(modal.session)}
+                >
+                  📅 إعادة جدولة
+                </button>
+              </div>
+            )}
+
             {/* Timeline */}
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text2)', marginBottom: 14 }}>
               🕐 مسار الجلسة
@@ -436,6 +676,44 @@ export default function Sessions() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* ── Cancel confirm ─────────────────────────────────────────── */}
+      {cancelTarget && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(30,27,75,.55)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}
+          onClick={() => !cancelling && setCancelTarget(null)}
+        >
+          <div
+            style={{ background: '#fff', borderRadius: 20, padding: 26, width: 400, maxWidth: '95vw' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 8 }}>إلغاء الجلسة</div>
+            <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20, lineHeight: 1.6 }}>
+              سيتم إلغاء هذه الجلسة نهائياً وإشعار الطالب والأستاذ. اختر هل تريد استرداد المبلغ
+              ({cancelTarget.amount?.toLocaleString('en-US')} أوقية) للطالب أم لا. لا يمكن التراجع.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button className="btn btn-danger" style={{ justifyContent: 'center' }} onClick={() => confirmCancel(true)} disabled={cancelling}>
+                {cancelling ? '...جارٍ الإلغاء' : '💰 إلغاء مع استرداد المبلغ للطالب'}
+              </button>
+              <button className="btn btn-secondary" style={{ justifyContent: 'center' }} onClick={() => confirmCancel(false)} disabled={cancelling}>
+                {cancelling ? '...جارٍ الإلغاء' : 'إلغاء بدون استرداد'}
+              </button>
+              <button className="btn" style={{ justifyContent: 'center' }} onClick={() => setCancelTarget(null)} disabled={cancelling}>تراجع</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reschedule ─────────────────────────────────────────────── */}
+      {rescheduleTarget && (
+        <RescheduleModal
+          session={rescheduleTarget}
+          adminId={adminId}
+          onClose={() => setRescheduleTarget(null)}
+          onDone={() => { setRescheduleTarget(null); setModal(null); loadData() }}
+        />
       )}
     </div>
   )

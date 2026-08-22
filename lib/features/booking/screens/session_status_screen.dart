@@ -625,6 +625,13 @@ class _SessionStatusScreenState extends ConsumerState<SessionStatusScreen> {
         const Color(0xFF059669),
         const Color(0xFFD1FAE5),
       ),
+      'admin_cancelled' => (
+        Icons.admin_panel_settings_outlined,
+        l.cancelledAdminTitle,
+        l.cancelledAdminBody,
+        AppColors.textSecondary,
+        const Color(0xFFF3F4F6),
+      ),
       _ => (
         Icons.cancel_outlined,
         l.cancelledDefaultTitle,

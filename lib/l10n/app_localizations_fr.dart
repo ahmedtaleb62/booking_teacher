@@ -1951,6 +1951,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get subscriptionNoMethods => 'Aucun mode de paiement disponible';
 
   @override
+  String get subscriptionSuspendedMsg =>
+      'Cet abonnement a été suspendu par l\'administration';
+
+  @override
+  String get subscriptionSuspendedRefundedLabel => 'Suspendu — remboursé';
+
+  @override
   String get subscriptionPaymentMethodLabel => 'Mode de paiement';
 
   @override
@@ -2872,6 +2879,13 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get cancelledPaymentTimeoutBody =>
       'La preuve de paiement n\'a pas été envoyée dans le délai imparti, la session a été annulée automatiquement.';
+
+  @override
+  String get cancelledAdminTitle => 'L\'administration a annulé cette session';
+
+  @override
+  String get cancelledAdminBody =>
+      'Cette session a été annulée par l\'administration.';
 
   @override
   String get evtRequested => 'Demande envoyée';

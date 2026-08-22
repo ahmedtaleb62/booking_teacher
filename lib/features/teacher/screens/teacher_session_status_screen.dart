@@ -150,6 +150,7 @@ class _HeroBanner extends StatelessWidget {
       if (cr == 'fake_proof')          return 'غياب الدفع — الوصل مزيف';
       if (cr == 'insufficient_refund') return 'غياب الدفع — المبلغ غير مكتمل';
       if (cr == 'student_cancelled')   return l.sessionCancelledInfo;
+      if (cr == 'admin_cancelled')     return 'ألغت الإدارة هذه الجلسة';
       return l.sessionCancelledInfo;
     }
     switch (state) {
@@ -690,6 +691,14 @@ class _BottomActionState extends State<_BottomAction> {
           const Color(0xFF7B61FF),
           const Color(0xFFF0EDFF),
           const Color(0xFFBFB5FF),
+        ),
+        'admin_cancelled' => (
+          Icons.admin_panel_settings_outlined,
+          'ألغت الإدارة هذه الجلسة',
+          'تم إلغاء هذه الجلسة من قِبل الإدارة.',
+          const Color(0xFF374151),
+          const Color(0xFFF3F4F6),
+          const Color(0xFFD1D5DB),
         ),
         _ when cr.isNotEmpty => (
           Icons.cancel_outlined,

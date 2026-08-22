@@ -234,6 +234,7 @@ class SessionEvent {
           case 'fake_proof':             return 'رُفض الدفع — الوصل مزيف';
           case 'insufficient_refund':    return 'رُفض الدفع — المبلغ غير مكتمل';
           case 'teacher_no_show_refund': return 'إلغاء — غياب الأستاذ · سيُستَرد مبلغك';
+          case 'admin_cancelled':        return 'ألغت الإدارة هذه الجلسة';
           default:                       return l.evtCancelled;
         }
       case 'RESCHEDULED':       return l.evtRescheduled;
@@ -266,6 +267,7 @@ class SessionEvent {
           case 'fake_proof':             return 'رُفض الدفع — الوصل مزيف';
           case 'insufficient_refund':    return 'رُفض الدفع — المبلغ غير مكتمل';
           case 'teacher_no_show_refund': return 'إلغاء — غياب الأستاذ';
+          case 'admin_cancelled':        return 'ألغت الإدارة هذه الجلسة';
           default:                       return l.evtTCancelled;
         }
       case 'RESCHEDULED':       return l.evtTRescheduled;

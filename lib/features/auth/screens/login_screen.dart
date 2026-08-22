@@ -113,6 +113,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           }
         } else if (boundDeviceId != deviceId) {
           mismatched = true;
+        } else {
+          // Same device as already bound — backfill device_name for accounts
+          // bound before this field existed.
+          await SupabaseService.client
+              .from('profiles')
+              .update({'device_name': await DeviceService.getDeviceName()})
+              .eq('id', user.id)
+              .isFilter('device_name', null);
         }
 
         if (mismatched) {

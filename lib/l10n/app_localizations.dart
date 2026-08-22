@@ -3644,6 +3644,18 @@ abstract class AppLocalizations {
   /// **'لا توجد طرق دفع متاحة حالياً'**
   String get subscriptionNoMethods;
 
+  /// No description provided for @subscriptionSuspendedMsg.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم تعطيل هذا الاشتراك من قِبل الإدارة'**
+  String get subscriptionSuspendedMsg;
+
+  /// No description provided for @subscriptionSuspendedRefundedLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'معطَّل مسترد'**
+  String get subscriptionSuspendedRefundedLabel;
+
   /// No description provided for @subscriptionPaymentMethodLabel.
   ///
   /// In ar, this message translates to:
@@ -5299,6 +5311,18 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'لم يُرسل إثبات الدفع في الوقت المحدد فأُلغيت الجلسة تلقائياً.'**
   String get cancelledPaymentTimeoutBody;
+
+  /// No description provided for @cancelledAdminTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'ألغت الإدارة هذه الجلسة'**
+  String get cancelledAdminTitle;
+
+  /// No description provided for @cancelledAdminBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إلغاء هذه الجلسة من قِبل الإدارة.'**
+  String get cancelledAdminBody;
 
   /// No description provided for @evtRequested.
   ///

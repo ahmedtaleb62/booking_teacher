@@ -1909,6 +1909,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get subscriptionNoMethods => 'لا توجد طرق دفع متاحة حالياً';
 
   @override
+  String get subscriptionSuspendedMsg =>
+      'تم تعطيل هذا الاشتراك من قِبل الإدارة';
+
+  @override
+  String get subscriptionSuspendedRefundedLabel => 'معطَّل مسترد';
+
+  @override
   String get subscriptionPaymentMethodLabel => 'طريقة الدفع';
 
   @override
@@ -2802,6 +2809,12 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get cancelledPaymentTimeoutBody =>
       'لم يُرسل إثبات الدفع في الوقت المحدد فأُلغيت الجلسة تلقائياً.';
+
+  @override
+  String get cancelledAdminTitle => 'ألغت الإدارة هذه الجلسة';
+
+  @override
+  String get cancelledAdminBody => 'تم إلغاء هذه الجلسة من قِبل الإدارة.';
 
   @override
   String get evtRequested => 'أرسلت الطلب';

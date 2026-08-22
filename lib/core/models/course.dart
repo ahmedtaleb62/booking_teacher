@@ -248,6 +248,7 @@ class Subscription {
   final String? proofImageUrl;
   final double amount;
   final String? rejectReason;
+  final double? actualRefundAmount;
   final DateTime? startedAt;
   final DateTime? expiresAt;
   final DateTime createdAt;
@@ -265,6 +266,7 @@ class Subscription {
     this.proofImageUrl,
     required this.amount,
     this.rejectReason,
+    this.actualRefundAmount,
     this.startedAt,
     this.expiresAt,
     required this.createdAt,
@@ -298,6 +300,7 @@ class Subscription {
       proofImageUrl: json['proof_image_url'] as String?,
       amount: (json['amount'] as num).toDouble(),
       rejectReason: json['reject_reason'] as String?,
+      actualRefundAmount: (json['actual_refund_amount'] as num?)?.toDouble(),
       startedAt: json['started_at'] != null
           ? DateTime.parse(json['started_at'] as String)
           : null,
@@ -311,33 +314,36 @@ class Subscription {
   }
 }
 
-enum SubscriptionStatus { pending, active, expired, rejected }
+enum SubscriptionStatus { pending, active, expired, rejected, suspended }
 
 extension SubscriptionStatusX on SubscriptionStatus {
   String get label {
     switch (this) {
-      case SubscriptionStatus.pending:  return 'قيد المراجعة';
-      case SubscriptionStatus.active:   return 'نشط';
-      case SubscriptionStatus.expired:  return 'منتهي';
-      case SubscriptionStatus.rejected: return 'مرفوض';
+      case SubscriptionStatus.pending:   return 'قيد المراجعة';
+      case SubscriptionStatus.active:    return 'نشط';
+      case SubscriptionStatus.expired:   return 'منتهي';
+      case SubscriptionStatus.rejected:  return 'مرفوض';
+      case SubscriptionStatus.suspended: return 'معطَّل';
     }
   }
 
   Color get color {
     switch (this) {
-      case SubscriptionStatus.pending:  return const Color(0xFF7B61FF);
-      case SubscriptionStatus.active:   return const Color(0xFF16A34A);
-      case SubscriptionStatus.expired:  return const Color(0xFF8A96A3);
-      case SubscriptionStatus.rejected: return const Color(0xFFC0392B);
+      case SubscriptionStatus.pending:   return const Color(0xFF7B61FF);
+      case SubscriptionStatus.active:    return const Color(0xFF16A34A);
+      case SubscriptionStatus.expired:   return const Color(0xFF8A96A3);
+      case SubscriptionStatus.rejected:  return const Color(0xFFC0392B);
+      case SubscriptionStatus.suspended: return const Color(0xFFC0392B);
     }
   }
 
   Color get bgColor {
     switch (this) {
-      case SubscriptionStatus.pending:  return const Color(0xFFF0EDFF);
-      case SubscriptionStatus.active:   return const Color(0xFFDCFCE7);
-      case SubscriptionStatus.expired:  return const Color(0xFFF1F2F4);
-      case SubscriptionStatus.rejected: return const Color(0xFFFDECEC);
+      case SubscriptionStatus.pending:   return const Color(0xFFF0EDFF);
+      case SubscriptionStatus.active:    return const Color(0xFFDCFCE7);
+      case SubscriptionStatus.expired:   return const Color(0xFFF1F2F4);
+      case SubscriptionStatus.rejected:  return const Color(0xFFFDECEC);
+      case SubscriptionStatus.suspended: return const Color(0xFFFDECEC);
     }
   }
 }
