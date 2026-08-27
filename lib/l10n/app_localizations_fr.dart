@@ -1187,6 +1187,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get homePackagesTab => 'Forfaits';
 
   @override
+  String get homeCompetitionsTab => 'Concours';
+
+  @override
+  String get homeCompetitionsComingSoonTitle => 'Bientôt';
+
+  @override
+  String get homeCompetitionsComingSoonBody =>
+      'Les concours arrivent bientôt — restez à l\'écoute';
+
+  @override
   String get homeDetails => 'Détails';
 
   @override

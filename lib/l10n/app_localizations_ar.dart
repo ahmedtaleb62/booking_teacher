@@ -1159,6 +1159,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homePackagesTab => 'باقات';
 
   @override
+  String get homeCompetitionsTab => 'مسابقات';
+
+  @override
+  String get homeCompetitionsComingSoonTitle => 'قريباً';
+
+  @override
+  String get homeCompetitionsComingSoonBody =>
+      'نعمل على إطلاق المسابقات — تابعنا قريباً';
+
+  @override
   String get homeDetails => 'التفاصيل';
 
   @override

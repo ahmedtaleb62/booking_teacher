@@ -2306,6 +2306,24 @@ abstract class AppLocalizations {
   /// **'باقات'**
   String get homePackagesTab;
 
+  /// No description provided for @homeCompetitionsTab.
+  ///
+  /// In ar, this message translates to:
+  /// **'مسابقات'**
+  String get homeCompetitionsTab;
+
+  /// No description provided for @homeCompetitionsComingSoonTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'قريباً'**
+  String get homeCompetitionsComingSoonTitle;
+
+  /// No description provided for @homeCompetitionsComingSoonBody.
+  ///
+  /// In ar, this message translates to:
+  /// **'نعمل على إطلاق المسابقات — تابعنا قريباً'**
+  String get homeCompetitionsComingSoonBody;
+
   /// No description provided for @homeDetails.
   ///
   /// In ar, this message translates to:

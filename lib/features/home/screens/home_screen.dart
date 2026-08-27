@@ -28,7 +28,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 3, vsync: this);
+    _tabCtrl = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -63,9 +63,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: TabBarView(
                 controller: _tabCtrl,
                 children: [
-                  _TeachersTab(subjects: subjects),
-                  _CoursesTab(subjects: subjects),
                   const _PackagesTab(),
+                  _CoursesTab(subjects: subjects),
+                  _TeachersTab(subjects: subjects),
+                  const _CompetitionsTab(),
                 ],
               ),
             ),
@@ -190,7 +191,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
           ),
-          if (_tabCtrl.index == 0) ...[
+          if (_tabCtrl.index == 2) ...[
             const SizedBox(width: 10),
             GestureDetector(
               onTap: _openFilter,
@@ -241,10 +242,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
           unselectedLabelStyle:
               const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+          labelPadding: const EdgeInsets.symmetric(horizontal: 4),
           tabs: [
-            Tab(text: l.homeTeachersTab),
-            Tab(text: l.homeCoursesTab),
             Tab(text: l.homePackagesTab),
+            Tab(text: l.homeCoursesTab),
+            Tab(text: l.homeTeachersTab),
+            Tab(text: l.homeCompetitionsTab),
           ],
         ),
       ),
@@ -678,6 +681,41 @@ class _CourseCard extends StatelessWidget {
   }
 }
 
+// ── Competitions Tab ──────────────────────────────────────────────
+class _CompetitionsTab extends StatelessWidget {
+  const _CompetitionsTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 72, height: 72,
+            decoration: BoxDecoration(
+              color: AppColors.accentLight,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            alignment: Alignment.center,
+            child: const Icon(Icons.emoji_events_outlined,
+                size: 34, color: AppColors.primary),
+          ),
+          const SizedBox(height: 16),
+          Text(l.homeCompetitionsComingSoonTitle,
+              style: const TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          const SizedBox(height: 6),
+          Text(l.homeCompetitionsComingSoonBody,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13, color: AppColors.textHint)),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Packages Tab ──────────────────────────────────────────────────
 class _PackagesTab extends ConsumerWidget {
   const _PackagesTab();
@@ -790,10 +828,10 @@ class _PackageCard extends StatelessWidget {
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
                   )
                 else ...[
-                  Text('${package.priceMonthly.toStringAsFixed(0)} ',
+                  Text('${(package.priceYearly ?? package.priceMonthly).toStringAsFixed(0)} ',
                       style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-                  Text(l.homeOugiyaPerMonth,
+                  Text(l.subscriptionPerYear,
                       style: TextStyle(
                           fontSize: 10, color: Colors.white.withValues(alpha: 0.75))),
                 ],
